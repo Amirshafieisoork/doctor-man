@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -16,11 +17,12 @@ font-family:tahoma;
 
 body{
 background:#f5f7fb;
+padding:20px;
 }
 
 .hero{
 text-align:center;
-padding:80px 20px;
+padding:60px 20px;
 }
 
 .logo{
@@ -48,7 +50,7 @@ background:#2563eb;
 color:white;
 padding:14px 30px;
 border-radius:10px;
-text-decoration:none;
+cursor:pointer;
 margin-top:20px;
 }
 
@@ -73,14 +75,30 @@ margin-bottom:10px;
 color:#2563eb;
 }
 
+#resultArea{
+background:white;
+padding:20px;
+border-radius:15px;
+max-width:700px;
+margin:30px auto;
+display:none;
+box-shadow:0 0 15px rgba(0,0,0,.08);
+}
+
 .footer{
 text-align:center;
 padding:30px;
 color:#777;
 }
 
-</style>
+img{
+max-width:350px;
+width:100%;
+border-radius:15px;
+margin-top:20px;
+}
 
+</style>
 </head>
 
 <body>
@@ -96,17 +114,23 @@ DrMan
 </div>
 
 <div class="desc">
-آپلود عکس آزمایش، دریافت تفسیر ساده،
-مدیریت سوابق پزشکی و همراهی هوشمند در مسیر سلامت.
+آپلود عکس آزمایش و دریافت تفسیر هوشمند به زبان ساده.
 </div>
 
-<input type="file" id="labImage" accept="image/*" style="display:none">
+<input type="file"
+id="labImage"
+accept="image/*"
+style="display:none">
 
 <label for="labImage" class="btn">
 آپلود عکس آزمایش
 </label>
 
-<div id="previewArea" style="margin-top:30px;"></div>
+<div id="previewArea"></div>
+
+<div id="actionArea"></div>
+
+<div id="resultArea"></div>
 
 </section>
 
@@ -115,21 +139,21 @@ DrMan
 <div class="card">
 <h3>تفسیر آزمایش</h3>
 <p>
-آپلود عکس آزمایش و دریافت توضیح قابل فهم.
+فهم ساده نتایج آزمایش.
 </p>
 </div>
 
 <div class="card">
 <h3>پرونده سلامت</h3>
 <p>
-نگهداری سوابق و نتایج آزمایش‌ها.
+نگهداری سوابق پزشکی.
 </p>
 </div>
 
 <div class="card">
 <h3>یادآوری پزشکی</h3>
 <p>
-یادآوری دارو، آزمایش و مراجعه بعدی.
+یادآوری آزمایش و مراجعه.
 </p>
 </div>
 
@@ -138,9 +162,11 @@ DrMan
 <div class="footer">
 © DrMan 2025
 </div>
+
 <script>
 
-document.getElementById("labImage").addEventListener("change", function(e){
+document.getElementById("labImage")
+.addEventListener("change", function(e){
 
 const file = e.target.files[0];
 
@@ -151,18 +177,56 @@ const reader = new FileReader();
 reader.onload = function(event){
 
 document.getElementById("previewArea").innerHTML = `
-<h3 style="margin-bottom:15px">
-تصویر انتخاب شده
-</h3>
-
-<img src="${event.target.result}"
-style="
-max-width:350px;
-width:100%;
-border-radius:15px;
-box-shadow:0 0 15px rgba(0,0,0,.15);
-">
+<h3>تصویر انتخاب شده</h3>
+<img src="${event.target.result}">
 `;
+
+document.getElementById("actionArea").innerHTML = `
+<br>
+<button id="analyzeBtn"
+style="
+background:#2563eb;
+color:white;
+border:none;
+padding:12px 25px;
+border-radius:10px;
+cursor:pointer;
+font-size:16px;
+">
+تحلیل آزمایش
+</button>
+`;
+
+document.getElementById("analyzeBtn")
+.addEventListener("click", function(){
+
+const resultArea =
+document.getElementById("resultArea");
+
+resultArea.style.display = "block";
+
+resultArea.innerHTML = `
+<h3>در حال تحلیل آزمایش...</h3>
+<p>لطفاً چند لحظه صبر کنید.</p>
+`;
+
+setTimeout(()=>{
+
+resultArea.innerHTML = `
+<h3>نتیجه تحلیل آزمایش</h3>
+
+<p>
+DrMan آماده اتصال به هوش مصنوعی است.
+</p>
+
+<p>
+در نسخه بعدی نتیجه واقعی آزمایش در این قسمت نمایش داده خواهد شد.
+</p>
+`;
+
+},2000);
+
+});
 
 };
 
@@ -171,5 +235,7 @@ reader.readAsDataURL(file);
 });
 
 </script>
+
 </body>
 </html>
+```
