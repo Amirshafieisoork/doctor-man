@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     }
 
     const openai = new OpenAI({
-      apiKey: process.env.XAI_API_KEY,
+apiKey: "xai-DwsgeOFY1ZaTciSSm8pOw0dqCMKWsOSo4wtoY8kUAvQmPGWl39iVYHTueWN2dTKYFvNZxYpR47numXGg",
       baseURL: "https://api.x.ai/v1"
     });
 
