@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DrMan — پرونده سلامت</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050d1a;
+  --surface: #0a1628;
+  --surface2: #0f1e36;
+  --surface3: #162040;
+  --accent: #00d4ff;
+  --accent2: #0066ff;
+  --green: #00ff9d;
+  --yellow: #ffd060;
+  --red: #ff4466;
+  --purple: #a855f7;
+  --text: #e8f4ff;
+  --text-dim: #7aa0c4;
+  --border: rgba(0,212,255,0.12);
+  --glow: 0 0 30px rgba(0,212,255,0.15);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Vazirmatn', sans-serif;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: rgba(5,13,26,0.9);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 0 15px rgba(0,212,255,0.3);
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  padding: 8px 16px;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.back-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 16px;
+  color: var(--text-dim);
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.back-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Layout */
+.layout {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+}
+
+/* Sidebar */
+.sidebar {}
+
+.profile-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  box-shadow: var(--glow);
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin: 0 auto 16px;
+  box-shadow: 0 0 25px rgba(0,212,255,0.3);
+}
+
+.profile-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.profile-phone {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+  direction: ltr;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.p-stat {
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.p-stat-num {
+  font-size: 22px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.p-stat-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Health score */
+.health-score-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.score-title {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-circle {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 16px;
+  position: relative;
+}
+
+.score-circle svg {
+  transform: rotate(-90deg);
+}
+
+.score-circle .bg {
+  fill: none;
+  stroke: var(--surface2);
+  stroke-width: 8;
+}
+
+.score-circle .fg {
+  fill: none;
+  stroke: url(#scoreGrad);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 251;
+  stroke-dashoffset: 63;
+  transition: stroke-dashoffset 1s ease;
+}
+
+.score-num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.score-label {
+  text-align: center;
+  font-size: 13px;
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* Quick info */
+.quick-info {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.quick-title {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+}
+
+.info-item:last-child { border-bottom: none; }
+
+.info-label { color: var(--text-dim); }
+.info-value { font-weight: 600; }
+
+/* Main content */
+.main-content {}
+
+/* Section header */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--accent), var(--green));
+  border-radius: 2px;
+}
+
+.new-test-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  color: white;
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 15px rgba(0,212,255,0.25);
+}
+
+.new-test-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,212,255,0.35);
+}
+
+/* Summary cards */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.3s;
+}
+
+.summary-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+
+.summary-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.summary-icon.blue { background: rgba(0,212,255,0.1); }
+.summary-icon.green { background: rgba(0,255,157,0.1); }
+.summary-icon.yellow { background: rgba(255,208,96,0.1); }
+
+.summary-num {
+  font-size: 26px;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.summary-num.blue { color: var(--accent); }
+.summary-num.green { color: var(--green); }
+.summary-num.yellow { color: var(--yellow); }
+
+.summary-label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Test records */
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.record-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 24px;
+  transition: all 0.3s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.record-card::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to bottom, var(--accent), var(--green));
+  border-radius: 0 4px 4px 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.record-card:hover {
+  border-color: rgba(0,212,255,0.3);
+  transform: translateX(-4px);
+}
+
+.record-card:hover::before { opacity: 1; }
+
+.record-card.warning {
+  border-color: rgba(255,208,96,0.2);
+}
+
+.record-card.warning::before {
+  background: var(--yellow);
+}
+
+.record-card.danger {
+  border-color: rgba(255,68,102,0.2);
+}
+
+.record-card.danger::before {
+  background: var(--red);
+}
+
+.record-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.record-info {}
+
+.record-reason {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.record-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.record-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.record-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.status-badge {
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.status-badge.normal {
+  background: rgba(0,255,157,0.1);
+  color: var(--green);
+  border: 1px solid rgba(0,255,157,0.2);
+}
+
+.status-badge.warning {
+  background: rgba(255,208,96,0.1);
+  color: var(--yellow);
+  border: 1px solid rgba(255,208,96,0.2);
+}
+
+.status-badge.danger {
+  background: rgba(255,68,102,0.1);
+  color: var(--red);
+  border: 1px solid rgba(255,68,102,0.2);
+}
+
+.record-date {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Record indicators */
+.record-indicators {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.indicator {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.indicator .dot.green { background: var(--green); }
+.indicator .dot.yellow { background: var(--yellow); }
+.indicator .dot.red { background: var(--red); }
+
+/* Record summary text */
+.record-summary {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Trend chart placeholder */
+.trend-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.trend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.trend-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.trend-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: var(--text);
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: 12px;
+  outline: none;
+}
+
+.chart-area {
+  height: 120px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding-bottom: 20px;
+}
+
+.chart-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.chart-bar {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.5s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.chart-bar:hover { opacity: 0.8; }
+
+.chart-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.empty-sub {
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 20px 16px;
+  }
+  .summary-grid { grid-template-columns: 1fr 1fr; }
+  header { padding: 14px 16px; }
+}
+
+@media (max-width: 500px) {
+  .summary-grid { grid-template-columns: 1fr; }
+  .record-top { flex-direction: column; gap: 10px; }
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sidebar { animation: fadeUp 0.5s ease 0.1s both; }
+.main-content { animation: fadeUp 0.5s ease 0.2s both; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon">🩺</div>
+    <div class="logo-text">DrMan</div>
+  </div>
+  <div class="header-left">
+    <div class="user-info">
+      <div class="user-avatar">👤</div>
+      <span class="user-name" id="userName">کاربر</span>
+    </div>
+    <a href="/" class="back-btn">🔬 آزمایش جدید</a>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <div class="profile-card">
+      <div class="profile-avatar">👤</div>
+      <div class="profile-name" id="profileName">امیر شفیعی</div>
+      <div class="profile-phone" id="profilePhone">09135174577</div>
+      <div class="profile-stats">
+        <div class="p-stat">
+          <div class="p-stat-num">۵</div>
+          <div class="p-stat-label">آزمایش</div>
+        </div>
+        <div class="p-stat">
+          <div class="p-stat-num">۳</div>
+          <div class="p-stat-label">ماه فعال</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="health-score-card">
+      <div class="score-title">💚 امتیاز سلامت</div>
+      <div class="score-circle">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          <defs>
+            <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#00d4ff"/>
+              <stop offset="100%" style="stop-color:#00ff9d"/>
+            </linearGradient>
+          </defs>
+          <circle class="bg" cx="50" cy="50" r="40"/>
+          <circle class="fg" cx="50" cy="50" r="40"/>
+        </svg>
+        <div class="score-num">۷۵</div>
+      </div>
+      <div class="score-label">وضعیت خوب</div>
+    </div>
+
+    <div class="quick-info">
+      <div class="quick-title">📋 اطلاعات سریع</div>
+      <div class="info-item">
+        <span class="info-label">سن</span>
+        <span class="info-value">۳۵ سال</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">جنسیت</span>
+        <span class="info-value">مرد</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">آخرین آزمایش</span>
+        <span class="info-value">۳ روز پیش</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">موارد غیرنرمال</span>
+        <span class="info-value" style="color:var(--yellow)">۲ مورد</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Main content -->
+  <div class="main-content">
+
+    <!-- Summary -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-icon blue">🔬</div>
+        <div class="summary-num blue">۵</div>
+        <div class="summary-label">کل آزمایش‌ها</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-icon green">✅</div>
+        <div class="summary-num green">۳</div>
+        <div class="summary-label">نتایج نرمال</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-icon yellow">⚠️</div>
+        <div class="summary-num yellow">۲</div>
+        <div class="summary-label">نیاز به توجه</div>
+      </div>
+    </div>
+
+    <!-- Trend chart -->
+    <div class="trend-card">
+      <div class="trend-header">
+        <div class="trend-title">📈 روند سلامت ۶ ماه اخیر</div>
+        <select class="trend-select">
+          <option>هموگلوبین</option>
+          <option>قند خون</option>
+          <option>کلسترول</option>
+        </select>
+      </div>
+      <div class="chart-area">
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="height:60%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
+          <span class="chart-label">فروردین</span>
+        </div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="height:75%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
+          <span class="chart-label">اردیبهشت</span>
+        </div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="height:55%; background:linear-gradient(to top, #ffd06044, #ffd06088);"></div>
+          <span class="chart-label">خرداد</span>
+        </div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="height:80%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
+          <span class="chart-label">تیر</span>
+        </div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="height:70%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
+          <span class="chart-label">مرداد</span>
+        </div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="height:85%; background:linear-gradient(to top, #00ff9d44, #00ff9d88);"></div>
+          <span class="chart-label">شهریور</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Records -->
+    <div class="section-header">
+      <div class="section-title">تاریخچه آزمایش‌ها</div>
+      <a href="/" class="new-test-btn">+ آزمایش جدید</a>
+    </div>
+
+    <div class="records-list">
+
+      <div class="record-card">
+        <div class="record-top">
+          <div class="record-info">
+            <div class="record-reason">چکاپ سالانه</div>
+            <div class="record-meta">
+              <span>👤 مرد، ۳۵ سال</span>
+              <span>🧬 آزمایش خون کامل</span>
+            </div>
+          </div>
+          <div class="record-status">
+            <span class="status-badge normal">✓ نرمال</span>
+            <span class="record-date">۱۴۰۳/۰۶/۱۵</span>
+          </div>
+        </div>
+        <div class="record-indicators">
+          <div class="indicator"><span class="dot green"></span> هموگلوبین نرمال</div>
+          <div class="indicator"><span class="dot green"></span> قند خون نرمال</div>
+          <div class="indicator"><span class="dot green"></span> کلسترول نرمال</div>
+        </div>
+        <div class="record-summary">تمام شاخص‌های خونی در محدوده نرمال قرار دارند. هموگلوبین ۱۴.۲، گلبول‌های سفید در محدوده طبیعی، پلاکت مناسب.</div>
+      </div>
+
+      <div class="record-card warning">
+        <div class="record-top">
+          <div class="record-info">
+            <div class="record-reason">خستگی و بی‌حالی</div>
+            <div class="record-meta">
+              <span>👤 مرد، ۳۵ سال</span>
+              <span>🩸 آهن و فریتین</span>
+            </div>
+          </div>
+          <div class="record-status">
+            <span class="status-badge warning">⚠ نیاز به توجه</span>
+            <span class="record-date">۱۴۰۳/۰۴/۲۸</span>
+          </div>
+        </div>
+        <div class="record-indicators">
+          <div class="indicator"><span class="dot yellow"></span> فریتین پایین</div>
+          <div class="indicator"><span class="dot yellow"></span> آهن سرم پایین</div>
+          <div class="indicator"><span class="dot green"></span> هموگلوبین نرمال</div>
+        </div>
+        <div class="record-summary">فریتین ۸ ng/mL که پایین‌تر از حد نرمال است. آهن سرم ۵۵ که کمی کمتر از حد مطلوب می‌باشد. توصیه می‌شود مکمل آهن مصرف شود.</div>
+      </div>
+
+      <div class="record-card danger">
+        <div class="record-top">
+          <div class="record-info">
+            <div class="record-reason">دیابت</div>
+            <div class="record-meta">
+              <span>👤 مرد، ۳۵ سال</span>
+              <span>🩺 قند خون و HbA1c</span>
+            </div>
+          </div>
+          <div class="record-status">
+            <span class="status-badge danger">⛔ غیرنرمال</span>
+            <span class="record-date">۱۴۰۳/۰۳/۱۰</span>
+          </div>
+        </div>
+        <div class="record-indicators">
+          <div class="indicator"><span class="dot red"></span> قند ناشتا بالا</div>
+          <div class="indicator"><span class="dot red"></span> HbA1c بالا</div>
+          <div class="indicator"><span class="dot yellow"></span> تری‌گلیسیرید بالا</div>
+        </div>
+        <div class="record-summary">قند ناشتا ۱۲۸ mg/dL که بالاتر از حد نرمال است. HbA1c 6.8% که در محدوده پیش‌دیابت قرار دارد. مراجعه به پزشک توصیه می‌شود.</div>
+      </div>
+
+      <div class="record-card">
+        <div class="record-top">
+          <div class="record-info">
+            <div class="record-reason">تیروئید</div>
+            <div class="record-meta">
+              <span>👤 مرد، ۳۵ سال</span>
+              <span>🔬 TSH و T4</span>
+            </div>
+          </div>
+          <div class="record-status">
+            <span class="status-badge normal">✓ نرمال</span>
+            <span class="record-date">۱۴۰۳/۰۱/۲۰</span>
+          </div>
+        </div>
+        <div class="record-indicators">
+          <div class="indicator"><span class="dot green"></span> TSH نرمال</div>
+          <div class="indicator"><span class="dot green"></span> T4 نرمال</div>
+          <div class="indicator"><span class="dot green"></span> T3 نرمال</div>
+        </div>
+        <div class="record-summary">عملکرد تیروئید کاملاً طبیعی است. TSH 2.1 mIU/L، T4 آزاد 1.2 ng/dL، T3 آزاد 3.1 pg/mL - همگی در محدوده نرمال.</div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Load user info
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+if (user.name) {
+  document.getElementById('userName').textContent = user.name;
+  document.getElementById('profileName').textContent = user.name;
+}
+if (user.phone) {
+  document.getElementById('profilePhone').textContent = user.phone;
+}
+
+// Animate score circle
+setTimeout(() => {
+  const fg = document.querySelector('.score-circle .fg');
+  if (fg) fg.style.strokeDashoffset = '63';
+}, 300);
+</script>
+</body>
+</html>
