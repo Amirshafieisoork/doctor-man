@@ -1,3 +1,9 @@
+import OpenAI from "openai";
+
+export const config = {
+  api: { bodyParser: false }
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -34,23 +40,26 @@ export default async function handler(req, res) {
       }
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: "https://api.avalai.ir/v1"
+    });
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
             {
-              parts: [
-                {
-                  inline_data: {
-                    mime_type: imageType,
-                    data: imageBase64
-                  }
-                },
-                {
-                  text: `تو یک دستیار پزشکی هستی. این عکس آزمایش خون یک بیمار است.
+              type: "image_url",
+              image_url: {
+                url: `data:${imageType};base64,${imageBase64}`
+              }
+            },
+            {
+              type: "text",
+              text: `تو یک دستیار پزشکی هستی. این عکس آزمایش خون یک بیمار است.
 سن: ${age}
 جنسیت: ${gender}
 علت آزمایش: ${reason}
@@ -62,23 +71,16 @@ export default async function handler(req, res) {
 ۴. پیشنهاد اقدام بعدی بده
 
 به فارسی و ساده توضیح بده.`
-                }
-              ]
             }
           ]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error?.message || "API error");
-    }
+        }
+      ],
+      max_tokens: 1500
+    });
 
     return res.status(200).json({
       success: true,
-      analysis: data.candidates[0].content.parts[0].text
+      analysis: response.choices[0].message.content
     });
 
   } catch (err) {
