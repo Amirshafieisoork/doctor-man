@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     }
 
     const openai = new OpenAI({
- apiKey: "aa-FvZAsrqj1W3oho7UDcqjfymOGUKnip0CnRT9xtgLRFnfkens",
+apiKey: process.env.OPENAI_API_KEY,
       baseURL: "https://api.avalai.ir/v1"
     });
 
