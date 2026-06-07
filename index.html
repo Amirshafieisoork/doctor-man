@@ -1,340 +1,132 @@
-```html
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DrMan</title>
-
 <style>
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:tahoma;
-}
-
-body{
-background:#f5f7fb;
-padding:20px;
-}
-
-.container{
-max-width:900px;
-margin:auto;
-}
-
-.hero{
-text-align:center;
-padding:50px 20px;
-}
-
-.logo{
-font-size:48px;
-font-weight:bold;
-color:#2563eb;
-}
-
-.subtitle{
-font-size:22px;
-margin-top:15px;
-color:#444;
-}
-
-.desc{
-margin-top:20px;
-color:#666;
-line-height:2;
-}
-
-.form-box{
-background:white;
-padding:25px;
-border-radius:15px;
-margin-top:30px;
-box-shadow:0 0 15px rgba(0,0,0,.08);
-}
-
-label{
-display:block;
-margin-top:15px;
-margin-bottom:5px;
-font-weight:bold;
-}
-
-input,select{
-width:100%;
-padding:12px;
-border:1px solid #ddd;
-border-radius:10px;
-}
-
-.btn{
-display:inline-block;
-background:#2563eb;
-color:white;
-padding:14px 25px;
-border-radius:10px;
-cursor:pointer;
-margin-top:20px;
-}
-
-#previewArea{
-margin-top:25px;
-text-align:center;
-}
-
-#previewArea img{
-max-width:350px;
-width:100%;
-border-radius:15px;
-}
-
-#resultArea{
-display:none;
-margin-top:30px;
-background:white;
-padding:20px;
-border-radius:15px;
-box-shadow:0 0 15px rgba(0,0,0,.08);
-}
-
-.warning{
-margin-top:20px;
-background:#fff7e6;
-padding:15px;
-border-radius:10px;
-font-size:14px;
-line-height:1.8;
-}
-
-.footer{
-text-align:center;
-margin-top:40px;
-color:#777;
-}
+*{ margin:0; padding:0; box-sizing:border-box; font-family:tahoma; }
+body{ background:#f5f7fb; padding:20px; }
+.container{ max-width:900px; margin:auto; }
+.hero{ text-align:center; padding:50px 20px; }
+.logo{ font-size:48px; font-weight:bold; color:#2563eb; }
+.subtitle{ font-size:22px; margin-top:15px; color:#444; }
+.desc{ margin-top:20px; color:#666; line-height:2; }
+.form-box{ background:white; padding:25px; border-radius:15px; margin-top:30px; box-shadow:0 0 15px rgba(0,0,0,.08); }
+label{ display:block; margin-top:15px; margin-bottom:5px; font-weight:bold; }
+input,select{ width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; }
+.btn{ display:inline-block; background:#2563eb; color:white; padding:14px 25px; border-radius:10px; cursor:pointer; margin-top:20px; }
+#resultArea{ display:none; margin-top:30px; background:white; padding:20px; border-radius:15px; box-shadow:0 0 15px rgba(0,0,0,.08); }
+.warning{ margin-top:20px; background:#fff7e6; padding:15px; border-radius:10px; font-size:14px; line-height:1.8; }
+.footer{ text-align:center; margin-top:40px; color:#777; }
 </style>
-
 </head>
 <body>
-
 <div class="container">
+  <div class="hero">
+    <div class="logo">DrMan</div>
+    <div class="subtitle">دستیار هوشمند سلامت شما</div>
+    <div class="desc">آپلود عکس آزمایش و دریافت تفسیر ساده و قابل فهم.</div>
+  </div>
 
-<div class="hero">
-<div class="logo">DrMan</div>
+  <div class="form-box">
+    <label>سن</label>
+    <input type="number" id="age" placeholder="مثلاً 35">
 
-<div class="subtitle">
-دستیار هوشمند سلامت شما
+    <label>جنسیت</label>
+    <select id="gender">
+      <option>مرد</option>
+      <option>زن</option>
+    </select>
+
+    <label>علت انجام آزمایش</label>
+    <select id="reason">
+      <option>چکاپ سالانه</option>
+      <option>خستگی و بی حالی</option>
+      <option>ریزش مو</option>
+      <option>کم خونی</option>
+      <option>دیابت</option>
+      <option>تیروئید</option>
+      <option>بارداری</option>
+      <option>سایر</option>
+    </select>
+
+    <input type="file" id="labImage" accept="image/*" style="display:none">
+    <label for="labImage" class="btn">آپلود عکس آزمایش</label>
+
+    <div id="previewArea"></div>
+    <div id="actionArea"></div>
+    <div id="resultArea"></div>
+
+    <div class="warning">
+      ⚠️ تفسیرهای DrMan صرفاً جنبه آموزشی دارند و جایگزین تشخیص، درمان یا توصیه پزشک نیستند.
+    </div>
+  </div>
+
+  <div class="footer">© DrMan 2025</div>
 </div>
-
-<div class="desc">
-آپلود عکس آزمایش و دریافت تفسیر ساده و قابل فهم.
-</div>
-</div>
-
-<div class="form-box">
-
-<label>سن</label>
-<input type="number" id="age" placeholder="مثلاً 35">
-
-<label>جنسیت</label>
-<select id="gender">
-<option>مرد</option>
-<option>زن</option>
-</select>
-
-<label>علت انجام آزمایش</label>
-<select id="reason">
-<option>چکاپ سالانه</option>
-<option>خستگی و بی حالی</option>
-<option>ریزش مو</option>
-<option>کم خونی</option>
-<option>دیابت</option>
-<option>تیروئید</option>
-<option>بارداری</option>
-<option>سایر</option>
-</select>
-
-<input
-type="file"
-id="labImage"
-accept="image/*"
-style="display:none"
->
-
-<label for="labImage" class="btn">
-آپلود عکس آزمایش
-</label>
-
-<div id="previewArea"></div>
-
-<div id="actionArea"></div>
-
-<div id="resultArea"></div>
-
-<div class="warning">
-⚠️ تفسیرهای DrMan صرفاً جنبه آموزشی دارند و جایگزین تشخیص، درمان یا توصیه پزشک نیستند.
-</div>
-
-</div>
-
-<div class="footer">
-© DrMan 2025
-</div>
-
-</div>
-
-<script>
-
-document.getElementById("labImage")
-.addEventListener("change", function(e){
-
-const file = e.target.files[0];
-
-if(!file) return;
-
-const reader = new FileReader();
-
-reader.onload = function(event){
-
-document.getElementById("previewArea").innerHTML = `
-<h3>تصویر انتخاب شده</h3>
-<br>
-<img src="${event.target.result}">
-`;
-
-document.getElementById("actionArea").innerHTML = `
-<br>
-<button id="analyzeBtn"
-style="
-background:#2563eb;
-color:white;
-border:none;
-padding:12px 25px;
-border-radius:10px;
-cursor:pointer;
-font-size:16px;
-">
-تحلیل آزمایش
-</button>
-`;
-
-document.getElementById("analyzeBtn")
-.addEventListener("click", function(){
-
-const age =
-document.getElementById("age").value;
-
-const gender =
-document.getElementById("gender").value;
-
-const reason =
-document.getElementById("reason").value;
-
-const resultArea =
-document.getElementById("resultArea");
-
-resultArea.style.display = "block";
-
-resultArea.innerHTML = `
-<h3>در حال تحلیل آزمایش...</h3>
-
-<p>سن: ${age}</p>
-<p>جنسیت: ${gender}</p>
-<p>علت آزمایش: ${reason}</p>
-
-<br>
-<p>لطفاً چند لحظه صبر کنید.</p>
-`;
-
-setTimeout(()=>{
-
-resultArea.innerHTML = `
-<h3>نتیجه تحلیل آزمایش</h3>
-
-<p>
-اطلاعات کاربر با موفقیت دریافت شد.
-</p>
-
-<p>
-در نسخه بعدی این اطلاعات همراه تصویر آزمایش
-برای هوش مصنوعی Gemini ارسال خواهد شد.
-</p>
-`;
-
-},2000);
-
-});
-
-};
-
-reader.readAsDataURL(file);
-
-});
 
 <script>
 document.getElementById("labImage").addEventListener("change", function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+  const file = e.target.files[0];
+  if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        document.getElementById("previewArea").innerHTML = `
-            <h3>پیش‌نمایش عکس:</h3>
-            <br>
-            <img src="${event.target.result}" style="max-width:400px; border-radius:15px;">
-        `;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    document.getElementById("previewArea").innerHTML = `
+      <div style="margin-top:20px; text-align:center;">
+        <h3>تصویر انتخاب شده</h3><br>
+        <img src="${event.target.result}" style="max-width:350px; width:100%; border-radius:15px;">
+      </div>
+    `;
 
-        document.getElementById("actionArea").innerHTML = `
-            <br>
-            <button id="analyzeBtn" style="background:#2563eb; color:white; border:none; padding:14px 30px; border-radius:10px; cursor:pointer; font-size:17px;">
-                تحلیل عکس با هوش مصنوعی
-            </button>
-        `;
+    document.getElementById("actionArea").innerHTML = `
+      <br>
+      <button id="analyzeBtn" style="background:#2563eb; color:white; border:none; padding:14px 30px; border-radius:10px; cursor:pointer; font-size:16px; width:100%;">
+        تحلیل آزمایش با هوش مصنوعی
+      </button>
+    `;
 
-        document.getElementById("analyzeBtn").addEventListener("click", async function() {
-            const age = document.getElementById("age").value;
-            const gender = document.getElementById("gender").value;
-            const reason = document.getElementById("reason").value;
-            const resultArea = document.getElementById("resultArea");
+    document.getElementById("analyzeBtn").addEventListener("click", async function() {
+      const age = document.getElementById("age").value;
+      const gender = document.getElementById("gender").value;
+      const reason = document.getElementById("reason").value;
+      const resultArea = document.getElementById("resultArea");
 
-            resultArea.style.display = "block";
-            resultArea.innerHTML = `<h3>در حال تحلیل عکس توسط هوش مصنوعی...</h3><p>لطفاً کمی صبر کنید (۱۰ تا ۲۰ ثانیه)</p>`;
+      resultArea.style.display = "block";
+      resultArea.innerHTML = `<h3>در حال تحلیل... لطفاً صبر کنید ⏳</h3>`;
 
-            const formData = new FormData();
-            formData.append("image", file);
-            formData.append("age", age);
-            formData.append("gender", gender);
-            formData.append("reason", reason);
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("age", age);
+      formData.append("gender", gender);
+      formData.append("reason", reason);
 
-            try {
-                const response = await fetch('/api/analyze-lab', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    resultArea.innerHTML = `
-                        <h3>✅ نتیجه تحلیل هوش مصنوعی:</h3>
-                        <div style="background:#f8fafc; padding:20px; border-radius:12px; line-height:1.8; white-space:pre-wrap; text-align:right; font-size:15.5px;">
-                            ${data.analysis}
-                        </div>
-                    `;
-                } else {
-                    resultArea.innerHTML = `<h3>❌ خطا</h3><p>${data.error || "مشکلی پیش آمد"}</p>`;
-                }
-            } catch (err) {
-                resultArea.innerHTML = `<h3>❌ خطا در ارتباط</h3><p>لطفاً دوباره امتحان کنید یا اینترنت را چک کنید</p>`;
-                console.error(err);
-            }
+      try {
+        const response = await fetch('/api/analyze-lab', {
+          method: 'POST',
+          body: formData
         });
-    };
-    reader.readAsDataURL(file);
+
+        const data = await response.json();
+
+        if (data.success) {
+          resultArea.innerHTML = `
+            <h3>✅ نتیجه تحلیل هوش مصنوعی:</h3>
+            <div style="background:#f8fafc; padding:20px; border-radius:12px; line-height:2; white-space:pre-wrap; text-align:right; margin-top:15px;">
+              ${data.analysis}
+            </div>
+          `;
+        } else {
+          resultArea.innerHTML = `<h3>❌ خطا</h3><p>${data.error || "مشکلی پیش آمد"}</p>`;
+        }
+      } catch(err) {
+        resultArea.innerHTML = `<h3>❌ خطا در ارتباط</h3><p>دوباره امتحان کنید</p>`;
+      }
+    });
+  };
+  reader.readAsDataURL(file);
 });
 </script>
-
 </body>
 </html>
-```
