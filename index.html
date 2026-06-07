@@ -272,6 +272,67 @@ reader.readAsDataURL(file);
 
 });
 
+<script>
+document.getElementById("labImage").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        document.getElementById("previewArea").innerHTML = `
+            <h3>پیش‌نمایش عکس:</h3>
+            <br>
+            <img src="${event.target.result}" style="max-width:400px; border-radius:15px;">
+        `;
+
+        document.getElementById("actionArea").innerHTML = `
+            <br>
+            <button id="analyzeBtn" style="background:#2563eb; color:white; border:none; padding:14px 30px; border-radius:10px; cursor:pointer; font-size:17px;">
+                تحلیل عکس با هوش مصنوعی
+            </button>
+        `;
+
+        document.getElementById("analyzeBtn").addEventListener("click", async function() {
+            const age = document.getElementById("age").value;
+            const gender = document.getElementById("gender").value;
+            const reason = document.getElementById("reason").value;
+            const resultArea = document.getElementById("resultArea");
+
+            resultArea.style.display = "block";
+            resultArea.innerHTML = `<h3>در حال تحلیل عکس توسط هوش مصنوعی...</h3><p>لطفاً کمی صبر کنید (۱۰ تا ۲۰ ثانیه)</p>`;
+
+            const formData = new FormData();
+            formData.append("image", file);
+            formData.append("age", age);
+            formData.append("gender", gender);
+            formData.append("reason", reason);
+
+            try {
+                const response = await fetch('/api/analyze-lab', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultArea.innerHTML = `
+                        <h3>✅ نتیجه تحلیل هوش مصنوعی:</h3>
+                        <div style="background:#f8fafc; padding:20px; border-radius:12px; line-height:1.8; white-space:pre-wrap; text-align:right; font-size:15.5px;">
+                            ${data.analysis}
+                        </div>
+                    `;
+                } else {
+                    resultArea.innerHTML = `<h3>❌ خطا</h3><p>${data.error || "مشکلی پیش آمد"}</p>`;
+                }
+            } catch (err) {
+                resultArea.innerHTML = `<h3>❌ خطا در ارتباط</h3><p>لطفاً دوباره امتحان کنید یا اینترنت را چک کنید</p>`;
+                console.error(err);
+            }
+        });
+    };
+    reader.readAsDataURL(file);
+});
 </script>
 
 </body>
