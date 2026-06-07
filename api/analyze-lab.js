@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const buffer = Buffer.concat(chunks);
-    const body = buffer.toString();
+    const body = buffer.toString("binary");
 
     const boundary = req.headers["content-type"].split("boundary=")[1];
     const parts = body.split("--" + boundary);
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     console.error(err);
     return res.status(500).json({
       success: false,
-      error: "خطا در تحلیل تصویر"
+      error: "خطا در تحلیل تصویر: " + err.message
     });
   }
 }
