@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DrMan — ورود / ثبت‌نام</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050d1a;
+  --surface: #0a1628;
+  --surface2: #0f1e36;
+  --accent: #00d4ff;
+  --green: #00ff9d;
+  --red: #ff4466;
+  --text: #e8f4ff;
+  --text-dim: #7aa0c4;
+  --border: rgba(0,212,255,0.15);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Vazirmatn', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 0 30px rgba(0,212,255,0.1);
+}
+.logo {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.logo-text {
+  font-size: 28px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.logo-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+.tabs {
+  display: flex;
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 28px;
+}
+.tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'Vazirmatn', sans-serif;
+  font-weight: 500;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  transition: all 0.2s;
+}
+.tab.active {
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+}
+.form-group {
+  margin-bottom: 16px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 16px;
+  color: var(--text);
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+}
+.btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent), #0066ff);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.3s;
+}
+.btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.message {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  text-align: center;
+  display: none;
+}
+.message.error {
+  background: rgba(255,68,102,0.1);
+  border: 1px solid rgba(255,68,102,0.3);
+  color: var(--red);
+  display: block;
+}
+.message.success {
+  background: rgba(0,255,157,0.1);
+  border: 1px solid rgba(0,255,157,0.3);
+  color: var(--green);
+  display: block;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-text">🩺 DrMan</div>
+    <div class="logo-sub">دستیار هوشمند سلامت</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('login')">ورود</button>
+    <button class="tab" onclick="showTab('register')">ثبت‌نام</button>
+  </div>
+
+  <!-- Login -->
+  <div id="loginForm">
+    <div class="form-group">
+      <label>شماره تماس</label>
+      <input type="tel" id="loginPhone" placeholder="09xxxxxxxxx">
+    </div>
+    <div class="form-group">
+      <label>رمز عبور</label>
+      <input type="password" id="loginPassword" placeholder="رمز عبور">
+    </div>
+    <button class="btn" onclick="login()">ورود به حساب</button>
+  </div>
+
+  <!-- Register -->
+  <div id="registerForm" style="display:none">
+    <div class="form-group">
+      <label>نام (اختیاری)</label>
+      <input type="text" id="regName" placeholder="نام شما">
+    </div>
+    <div class="form-group">
+      <label>شماره تماس</label>
+      <input type="tel" id="regPhone" placeholder="09xxxxxxxxx">
+    </div>
+    <div class="form-group">
+      <label>رمز عبور</label>
+      <input type="password" id="regPassword" placeholder="حداقل ۶ کاراکتر">
+    </div>
+    <button class="btn" onclick="register()">ایجاد حساب</button>
+  </div>
+
+  <div class="message" id="message"></div>
+</div>
+
+<script>
+function showTab(tab) {
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+  });
+  document.getElementById('message').className = 'message';
+}
+
+function showMsg(text, type) {
+  const m = document.getElementById('message');
+  m.textContent = text;
+  m.className = 'message ' + type;
+}
+
+async function login() {
+  const phone = document.getElementById('loginPhone').value;
+  const password = document.getElementById('loginPassword').value;
+  if (!phone || !password) return showMsg('لطفاً همه فیلدها را پر کنید', 'error');
+
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, password })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    localStorage.setItem('user', JSON.stringify(data.user));
+    showMsg('ورود موفق! در حال انتقال...', 'success');
+    setTimeout(() => window.location.href = '/', 1500);
+  } else {
+    showMsg(data.error || 'خطا در ورود', 'error');
+  }
+}
+
+async function register() {
+  const name = document.getElementById('regName').value;
+  const phone = document.getElementById('regPhone').value;
+  const password = document.getElementById('regPassword').value;
+  if (!phone || !password) return showMsg('شماره و رمز الزامی است', 'error');
+  if (password.length < 6) return showMsg('رمز باید حداقل ۶ کاراکتر باشد', 'error');
+
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, password, name })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    showMsg('ثبت‌نام موفق! لطفاً وارد شوید', 'success');
+    setTimeout(() => showTab('login'), 1500);
+  } else {
+    showMsg(data.error || 'خطا در ثبت‌نام', 'error');
+  }
+}
+</script>
+</body>
+</html>
