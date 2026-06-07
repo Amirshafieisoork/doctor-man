@@ -41,12 +41,12 @@ export default async function handler(req, res) {
     }
 
     const openai = new OpenAI({
-apiKey: process.env.OPENAI_API_KEY,
-      baseURL: "https://api.avalai.ir/v1"
+      apiKey: process.env.XAI_API_KEY,
+      baseURL: "https://api.x.ai/v1"
     });
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "grok-2-vision-1212",
       messages: [
         {
           role: "user",
