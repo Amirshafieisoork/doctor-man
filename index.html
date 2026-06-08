@@ -747,7 +747,11 @@ analyzeBtn.addEventListener('click', async function() {
   formData.append('age', age);
   formData.append('gender', gender);
   formData.append('reason', reason);
-
+const user = localStorage.getItem('user');
+if (!user) {
+  window.location.href = '/auth.html';
+  return;
+}
   try {
     const response = await fetch('/api/analyze-lab', {
       method: 'POST',
