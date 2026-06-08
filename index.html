@@ -715,32 +715,79 @@ const resultCard = document.getElementById('resultCard');
 const resultBody = document.getElementById('resultBody');
 const errorCard = document.getElementById('errorCard');
 
-let selectedFile = null;
+let selectedFiles = [];
+
+const previewContainer = document.createElement('div');
+previewContainer.style.display = 'grid';
+previewContainer.style.gridTemplateColumns = 'repeat(auto-fill,minmax(120px,1fr))';
+previewContainer.style.gap = '10px';
+previewContainer.style.marginTop = '15px';
+
+uploadArea.appendChild(previewContainer);
 
 labImage.addEventListener('change', function(e) {
-const files = e.target.files;
-if (!files.length) return;
-  selectedFile = file;
 
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    uploadContent.style.display = 'none';
-    previewImg.src = event.target.result;
-    previewImg.style.display = 'block';
-    uploadArea.classList.add('has-image');
-    analyzeBtn.classList.add('show');
-    resultCard.classList.remove('show');
-    errorCard.classList.remove('show');
-  };
-  reader.readAsDataURL(file);
+  selectedFiles = Array.from(e.target.files);
+
+  if (!selectedFiles.length) return;
+
+  uploadContent.style.display = 'none';
+
+  previewImg.style.display = 'none';
+
+  previewContainer.innerHTML = '';
+
+  selectedFiles.forEach(file => {
+
+    if (!file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+      const img = document.createElement('img');
+
+      img.src = event.target.result;
+
+      img.style.width = '100%';
+      img.style.height = '120px';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '10px';
+      img.style.border = '1px solid rgba(0,212,255,0.2)';
+
+      previewContainer.appendChild(img);
+    };
+
+    reader.readAsDataURL(file);
+
+  });
+
+  uploadArea.classList.add('has-image');
+
+  analyzeBtn.classList.add('show');
+
+  resultCard.classList.remove('show');
+
+  errorCard.classList.remove('show');
 });
 
 analyzeBtn.addEventListener('click', async function() {
-  if (!selectedFile) return;
+
+  if (!selectedFiles.length) return;
+
+  const user = localStorage.getItem('user');
+
+  if (!user) {
+    window.location.href = '/auth.html';
+    return;
+  }
 
   analyzeBtn.style.display = 'none';
+
   loading.classList.add('show');
+
   resultCard.classList.remove('show');
+
   errorCard.classList.remove('show');
 
   const age = document.getElementById('age').value;
@@ -748,35 +795,50 @@ analyzeBtn.addEventListener('click', async function() {
   const reason = document.getElementById('reason').value;
 
   const formData = new FormData();
-  formData.append('image', selectedFile);
+
+  selectedFiles.forEach(file => {
+    formData.append('images', file);
+  });
+
   formData.append('age', age);
   formData.append('gender', gender);
   formData.append('reason', reason);
-const user = localStorage.getItem('user');
-if (!user) {
-  window.location.href = '/auth.html';
-  return;
-}
+
   try {
+
     const response = await fetch('/api/analyze-lab', {
       method: 'POST',
       body: formData
     });
 
     const data = await response.json();
+
     loading.classList.remove('show');
 
     if (data.success) {
+
       resultBody.textContent = data.analysis;
+
       resultCard.classList.add('show');
+
     } else {
-      errorCard.textContent = '❌ ' + (data.error || 'مشکلی پیش آمد');
+
+      errorCard.textContent =
+        '❌ ' + (data.error || 'مشکلی پیش آمد');
+
       errorCard.classList.add('show');
     }
-  } catch(err) {
+
+  } catch (err) {
+
     loading.classList.remove('show');
-    errorCard.textContent = '❌ خطا در ارتباط — دوباره امتحان کنید';
+
+    errorCard.textContent =
+      '❌ خطا در ارتباط — دوباره امتحان کنید';
+
     errorCard.classList.add('show');
+
+    console.error(err);
   }
 
   analyzeBtn.classList.add('show');
