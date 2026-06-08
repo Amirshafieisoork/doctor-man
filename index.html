@@ -718,8 +718,8 @@ const errorCard = document.getElementById('errorCard');
 let selectedFile = null;
 
 labImage.addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+const files = e.target.files;
+if (!files.length) return;
   selectedFile = file;
 
   const reader = new FileReader();
