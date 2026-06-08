@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  "https://dhciuxijsagtskrrtxua.supabase.co",
+  "sb_secret_qoQ4qTs8BDVEf4ajnoHdQA_Vm8PzU2H"
 );
 
 function hashPassword(password) {
