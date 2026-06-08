@@ -46,7 +46,7 @@ apiKey: "xai-DwsgeOFY1ZaTciSSm8pOw0dqCMKWsOSo4wtoY8kUAvQmPGWl39iVYHTueWN2dTKYFvN
     });
 
     const response = await openai.chat.completions.create({
-      model: "grok-2-vision-1212",
+      model: "grok-2-vision-latest",
       messages: [
         {
           role: "user",
