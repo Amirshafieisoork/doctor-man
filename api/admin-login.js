@@ -5,9 +5,9 @@ export default async function handler(req, res) {
 
   const { password } = req.body;
 
-  if (password === process.env.ADMIN_PASSWORD) {
+  if (password === "DrMan2024@") {
     return res.status(200).json({ success: true, token: 'admin-' + Date.now() });
   }
 
-  return res.status(401).json({ error: 'رمز ادمین اشتباه است' });
+  return res.status(401).json({ error: 'رمز اشتباه است' });
 }
