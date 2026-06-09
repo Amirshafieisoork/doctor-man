@@ -25,7 +25,37 @@
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
+<script>
+async function checkAdminPass() {
+  const password = document.getElementById('adminPassInput').value;
+  if (!password) return;
 
+  const res = await fetch('/api/admin-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    sessionStorage.setItem('adminToken', data.token);
+    document.getElementById('adminLoginModal').style.display = 'none';
+  } else {
+    document.getElementById('adminPassError').style.display = 'block';
+  }
+}
+
+if (!sessionStorage.getItem('adminToken')) {
+  document.getElementById('adminLoginModal').style.display = 'flex';
+} else {
+  document.getElementById('adminLoginModal').style.display = 'none';
+}
+
+document.getElementById('adminPassInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') checkAdminPass();
+});
+</script>
 body {
   background: var(--bg);
   color: var(--text);
