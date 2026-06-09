@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
   const { password } = req.body;
 
-  if (password === "DrMan2024@") {
+  if (password === "Amirshafiei71") {
     return res.status(200).json({ success: true, token: 'admin-' + Date.now() });
   }
 
