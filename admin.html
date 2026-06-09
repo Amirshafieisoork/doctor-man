@@ -914,7 +914,17 @@ tr:last-child td { border-bottom: none; }
 </style>
 </head>
 <body>
-
+<!-- Admin Login Modal -->
+<div id="adminLoginModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0a1628;border:1px solid rgba(0,212,255,0.2);border-radius:24px;padding:40px;width:100%;max-width:380px;text-align:center">
+    <div style="font-size:40px;margin-bottom:16px">👑</div>
+    <div style="font-size:22px;font-weight:900;background:linear-gradient(135deg,#00d4ff,#00ff9d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px">پنل مدیریت</div>
+    <div style="font-size:13px;color:#7aa0c4;margin-bottom:28px">رمز ادمین را وارد کنید</div>
+    <input type="password" id="adminPassInput" placeholder="رمز ادمین" style="width:100%;background:#0f1e36;border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:13px 16px;color:#e8f4ff;font-family:Vazirmatn,sans-serif;font-size:14px;outline:none;margin-bottom:12px;text-align:center">
+    <button onclick="checkAdminPass()" style="width:100%;padding:13px;background:linear-gradient(135deg,#00d4ff,#0066ff);border:none;border-radius:12px;color:white;font-family:Vazirmatn,sans-serif;font-size:15px;font-weight:700;cursor:pointer">ورود به پنل</button>
+    <div id="adminPassError" style="color:#ff4466;font-size:13px;margin-top:12px;display:none">رمز اشتباه است!</div>
+  </div>
+</div>
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
   <div class="sidebar-logo">
