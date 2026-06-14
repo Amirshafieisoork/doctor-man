@@ -21,7 +21,10 @@ export default async function handler(req, res) {
     let age = "", gender = "", reason = "", imageBase64 = "", imageType = "";
 
     for (const part of parts) {
-      if (part.includes('name="age"')) {
+ if (part.includes('name="image"')) {
+  const match = part.match(/Content-Type:\s*(.+?)\r\n/i);
+  if (match) imageType = match[1].trim();
+  else imageType = "image/jpeg";
         age = part.split("\r\n\r\n")[1]?.split("\r\n")[0] || "";
       }
       if (part.includes('name="gender"')) {
