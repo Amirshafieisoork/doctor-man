@@ -800,9 +800,11 @@ analyzeBtn.addEventListener('click', async function() {
     formData.append('images', file);
   });
 
-  formData.append('age', age);
-  formData.append('gender', gender);
-  formData.append('reason', reason);
+formData.append('age', age);
+formData.append('gender', gender);
+formData.append('reason', reason);
+const userData = JSON.parse(user);
+formData.append('user_id', userData.id);
 
   try {
 
