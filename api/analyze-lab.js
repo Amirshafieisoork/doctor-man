@@ -5,6 +5,9 @@ export const config = {
   api: { bodyParser: false }
 };
 
+const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
+const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
+
 function parseForm(req) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({ headers: req.headers });
@@ -51,6 +54,7 @@ export default async function handler(req, res) {
     const age = fields.age || "";
     const gender = fields.gender || "";
     const reason = fields.reason || "";
+    const userId = fields.user_id || null;
     const imageBase64 = imageBuffer.toString("base64");
 
     const openai = new OpenAI({
@@ -91,9 +95,35 @@ export default async function handler(req, res) {
       max_tokens: 1500
     });
 
+    const analysis = response.choices[0].message.content;
+
+    // Save result to Supabase
+    if (userId) {
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/test_results`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`,
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            age: age,
+            gender: gender,
+            reason: reason,
+            analysis: analysis
+          })
+        });
+      } catch (saveErr) {
+        console.error("Failed to save result:", saveErr);
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      analysis: response.choices[0].message.content
+      analysis: analysis
     });
 
   } catch (err) {
