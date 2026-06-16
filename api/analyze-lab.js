@@ -96,17 +96,12 @@ export default async function handler(req, res) {
     });
 
     const analysis = response.choices[0].message.content;
+    let saveError = null;
 
     // Save result to Supabase
     if (userId) {
       try {
-} catch (saveErr) {
-  console.error("Failed to save result:", saveErr);
-  return res.status(200).json({
-    success: true,
-    analysis: analysis + "\n\n[DEBUG SAVE ERROR: " + saveErr.message + "]"
-  });
-}
+        const saveRes = await fetch(`${SUPABASE_URL}/rest/v1/test_results`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -122,14 +117,22 @@ export default async function handler(req, res) {
             analysis: analysis
           })
         });
-      } catch (saveErr) {
-        console.error("Failed to save result:", saveErr);
+
+        if (!saveRes.ok) {
+          const errText = await saveRes.text();
+          saveError = `Status ${saveRes.status}: ${errText}`;
+        }
+      } catch (e) {
+        saveError = e.message;
       }
+    } else {
+      saveError = "No user_id provided";
     }
 
     return res.status(200).json({
       success: true,
-      analysis: analysis
+      analysis: analysis,
+      debug_save_error: saveError
     });
 
   } catch (err) {
