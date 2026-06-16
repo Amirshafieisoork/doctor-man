@@ -100,7 +100,13 @@ export default async function handler(req, res) {
     // Save result to Supabase
     if (userId) {
       try {
-        await fetch(`${SUPABASE_URL}/rest/v1/test_results`, {
+} catch (saveErr) {
+  console.error("Failed to save result:", saveErr);
+  return res.status(200).json({
+    success: true,
+    analysis: analysis + "\n\n[DEBUG SAVE ERROR: " + saveErr.message + "]"
+  });
+}
           method: "POST",
           headers: {
             "Content-Type": "application/json",
