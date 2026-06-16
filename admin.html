@@ -493,36 +493,50 @@ if (!sessionStorage.getItem('adminToken')) {
 document.getElementById('adminPassInput').addEventListener('keypress', function(e) {
   if (e.key === 'Enter') checkAdminPass();
 });
-// ====================== پلن‌ها - نسخه پایدار ======================
-let allPlans = [
-  { 
-    id: "free", 
-    name: "رایگان", 
-    price: 0, 
-    icon: "🆓",
-    features: ["۳ آزمایش در ماه", "تفسیر پایه", "پرونده سلامت", "مقایسه نتایج"]
-  },
-  { 
-    id: "silver", 
-    name: "نقره‌ای", 
-    price: 149000, 
-    icon: "🥈",
-    features: ["۲۰ آزمایش در ماه", "تفسیر پیشرفته", "پرونده سلامت", "مقایسه نتایج"]
-  },
-  { 
-    id: "gold", 
-    name: "طلایی", 
-    price: 299000, 
-    icon: "🥇",
-    features: ["آزمایش نامحدود", "تفسیر هوشمند کامل", "پرونده سلامت", "پشتیبانی اختصاصی"]
-  }
-];
+// ====================== پلن‌ها - نسخه همگام‌سازی شده ======================
+let allPlans = [];
 
-function loadSavedPlans() {
+// خواندن وضعیت فعلی از HTML + اعمال تغییرات ذخیره‌شده
+function initPlans() {
+  allPlans = [];
+  const cards = document.querySelectorAll('#page-plans .plan-card');
+  
+  cards.forEach(card => {
+    const nameEl = card.querySelector('.plan-name');
+    const priceEl = card.querySelector('.plan-price');
+    const iconEl = card.querySelector('.plan-icon');
+    const featuresList = card.querySelector('.plan-features');
+
+    const plan = {
+      id: nameEl.textContent.trim().toLowerCase(),
+      name: nameEl.textContent.trim(),
+      price: parseInt(priceEl.textContent.replace(/[^0-9]/g, '')) || 0,
+      icon: iconEl.textContent.trim(),
+      features: []
+    };
+
+    // خواندن ویژگی‌های فعلی
+    if (featuresList) {
+      plan.features = Array.from(featuresList.querySelectorAll('li')).map(li => 
+        li.textContent.trim()
+      );
+    }
+
+    allPlans.push(plan);
+  });
+
+  // اعمال داده‌های ذخیره‌شده (اگر وجود داشته باشه)
   const saved = localStorage.getItem('drManPlans');
   if (saved) {
-    allPlans = JSON.parse(saved);
+    const savedPlans = JSON.parse(saved);
+    // همگام‌سازی بر اساس نام
+    allPlans = allPlans.map(plan => {
+      const savedPlan = savedPlans.find(p => p.name === plan.name || p.id === plan.id);
+      return savedPlan ? savedPlan : plan;
+    });
   }
+
+  renderPlans();
 }
 
 function savePlans() {
@@ -535,12 +549,10 @@ function renderPlans() {
     const plan = allPlans[i];
     if (!plan) return;
 
-    // بروزرسانی نام، قیمت و آیکون
     card.querySelector('.plan-name').textContent = plan.name;
     card.querySelector('.plan-price').textContent = plan.price.toLocaleString('fa-IR');
     card.querySelector('.plan-icon').textContent = plan.icon;
 
-    // بروزرسانی ویژگی‌ها
     const featuresList = card.querySelector('.plan-features');
     if (featuresList) {
       featuresList.innerHTML = plan.features.map(f => `<li class="yes">${f}</li>`).join('');
@@ -552,52 +564,40 @@ function editPlan(index) {
   const plan = allPlans[index];
   if (!plan) return;
 
-  // ویرایش نام
-  const newName = prompt(`نام جدید پلن "${plan.name}":`, plan.name);
-  if (newName !== null && newName.trim() !== '') {
-    plan.name = newName.trim();
-  }
+  const newName = prompt(`نام جدید پلن:`, plan.name);
+  if (newName !== null && newName.trim() !== '') plan.name = newName.trim();
 
-  // ویرایش قیمت
-  const newPrice = prompt(`قیمت جدید پلن "${plan.name}" (تومان):`, plan.price);
-  if (newPrice !== null) {
-    plan.price = parseInt(newPrice) || 0;
-  }
+  const newPrice = prompt(`قیمت جدید (تومان):`, plan.price);
+  if (newPrice !== null) plan.price = parseInt(newPrice) || 0;
 
-  // ویرایش ویژگی‌ها
   const currentFeatures = plan.features.join('\n');
-  const newFeatures = prompt(`ویژگی‌های پلن "${plan.name}"\n(هر خط یک ویژگی):`, currentFeatures);
+  const newFeaturesText = prompt(`ویژگی‌ها (هر خط یک مورد):`, currentFeatures);
   
-  if (newFeatures !== null) {
-    plan.features = newFeatures.split('\n')
+  if (newFeaturesText !== null) {
+    plan.features = newFeaturesText.split('\n')
       .map(f => f.trim())
       .filter(f => f.length > 0);
   }
 
   savePlans();
   renderPlans();
-  alert(`✅ تغییرات پلن ${plan.name} ذخیره شد`);
+  alert(`✅ پلن ${plan.name} بروزرسانی شد`);
 }
 
-// اتصال دکمه‌ها
 function attachEditButtons() {
-  document.querySelectorAll('#page-plans .edit-plan-btn').forEach((btn, index) => {
-    // جلوگیری از چندبار کلیک
+  const buttons = document.querySelectorAll('#page-plans .edit-plan-btn');
+  buttons.forEach((btn, index) => {
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
-    
     newBtn.addEventListener('click', () => editPlan(index));
   });
 }
 
 // ====================== اجرا ======================
 document.addEventListener('DOMContentLoaded', function() {
-  loadSavedPlans();
-  renderPlans();
+  initPlans();
   attachEditButtons();
-  
-  // برای اطمینان بیشتر
-  setTimeout(attachEditButtons, 600);
+  setTimeout(attachEditButtons, 800);
 });
 </script>
 </body>
