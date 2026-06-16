@@ -681,7 +681,17 @@ style="display:none"
     </div>
   </div>
 </div>
-
+<!-- بخش پلن‌ها -->
+<section style="position:relative;z-index:1;max-width:1100px;margin:60px auto 80px;padding:0 20px;">
+  <div style="text-align:center;margin-bottom:40px;">
+    <h2 style="font-size:28px;font-weight:900;margin-bottom:12px;">پلن‌های اشتراک DrMan</h2>
+    <p style="color:var(--text-dim);font-size:15px;">انتخاب کنید و از امکانات بیشتر بهره‌مند شوید</p>
+  </div>
+  
+  <div id="plansContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;">
+    <!-- پلن‌ها اینجا با JS پر می‌شوند -->
+  </div>
+</section>
 <div class="features">
   <div class="feature">
     <div class="feature-icon">🔍</div>
@@ -845,6 +855,68 @@ formData.append('user_id', userData.id);
 
   analyzeBtn.classList.add('show');
   analyzeBtn.style.display = 'flex';
+});
+// ====================== نمایش پلن‌ها برای کاربران ======================
+function loadUserPlans() {
+  const container = document.getElementById('plansContainer');
+  if (!container) return;
+
+  // خواندن پلن‌ها از localStorage (همان که در ادمین ذخیره شده)
+  let plans = JSON.parse(localStorage.getItem('drManPlans') || '[]');
+  
+  // اگر هنوز پلنی ذخیره نشده، پلن‌های پیش‌فرض
+  if (plans.length === 0) {
+    plans = [
+      { name: "برنزی", price: 89000, icon: "🥉", features: ["۳ آزمایش در ماه", "تفسیر پایه"] },
+      { name: "نقره‌ای", price: 149000, icon: "🥈", features: ["۲۰ آزمایش در ماه", "تفسیر پیشرفته", "پرونده سلامت", "مقایسه نتایج"] },
+      { name: "طلایی", price: 299000, icon: "🥇", features: ["آزمایش نامحدود", "تفسیر هوشمند کامل", "پشتیبانی اختصاصی"] }
+    ];
+  }
+
+  let html = '';
+  plans.forEach(plan => {
+    const isPopular = plan.name.includes("نقره");
+    html += `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;text-align:center;position:relative;${isPopular ? 'border-color:#ffd060;box-shadow:0 0 25px rgba(255,208,96,0.2);' : ''}">
+        ${isPopular ? `<div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#ffd060;color:#000;font-size:11px;font-weight:700;padding:4px 20px;border-radius:20px;">محبوب‌ترین</div>` : ''}
+        
+        <div style="font-size:42px;margin-bottom:16px;">${plan.icon}</div>
+        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">${plan.name}</div>
+        <div style="font-size:32px;font-weight:900;color:var(--accent);margin-bottom:4px;">${plan.price.toLocaleString('fa-IR')}</div>
+        <div style="color:var(--text-dim);font-size:13px;margin-bottom:24px;">تومان / ماه</div>
+        
+        <ul style="list-style:none;text-align:right;margin-bottom:28px;font-size:14px;line-height:2.1;color:var(--text-dim);">
+          ${plan.features.map(f => `<li style="padding:4px 0;">✓ ${f}</li>`).join('')}
+        </ul>
+        
+        <button onclick="selectPlan('${plan.name}', ${plan.price})" 
+                style="width:100%;padding:14px;background:linear-gradient(135deg,#00d4ff,#0066ff);border:none;border-radius:12px;color:white;font-weight:700;cursor:pointer;">
+          انتخاب این پلن
+        </button>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function selectPlan(planName, price) {
+  if (confirm(`آیا می‌خواهید پلن ${planName} را انتخاب کنید؟\nقیمت: ${price.toLocaleString('fa-IR')} تومان`)) {
+    localStorage.setItem('currentPlan', JSON.stringify({
+      name: planName,
+      price: price,
+      startDate: new Date().toISOString()
+    }));
+    
+    alert(`✅ پلن ${planName} با موفقیت فعال شد!\n\nحالا می‌توانید آزمایش‌های بیشتری آپلود کنید.`);
+    
+    // بعداً می‌تونیم اینجا به صفحه پرداخت وصل کنیم
+  }
+}
+
+// اجرای اولیه
+document.addEventListener('DOMContentLoaded', function() {
+  loadUserPlans();
 });
 </script>
 </body>
