@@ -493,11 +493,29 @@ if (!sessionStorage.getItem('adminToken')) {
 document.getElementById('adminPassInput').addEventListener('keypress', function(e) {
   if (e.key === 'Enter') checkAdminPass();
 });
-// ====================== پلن‌ها (ویرایش) ======================
+// ====================== پلن‌ها - ویرایش کامل ======================
 let allPlans = [
-  { id: "free",   name: "رایگان",     price: 0,      icon: "🆓" },
-  { id: "silver", name: "نقره‌ای",    price: 149000, icon: "🥈" },
-  { id: "gold",   name: "طلایی",     price: 299000, icon: "🥇" }
+  { 
+    id: "free", 
+    name: "رایگان", 
+    price: 0, 
+    icon: "🆓",
+    features: ["۳ آزمایش در ماه", "تفسیر پایه", "پرونده سلامت", "مقایسه نتایج"]
+  },
+  { 
+    id: "silver", 
+    name: "نقره‌ای", 
+    price: 149000, 
+    icon: "🥈",
+    features: ["۲۰ آزمایش در ماه", "تفسیر پیشرفته", "پرونده سلامت", "مقایسه نتایج"]
+  },
+  { 
+    id: "gold", 
+    name: "طلایی", 
+    price: 299000, 
+    icon: "🥇",
+    features: ["آزمایش نامحدود", "تفسیر هوشمند کامل", "پرونده سلامت", "پشتیبانی اختصاصی"]
+  }
 ];
 
 function loadSavedPlans() {
@@ -514,10 +532,18 @@ function renderPlans() {
   cards.forEach((card, i) => {
     const plan = allPlans[i];
     if (!plan) return;
-    
+
     card.querySelector('.plan-name').textContent = plan.name;
     card.querySelector('.plan-price').textContent = plan.price.toLocaleString('fa-IR');
     card.querySelector('.plan-icon').textContent = plan.icon;
+
+    // بروزرسانی ویژگی‌ها
+    const featuresList = card.querySelector('.plan-features');
+    if (featuresList) {
+      featuresList.innerHTML = plan.features.map(f => `
+        <li class="yes">${f}</li>
+      `).join('');
+    }
   });
 }
 
@@ -525,38 +551,43 @@ function editPlan(index) {
   const plan = allPlans[index];
   if (!plan) return;
 
-  const newPrice = prompt(`💰 قیمت جدید پلن ${plan.name} را وارد کنید (تومان):`, plan.price);
-  if (newPrice === null) return;
-
+  // ویرایش نام
   const newName = prompt(`📝 نام جدید پلن:`, plan.name);
-  
   if (newName !== null) plan.name = newName;
-  plan.price = parseInt(newPrice) || 0;
+
+  // ویرایش قیمت
+  const newPrice = prompt(`💰 قیمت جدید (تومان):`, plan.price);
+  if (newPrice !== null) plan.price = parseInt(newPrice) || 0;
+
+  // ویرایش ویژگی‌ها
+  const currentFeatures = plan.features.join('\n');
+  const newFeaturesText = prompt(`✏️ ویژگی‌ها را هر کدام در یک خط بنویسید:\n\n(مثال:\n۲۰ آزمایش در ماه\nتفسیر پیشرفته\n...)`, currentFeatures);
+  
+  if (newFeaturesText !== null) {
+    plan.features = newFeaturesText.split('\n').map(f => f.trim()).filter(f => f !== '');
+  }
 
   savePlans();
   renderPlans();
-  alert(`✅ پلن ${plan.name} بروزرسانی شد!`);
+  alert(`✅ پلن ${plan.name} با موفقیت بروزرسانی شد!`);
 }
 
-// اتصال دکمه‌های ویرایش
+// اتصال دکمه‌ها
 function attachPlanEditButtons() {
   const buttons = document.querySelectorAll('#page-plans .edit-plan-btn');
   buttons.forEach((btn, index) => {
-    // جلوگیری از اضافه شدن چندبار listener
     btn.replaceWith(btn.cloneNode(true));
-    btn = document.querySelectorAll('#page-plans .edit-plan-btn')[index];
-    
-    btn.addEventListener('click', () => editPlan(index));
+    const newBtn = document.querySelectorAll('#page-plans .edit-plan-btn')[index];
+    newBtn.addEventListener('click', () => editPlan(index));
   });
 }
 
-// ====================== اجرا بعد از لود صفحه ======================
+// ====================== اجرا ======================
 loadSavedPlans();
 renderPlans();
 attachPlanEditButtons();
 
-// اگر بعداً صفحه تغییر کرد دوباره دکمه‌ها را وصل کن
-setTimeout(attachPlanEditButtons, 800);
+setTimeout(attachPlanEditButtons, 1000);
 </script>
 </body>
 </html>
