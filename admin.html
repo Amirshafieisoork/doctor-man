@@ -493,6 +493,70 @@ if (!sessionStorage.getItem('adminToken')) {
 document.getElementById('adminPassInput').addEventListener('keypress', function(e) {
   if (e.key === 'Enter') checkAdminPass();
 });
+// ====================== پلن‌ها (ویرایش) ======================
+let allPlans = [
+  { id: "free",   name: "رایگان",     price: 0,      icon: "🆓" },
+  { id: "silver", name: "نقره‌ای",    price: 149000, icon: "🥈" },
+  { id: "gold",   name: "طلایی",     price: 299000, icon: "🥇" }
+];
+
+function loadSavedPlans() {
+  const saved = localStorage.getItem('drManPlans');
+  if (saved) allPlans = JSON.parse(saved);
+}
+
+function savePlans() {
+  localStorage.setItem('drManPlans', JSON.stringify(allPlans));
+}
+
+function renderPlans() {
+  const cards = document.querySelectorAll('#page-plans .plan-card');
+  cards.forEach((card, i) => {
+    const plan = allPlans[i];
+    if (!plan) return;
+    
+    card.querySelector('.plan-name').textContent = plan.name;
+    card.querySelector('.plan-price').textContent = plan.price.toLocaleString('fa-IR');
+    card.querySelector('.plan-icon').textContent = plan.icon;
+  });
+}
+
+function editPlan(index) {
+  const plan = allPlans[index];
+  if (!plan) return;
+
+  const newPrice = prompt(`💰 قیمت جدید پلن ${plan.name} را وارد کنید (تومان):`, plan.price);
+  if (newPrice === null) return;
+
+  const newName = prompt(`📝 نام جدید پلن:`, plan.name);
+  
+  if (newName !== null) plan.name = newName;
+  plan.price = parseInt(newPrice) || 0;
+
+  savePlans();
+  renderPlans();
+  alert(`✅ پلن ${plan.name} بروزرسانی شد!`);
+}
+
+// اتصال دکمه‌های ویرایش
+function attachPlanEditButtons() {
+  const buttons = document.querySelectorAll('#page-plans .edit-plan-btn');
+  buttons.forEach((btn, index) => {
+    // جلوگیری از اضافه شدن چندبار listener
+    btn.replaceWith(btn.cloneNode(true));
+    btn = document.querySelectorAll('#page-plans .edit-plan-btn')[index];
+    
+    btn.addEventListener('click', () => editPlan(index));
+  });
+}
+
+// ====================== اجرا بعد از لود صفحه ======================
+loadSavedPlans();
+renderPlans();
+attachPlanEditButtons();
+
+// اگر بعداً صفحه تغییر کرد دوباره دکمه‌ها را وصل کن
+setTimeout(attachPlanEditButtons, 800);
 </script>
 </body>
 </html>
