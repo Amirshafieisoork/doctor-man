@@ -44,7 +44,6 @@ body::before {
   z-index: 0;
 }
 
-/* Header */
 header {
   position: sticky;
   top: 0;
@@ -137,7 +136,6 @@ header {
   color: var(--accent);
 }
 
-/* Layout */
 .layout {
   position: relative;
   z-index: 1;
@@ -149,7 +147,6 @@ header {
   gap: 24px;
 }
 
-/* Sidebar */
 .sidebar {}
 
 .profile-card {
@@ -214,71 +211,6 @@ header {
   margin-top: 2px;
 }
 
-/* Health score */
-.health-score-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 16px;
-}
-
-.score-title {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.score-circle {
-  width: 100px;
-  height: 100px;
-  margin: 0 auto 16px;
-  position: relative;
-}
-
-.score-circle svg {
-  transform: rotate(-90deg);
-}
-
-.score-circle .bg {
-  fill: none;
-  stroke: var(--surface2);
-  stroke-width: 8;
-}
-
-.score-circle .fg {
-  fill: none;
-  stroke: url(#scoreGrad);
-  stroke-width: 8;
-  stroke-linecap: round;
-  stroke-dasharray: 251;
-  stroke-dashoffset: 63;
-  transition: stroke-dashoffset 1s ease;
-}
-
-.score-num {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 24px;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--accent), var(--green));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.score-label {
-  text-align: center;
-  font-size: 13px;
-  color: var(--green);
-  font-weight: 600;
-}
-
-/* Quick info */
 .quick-info {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -306,10 +238,8 @@ header {
 .info-label { color: var(--text-dim); }
 .info-value { font-weight: 600; }
 
-/* Main content */
 .main-content {}
 
-/* Section header */
 .section-header {
   display: flex;
   align-items: center;
@@ -356,7 +286,6 @@ header {
   box-shadow: 0 8px 25px rgba(0,212,255,0.35);
 }
 
-/* Summary cards */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -407,7 +336,6 @@ header {
   color: var(--text-dim);
 }
 
-/* Test records */
 .records-list {
   display: flex;
   flex-direction: column;
@@ -440,32 +368,22 @@ header {
 
 .record-card:hover {
   border-color: rgba(0,212,255,0.3);
-  transform: translateX(-4px);
 }
 
 .record-card:hover::before { opacity: 1; }
 
-.record-card.warning {
-  border-color: rgba(255,208,96,0.2);
-}
+.record-card.warning { border-color: rgba(255,208,96,0.2); }
+.record-card.warning::before { background: var(--yellow); }
 
-.record-card.warning::before {
-  background: var(--yellow);
-}
-
-.record-card.danger {
-  border-color: rgba(255,68,102,0.2);
-}
-
-.record-card.danger::before {
-  background: var(--red);
-}
+.record-card.danger { border-color: rgba(255,68,102,0.2); }
+.record-card.danger::before { background: var(--red); }
 
 .record-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 14px;
+  cursor: pointer;
 }
 
 .record-info {}
@@ -482,6 +400,7 @@ header {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .record-meta span {
@@ -527,35 +446,6 @@ header {
   color: var(--text-dim);
 }
 
-/* Record indicators */
-.record-indicators {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.indicator {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: var(--surface2);
-  color: var(--text-dim);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.indicator .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.indicator .dot.green { background: var(--green); }
-.indicator .dot.yellow { background: var(--yellow); }
-.indicator .dot.red { background: var(--red); }
-
-/* Record summary text */
 .record-summary {
   margin-top: 14px;
   padding-top: 14px;
@@ -563,88 +453,27 @@ header {
   font-size: 13px;
   color: var(--text-dim);
   line-height: 1.7;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: none;
+  white-space: pre-wrap;
 }
 
-/* Trend chart placeholder */
-.trend-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 24px;
-  margin-bottom: 24px;
-}
+.record-summary.open { display: block; }
 
-.trend-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.trend-title {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.trend-select {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 12px;
-  color: var(--text);
-  font-family: 'Vazirmatn', sans-serif;
-  font-size: 12px;
-  outline: none;
-}
-
-.chart-area {
-  height: 120px;
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding-bottom: 20px;
-}
-
-.chart-bar-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  height: 100%;
-  justify-content: flex-end;
-}
-
-.chart-bar {
-  width: 100%;
-  border-radius: 6px 6px 0 0;
-  transition: all 0.5s ease;
-  position: relative;
+.record-toggle {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 10px;
   cursor: pointer;
+  display: inline-block;
 }
 
-.chart-bar:hover { opacity: 0.8; }
-
-.chart-label {
-  font-size: 10px;
-  color: var(--text-dim);
-  position: absolute;
-  bottom: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
-/* Empty state */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
 }
 
 .empty-icon {
@@ -661,14 +490,17 @@ header {
 .empty-sub {
   font-size: 13px;
   opacity: 0.6;
+  margin-bottom: 20px;
 }
 
-/* Mobile */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+}
+
 @media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
-    padding: 20px 16px;
-  }
+  .layout { grid-template-columns: 1fr; padding: 20px 16px; }
   .summary-grid { grid-template-columns: 1fr 1fr; }
   header { padding: 14px 16px; }
 }
@@ -678,7 +510,6 @@ header {
   .record-top { flex-direction: column; gap: 10px; }
 }
 
-/* Animations */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -700,236 +531,86 @@ header {
       <div class="user-avatar">👤</div>
       <span class="user-name" id="userName">کاربر</span>
     </div>
-<a href="/" class="back-btn">🔬 آزمایش جدید</a>
-<a href="/auth.html" onclick="localStorage.removeItem('user')" class="back-btn" style="color:var(--red);border-color:rgba(255,68,102,0.2)">🚪 خروج</a>
+    <a href="/" class="back-btn">🔬 آزمایش جدید</a>
+    <a href="/auth.html" onclick="localStorage.removeItem('user')" class="back-btn" style="color:var(--red);border-color:rgba(255,68,102,0.2)">🚪 خروج</a>
   </div>
 </header>
 
 <div class="layout">
 
-  <!-- Sidebar -->
   <div class="sidebar">
 
     <div class="profile-card">
       <div class="profile-avatar">👤</div>
-      <div class="profile-name" id="profileName">امیر شفیعی</div>
-      <div class="profile-phone" id="profilePhone">09135174577</div>
+      <div class="profile-name" id="profileName">کاربر</div>
+      <div class="profile-phone" id="profilePhone">—</div>
       <div class="profile-stats">
         <div class="p-stat">
-          <div class="p-stat-num">۵</div>
+          <div class="p-stat-num" id="totalTestsSide">۰</div>
           <div class="p-stat-label">آزمایش</div>
         </div>
         <div class="p-stat">
-          <div class="p-stat-num">۳</div>
+          <div class="p-stat-num" id="activeMonths">۰</div>
           <div class="p-stat-label">ماه فعال</div>
         </div>
       </div>
     </div>
 
-    <div class="health-score-card">
-      <div class="score-title">💚 امتیاز سلامت</div>
-      <div class="score-circle">
-        <svg viewBox="0 0 100 100" width="100" height="100">
-          <defs>
-            <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" style="stop-color:#00d4ff"/>
-              <stop offset="100%" style="stop-color:#00ff9d"/>
-            </linearGradient>
-          </defs>
-          <circle class="bg" cx="50" cy="50" r="40"/>
-          <circle class="fg" cx="50" cy="50" r="40"/>
-        </svg>
-        <div class="score-num">۷۵</div>
-      </div>
-      <div class="score-label">وضعیت خوب</div>
-    </div>
-
     <div class="quick-info">
       <div class="quick-title">📋 اطلاعات سریع</div>
       <div class="info-item">
-        <span class="info-label">سن</span>
-        <span class="info-value">۳۵ سال</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">جنسیت</span>
-        <span class="info-value">مرد</span>
-      </div>
-      <div class="info-item">
         <span class="info-label">آخرین آزمایش</span>
-        <span class="info-value">۳ روز پیش</span>
+        <span class="info-value" id="lastTestDate">—</span>
       </div>
       <div class="info-item">
-        <span class="info-label">موارد غیرنرمال</span>
-        <span class="info-value" style="color:var(--yellow)">۲ مورد</span>
+        <span class="info-label">کل آزمایش‌ها</span>
+        <span class="info-value" id="totalTestsInfo">۰</span>
       </div>
     </div>
 
   </div>
 
-  <!-- Main content -->
   <div class="main-content">
 
-    <!-- Summary -->
     <div class="summary-grid">
       <div class="summary-card">
         <div class="summary-icon blue">🔬</div>
-        <div class="summary-num blue">۵</div>
+        <div class="summary-num blue" id="summaryTotal">۰</div>
         <div class="summary-label">کل آزمایش‌ها</div>
       </div>
       <div class="summary-card">
         <div class="summary-icon green">✅</div>
-        <div class="summary-num green">۳</div>
+        <div class="summary-num green" id="summaryNormal">۰</div>
         <div class="summary-label">نتایج نرمال</div>
       </div>
       <div class="summary-card">
         <div class="summary-icon yellow">⚠️</div>
-        <div class="summary-num yellow">۲</div>
+        <div class="summary-num yellow" id="summaryWarning">۰</div>
         <div class="summary-label">نیاز به توجه</div>
       </div>
     </div>
 
-    <!-- Trend chart -->
-    <div class="trend-card">
-      <div class="trend-header">
-        <div class="trend-title">📈 روند سلامت ۶ ماه اخیر</div>
-        <select class="trend-select">
-          <option>هموگلوبین</option>
-          <option>قند خون</option>
-          <option>کلسترول</option>
-        </select>
-      </div>
-      <div class="chart-area">
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="height:60%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
-          <span class="chart-label">فروردین</span>
-        </div>
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="height:75%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
-          <span class="chart-label">اردیبهشت</span>
-        </div>
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="height:55%; background:linear-gradient(to top, #ffd06044, #ffd06088);"></div>
-          <span class="chart-label">خرداد</span>
-        </div>
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="height:80%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
-          <span class="chart-label">تیر</span>
-        </div>
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="height:70%; background:linear-gradient(to top, #00d4ff44, #00d4ff88);"></div>
-          <span class="chart-label">مرداد</span>
-        </div>
-        <div class="chart-bar-wrap">
-          <div class="chart-bar" style="height:85%; background:linear-gradient(to top, #00ff9d44, #00ff9d88);"></div>
-          <span class="chart-label">شهریور</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Records -->
     <div class="section-header">
       <div class="section-title">تاریخچه آزمایش‌ها</div>
       <a href="/" class="new-test-btn">+ آزمایش جدید</a>
     </div>
 
-    <div class="records-list">
-
-      <div class="record-card">
-        <div class="record-top">
-          <div class="record-info">
-            <div class="record-reason">چکاپ سالانه</div>
-            <div class="record-meta">
-              <span>👤 مرد، ۳۵ سال</span>
-              <span>🧬 آزمایش خون کامل</span>
-            </div>
-          </div>
-          <div class="record-status">
-            <span class="status-badge normal">✓ نرمال</span>
-            <span class="record-date">۱۴۰۳/۰۶/۱۵</span>
-          </div>
-        </div>
-        <div class="record-indicators">
-          <div class="indicator"><span class="dot green"></span> هموگلوبین نرمال</div>
-          <div class="indicator"><span class="dot green"></span> قند خون نرمال</div>
-          <div class="indicator"><span class="dot green"></span> کلسترول نرمال</div>
-        </div>
-        <div class="record-summary">تمام شاخص‌های خونی در محدوده نرمال قرار دارند. هموگلوبین ۱۴.۲، گلبول‌های سفید در محدوده طبیعی، پلاکت مناسب.</div>
-      </div>
-
-      <div class="record-card warning">
-        <div class="record-top">
-          <div class="record-info">
-            <div class="record-reason">خستگی و بی‌حالی</div>
-            <div class="record-meta">
-              <span>👤 مرد، ۳۵ سال</span>
-              <span>🩸 آهن و فریتین</span>
-            </div>
-          </div>
-          <div class="record-status">
-            <span class="status-badge warning">⚠ نیاز به توجه</span>
-            <span class="record-date">۱۴۰۳/۰۴/۲۸</span>
-          </div>
-        </div>
-        <div class="record-indicators">
-          <div class="indicator"><span class="dot yellow"></span> فریتین پایین</div>
-          <div class="indicator"><span class="dot yellow"></span> آهن سرم پایین</div>
-          <div class="indicator"><span class="dot green"></span> هموگلوبین نرمال</div>
-        </div>
-        <div class="record-summary">فریتین ۸ ng/mL که پایین‌تر از حد نرمال است. آهن سرم ۵۵ که کمی کمتر از حد مطلوب می‌باشد. توصیه می‌شود مکمل آهن مصرف شود.</div>
-      </div>
-
-      <div class="record-card danger">
-        <div class="record-top">
-          <div class="record-info">
-            <div class="record-reason">دیابت</div>
-            <div class="record-meta">
-              <span>👤 مرد، ۳۵ سال</span>
-              <span>🩺 قند خون و HbA1c</span>
-            </div>
-          </div>
-          <div class="record-status">
-            <span class="status-badge danger">⛔ غیرنرمال</span>
-            <span class="record-date">۱۴۰۳/۰۳/۱۰</span>
-          </div>
-        </div>
-        <div class="record-indicators">
-          <div class="indicator"><span class="dot red"></span> قند ناشتا بالا</div>
-          <div class="indicator"><span class="dot red"></span> HbA1c بالا</div>
-          <div class="indicator"><span class="dot yellow"></span> تری‌گلیسیرید بالا</div>
-        </div>
-        <div class="record-summary">قند ناشتا ۱۲۸ mg/dL که بالاتر از حد نرمال است. HbA1c 6.8% که در محدوده پیش‌دیابت قرار دارد. مراجعه به پزشک توصیه می‌شود.</div>
-      </div>
-
-      <div class="record-card">
-        <div class="record-top">
-          <div class="record-info">
-            <div class="record-reason">تیروئید</div>
-            <div class="record-meta">
-              <span>👤 مرد، ۳۵ سال</span>
-              <span>🔬 TSH و T4</span>
-            </div>
-          </div>
-          <div class="record-status">
-            <span class="status-badge normal">✓ نرمال</span>
-            <span class="record-date">۱۴۰۳/۰۱/۲۰</span>
-          </div>
-        </div>
-        <div class="record-indicators">
-          <div class="indicator"><span class="dot green"></span> TSH نرمال</div>
-          <div class="indicator"><span class="dot green"></span> T4 نرمال</div>
-          <div class="indicator"><span class="dot green"></span> T3 نرمال</div>
-        </div>
-        <div class="record-summary">عملکرد تیروئید کاملاً طبیعی است. TSH 2.1 mIU/L، T4 آزاد 1.2 ng/dL، T3 آزاد 3.1 pg/mL - همگی در محدوده نرمال.</div>
-      </div>
-
+    <div id="recordsContainer">
+      <div class="loading-state">در حال بارگذاری اطلاعات...</div>
     </div>
 
   </div>
 </div>
 
 <script>
-// Load user info
+const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
+const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
+
 const user = JSON.parse(localStorage.getItem('user') || '{}');
+if (!user.id) {
+  window.location.href = '/auth.html';
+}
+
 if (user.name) {
   document.getElementById('userName').textContent = user.name;
   document.getElementById('profileName').textContent = user.name;
@@ -938,11 +619,120 @@ if (user.phone) {
   document.getElementById('profilePhone').textContent = user.phone;
 }
 
-// Animate score circle
-setTimeout(() => {
-  const fg = document.querySelector('.score-circle .fg');
-  if (fg) fg.style.strokeDashoffset = '63';
-}, 300);
+function detectStatus(analysis) {
+  if (!analysis) return 'normal';
+  const text = analysis.toLowerCase();
+  if (text.includes('غیرنرمال') || text.includes('خطر') || text.includes('فوری') || text.includes('بالا') && text.includes('هشدار')) {
+    return 'danger';
+  }
+  if (text.includes('توجه') || text.includes('پایین') || text.includes('بالاتر') || text.includes('مثبت')) {
+    return 'warning';
+  }
+  return 'normal';
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('fa-IR');
+}
+
+async function loadResults() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/test_results?user_id=eq.${user.id}&select=*&order=created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    const results = await res.json();
+
+    renderResults(results);
+  } catch (e) {
+    document.getElementById('recordsContainer').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-text">خطا در بارگذاری اطلاعات</div>
+        <div class="empty-sub">لطفاً صفحه را رفرش کنید</div>
+      </div>
+    `;
+  }
+}
+
+function renderResults(results) {
+  const total = results.length;
+  let normalCount = 0, warningCount = 0, dangerCount = 0;
+
+  results.forEach(r => {
+    const status = detectStatus(r.analysis);
+    if (status === 'normal') normalCount++;
+    else if (status === 'warning') warningCount++;
+    else dangerCount++;
+  });
+
+  document.getElementById('summaryTotal').textContent = total.toLocaleString('fa-IR');
+  document.getElementById('summaryNormal').textContent = normalCount.toLocaleString('fa-IR');
+  document.getElementById('summaryWarning').textContent = (warningCount + dangerCount).toLocaleString('fa-IR');
+  document.getElementById('totalTestsSide').textContent = total.toLocaleString('fa-IR');
+  document.getElementById('totalTestsInfo').textContent = total.toLocaleString('fa-IR');
+
+  if (results.length > 0) {
+    document.getElementById('lastTestDate').textContent = formatDate(results[0].created_at);
+
+    const months = new Set(results.map(r => {
+      const d = new Date(r.created_at);
+      return `${d.getFullYear()}-${d.getMonth()}`;
+    }));
+    document.getElementById('activeMonths').textContent = months.size.toLocaleString('fa-IR');
+  }
+
+  const container = document.getElementById('recordsContainer');
+
+  if (results.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔬</div>
+        <div class="empty-text">هنوز آزمایشی ثبت نشده</div>
+        <div class="empty-sub">برای شروع، یک آزمایش جدید آپلود کنید</div>
+        <a href="/" class="new-test-btn">+ آزمایش جدید</a>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `<div class="records-list">${results.map((r, i) => {
+    const status = detectStatus(r.analysis);
+    const statusLabel = status === 'normal' ? '✓ نرمال' : status === 'warning' ? '⚠ نیاز به توجه' : '⛔ غیرنرمال';
+    const statusClass = status;
+
+    return `
+      <div class="record-card ${statusClass}">
+        <div class="record-top" onclick="toggleRecord(${i})">
+          <div class="record-info">
+            <div class="record-reason">${r.reason || 'آزمایش عمومی'}</div>
+            <div class="record-meta">
+              <span>👤 ${r.gender || '—'}، ${r.age || '—'} سال</span>
+            </div>
+          </div>
+          <div class="record-status">
+            <span class="status-badge ${statusClass}">${statusLabel}</span>
+            <span class="record-date">${formatDate(r.created_at)}</span>
+          </div>
+        </div>
+        <div class="record-summary" id="record-${i}">${r.analysis || 'بدون توضیح'}</div>
+        <span class="record-toggle" onclick="toggleRecord(${i})" id="toggle-${i}">نمایش جزئیات ▼</span>
+      </div>
+    `;
+  }).join('')}</div>`;
+}
+
+function toggleRecord(i) {
+  const el = document.getElementById('record-' + i);
+  const toggle = document.getElementById('toggle-' + i);
+  el.classList.toggle('open');
+  toggle.textContent = el.classList.contains('open') ? 'بستن جزئیات ▲' : 'نمایش جزئیات ▼';
+}
+
+loadResults();
 </script>
 </body>
 </html>
