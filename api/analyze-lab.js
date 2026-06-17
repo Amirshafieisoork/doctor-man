@@ -7,6 +7,7 @@ export const config = {
 
 const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
 const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
+const AVALAI_KEY = "aa-FvZAsrqj1W3oho7UDcqjfymOGUKnip0CnRT9xtgLRFnfkens";
 
 function parseForm(req) {
   return new Promise((resolve, reject) => {
@@ -39,6 +40,17 @@ function parseForm(req) {
   });
 }
 
+function extractJson(text) {
+  // Try to find a JSON object inside the text, even if there's extra text around it
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch (e) {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -58,7 +70,7 @@ export default async function handler(req, res) {
     const imageBase64 = imageBuffer.toString("base64");
 
     const openai = new OpenAI({
-      apiKey: "aa-FvZAsrqj1W3oho7UDcqjfymOGUKnip0CnRT9xtgLRFnfkens",
+      apiKey: AVALAI_KEY,
       baseURL: "https://api.avalai.ir/v1"
     });
 
@@ -76,29 +88,49 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: `تو یک دستیار پزشکی هستی. این عکس آزمایش خون یک بیمار است.
+              text: `تو یک دستیار پزشکی هستی. این عکس آزمایش خون یا آزمایش پزشکی یک بیمار است.
 سن: ${age}
 جنسیت: ${gender}
 علت آزمایش: ${reason}
 
-لطفاً:
-۱. مقادیر غیرنرمال را مشخص کن
-۲. توضیح ساده بده هر مقدار یعنی چی
-۳. هشدارهای مهم را بنویس
-۴. پیشنهاد اقدام بعدی بده
+پاسخ خود را دقیقاً به فرمت JSON زیر بده، بدون هیچ متن اضافه قبل یا بعد از آن:
 
-به فارسی و ساده توضیح بده.`
+{
+  "status": "normal" یا "warning" یا "danger",
+  "status_reason": "یک جمله کوتاه که دلیل این وضعیت را توضیح می‌دهد",
+  "abnormal_values": ["لیست مقادیر غیرنرمال، اگر وجود ندارد آرایه خالی بده"],
+  "explanation": "توضیح ساده و کامل هر مقدار غیرنرمال به فارسی",
+  "warnings": "هشدارهای مهم به فارسی، اگر وجود ندارد رشته خالی بده",
+  "recommendation": "پیشنهاد اقدام بعدی به فارسی",
+  "full_text": "یک متن کامل و خوانا شامل تمام بخش‌های بالا با شماره‌گذاری ۱ تا ۴ به فارسی، که مستقیماً به کاربر نمایش داده می‌شود"
+}
+
+قوانین تعیین status:
+- "danger": اگر مقداری به‌طور خطرناک از حد نرمال خارج باشد و نیاز به توجه فوری پزشکی دارد (مثل قند خون بسیار بالا، کم‌خونی شدید، عملکرد غیرطبیعی کبد یا کلیه که خطرناک است)
+- "warning": اگر مقداری کمی خارج از محدوده نرمال باشد ولی فوری و خطرناک نباشد
+- "normal": اگر همه مقادیر در محدوده طبیعی باشند
+
+فقط JSON خام برگردان، بدون backtick یا markdown.`
             }
           ]
         }
       ],
-      max_tokens: 1500
+      max_tokens: 2000
     });
 
-    const analysis = response.choices[0].message.content;
+    const rawText = response.choices[0].message.content;
+    const parsed = extractJson(rawText);
+
+    let status = "normal";
+    let fullText = rawText;
+
+    if (parsed) {
+      status = parsed.status || "normal";
+      fullText = parsed.full_text || rawText;
+    }
+
     let saveError = null;
 
-    // Save result to Supabase
     if (userId) {
       try {
         const saveRes = await fetch(`${SUPABASE_URL}/rest/v1/test_results`, {
@@ -114,7 +146,8 @@ export default async function handler(req, res) {
             age: age,
             gender: gender,
             reason: reason,
-            analysis: analysis
+            analysis: fullText,
+            status: status
           })
         });
 
@@ -131,7 +164,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      analysis: analysis,
+      analysis: fullText,
+      status: status,
+      status_reason: parsed ? parsed.status_reason : "",
       debug_save_error: saveError
     });
 
