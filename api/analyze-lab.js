@@ -70,7 +70,7 @@ async function uploadImageToStorage(imageBuffer, imageType, userId) {
     {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
         "Content-Type": imageType,
         "x-upsert": "true"
       },
