@@ -15,7 +15,6 @@
   --green: #00ff9d;
   --yellow: #ffd060;
   --red: #ff4466;
-  --purple: #a855f7;
   --orange: #ff8c42;
   --text: #e8f4ff;
   --text-dim: #7aa0c4;
@@ -43,29 +42,6 @@ body::before {
   z-index: 0;
 }
 
-.orb1 {
-  position: fixed;
-  top: -150px;
-  right: -150px;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.orb2 {
-  position: fixed;
-  bottom: -150px;
-  left: -150px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Header */
 header {
   position: sticky;
   top: 0;
@@ -120,7 +96,6 @@ header {
 
 .header-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Hero */
 .hero {
   position: relative;
   z-index: 1;
@@ -158,54 +133,10 @@ header {
   font-size: 16px;
   color: var(--text-dim);
   max-width: 500px;
-  margin: 0 auto 32px;
+  margin: 0 auto 50px;
   line-height: 1.8;
 }
 
-/* Billing toggle */
-.billing-toggle {
-  display: inline-flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 50px;
-  padding: 4px;
-  gap: 4px;
-  margin-bottom: 50px;
-}
-
-.billing-btn {
-  padding: 10px 24px;
-  border-radius: 50px;
-  border: none;
-  background: none;
-  color: var(--text-dim);
-  font-family: 'Vazirmatn', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
-}
-
-.billing-btn.active {
-  background: var(--accent);
-  color: #000;
-  font-weight: 700;
-}
-
-.save-tag {
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  background: var(--green);
-  color: #000;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-/* Plans */
 .plans-wrap {
   position: relative;
   z-index: 1;
@@ -213,7 +144,7 @@ header {
   margin: 0 auto;
   padding: 0 24px 60px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
   align-items: start;
 }
@@ -235,11 +166,6 @@ header {
 .plan-card.popular {
   border-color: var(--yellow);
   box-shadow: 0 0 30px rgba(255,208,96,0.1);
-  transform: scale(1.03);
-}
-
-.plan-card.popular:hover {
-  transform: scale(1.03) translateY(-6px);
 }
 
 .popular-badge {
@@ -256,19 +182,10 @@ header {
   white-space: nowrap;
 }
 
-.plan-icon { font-size: 40px; margin-bottom: 16px; }
-
 .plan-name {
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.plan-desc {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-bottom: 24px;
-  line-height: 1.6;
+  margin-bottom: 20px;
 }
 
 .plan-price-wrap {
@@ -282,25 +199,14 @@ header {
   font-weight: 900;
   line-height: 1;
   margin-bottom: 6px;
+  color: var(--accent);
 }
-
-.plan-price.free { color: var(--green); }
-.plan-price.silver { color: #c0c0c0; }
-.plan-price.gold { color: var(--yellow); }
 
 .plan-price-unit {
   font-size: 13px;
   color: var(--text-dim);
 }
 
-.plan-price-original {
-  font-size: 13px;
-  color: var(--text-dim);
-  text-decoration: line-through;
-  margin-top: 4px;
-}
-
-/* Features */
 .features-list {
   list-style: none;
   margin-bottom: 28px;
@@ -327,14 +233,10 @@ header {
   font-size: 11px;
   flex-shrink: 0;
   margin-top: 1px;
+  background: rgba(0,255,157,0.15);
+  color: var(--green);
 }
 
-.feature-icon.yes { background: rgba(0,255,157,0.15); color: var(--green); }
-.feature-icon.no { background: rgba(255,255,255,0.05); color: var(--text-dim); }
-
-.feature-text.dim { color: var(--text-dim); }
-
-/* CTA buttons */
 .plan-btn {
   width: 100%;
   padding: 14px;
@@ -345,150 +247,26 @@ header {
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: white;
+  box-shadow: 0 4px 15px rgba(0,212,255,0.25);
 }
 
-.plan-btn.free-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-}
-
-.plan-btn.free-btn:hover { border-color: var(--green); color: var(--green); }
-
-.plan-btn.silver-btn {
-  background: linear-gradient(135deg, #8080aa, #c0c0e0);
-  color: #000;
-  box-shadow: 0 4px 15px rgba(192,192,192,0.2);
-}
-
-.plan-btn.silver-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(192,192,192,0.3); }
-
-.plan-btn.gold-btn {
+.plan-card.popular .plan-btn {
   background: linear-gradient(135deg, var(--yellow), var(--orange));
   color: #000;
   box-shadow: 0 4px 15px rgba(255,208,96,0.3);
 }
 
-.plan-btn.gold-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,208,96,0.4); }
+.plan-btn:hover { transform: translateY(-2px); }
 
-/* Comparison table */
-.comparison-wrap {
-  position: relative;
-  z-index: 1;
-  max-width: 900px;
-  margin: 0 auto 60px;
-  padding: 0 24px;
-}
-
-.comparison-title {
+.loading-state {
+  grid-column: 1 / -1;
   text-align: center;
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 30px;
-}
-
-.comparison-table {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-.comp-header {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  background: var(--surface2);
-  padding: 16px 24px;
-  font-size: 13px;
-  font-weight: 700;
-  border-bottom: 1px solid var(--border);
-}
-
-.comp-header .plan-col { text-align: center; }
-.comp-header .plan-col.gold { color: var(--yellow); }
-.comp-header .plan-col.silver { color: #c0c0c0; }
-.comp-header .plan-col.free { color: var(--text-dim); }
-
-.comp-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  padding: 14px 24px;
-  font-size: 13px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  align-items: center;
-  transition: background 0.2s;
-}
-
-.comp-row:last-child { border-bottom: none; }
-.comp-row:hover { background: rgba(0,212,255,0.02); }
-
-.comp-feature { color: var(--text-dim); }
-.comp-val { text-align: center; font-weight: 600; }
-.comp-val.yes { color: var(--green); }
-.comp-val.no { color: rgba(255,255,255,0.2); }
-.comp-val.accent { color: var(--accent); }
-
-/* FAQ */
-.faq-wrap {
-  position: relative;
-  z-index: 1;
-  max-width: 700px;
-  margin: 0 auto 80px;
-  padding: 0 24px;
-}
-
-.faq-title {
-  text-align: center;
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 30px;
-}
-
-.faq-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-bottom: 10px;
-  overflow: hidden;
-  transition: all 0.3s;
-}
-
-.faq-question {
-  padding: 18px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.faq-arrow {
-  font-size: 12px;
-  transition: transform 0.3s;
-  flex-shrink: 0;
+  padding: 60px 20px;
   color: var(--text-dim);
 }
 
-.faq-item.open .faq-arrow { transform: rotate(180deg); }
-
-.faq-answer {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-}
-
-.faq-item.open .faq-answer { max-height: 200px; }
-
-.faq-answer-inner {
-  padding: 0 24px 18px;
-  font-size: 13px;
-  color: var(--text-dim);
-  line-height: 1.8;
-}
-
-/* Payment modal */
 .modal-overlay {
   display: none;
   position: fixed;
@@ -509,175 +287,34 @@ header {
   border-radius: 24px;
   padding: 36px;
   width: 100%;
-  max-width: 460px;
-  box-shadow: 0 0 60px rgba(0,0,0,0.5);
-  animation: modalIn 0.3s ease;
+  max-width: 420px;
+  text-align: center;
 }
 
-@keyframes modalIn {
-  from { opacity: 0; transform: scale(0.95) translateY(20px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
+.modal-icon { font-size: 48px; margin-bottom: 16px; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.modal-text { font-size: 13px; color: var(--text-dim); line-height: 1.8; margin-bottom: 24px; }
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 28px;
-}
-
-.modal-title { font-size: 18px; font-weight: 700; }
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text-dim);
-  transition: all 0.2s;
-}
-
-.modal-close:hover { border-color: var(--red); color: var(--red); }
-
-.modal-plan-info {
-  background: var(--surface2);
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-plan-name { font-size: 16px; font-weight: 700; }
-.modal-plan-price { font-size: 22px; font-weight: 900; color: var(--yellow); }
-
-.form-group { margin-bottom: 16px; }
-
-.form-label {
-  display: block;
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 8px;
-}
-
-.form-input {
+.modal-close-btn {
   width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 16px;
-  color: var(--text);
-  font-family: 'Vazirmatn', sans-serif;
-  font-size: 14px;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.form-input:focus { border-color: var(--accent); }
-
-.coupon-row {
-  display: flex;
-  gap: 10px;
-}
-
-.coupon-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 18px;
-  color: var(--accent);
-  font-family: 'Vazirmatn', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.coupon-btn:hover { background: rgba(0,212,255,0.1); }
-
-.pay-btn {
-  width: 100%;
-  padding: 15px;
-  background: linear-gradient(135deg, var(--yellow), var(--orange));
+  padding: 13px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   border: none;
-  border-radius: 14px;
-  color: #000;
+  border-radius: 12px;
+  color: white;
   font-family: 'Vazirmatn', sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  margin-top: 8px;
-  transition: all 0.3s;
-  box-shadow: 0 4px 20px rgba(255,208,96,0.3);
-}
-
-.pay-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,208,96,0.4); }
-
-.secure-note {
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-top: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-/* Guarantee */
-.guarantee-wrap {
-  position: relative;
-  z-index: 1;
-  max-width: 900px;
-  margin: 0 auto 60px;
-  padding: 0 24px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.guarantee-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 24px;
-  text-align: center;
-}
-
-.guarantee-icon { font-size: 32px; margin-bottom: 12px; }
-.guarantee-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-.guarantee-text { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
-
-/* Mobile */
-@media (max-width: 900px) {
-  .plans-wrap { grid-template-columns: 1fr; max-width: 420px; }
-  .plan-card.popular { transform: scale(1); }
-  .plan-card.popular:hover { transform: translateY(-6px); }
-  .guarantee-wrap { grid-template-columns: 1fr; }
-  .comp-header, .comp-row { grid-template-columns: 2fr 1fr 1fr; }
-  .comp-header .plan-col.free, .comp-row .comp-val:last-child { display: none; }
 }
 
 @media (max-width: 600px) {
   header { padding: 14px 16px; }
   .hero { padding: 50px 20px 30px; }
-  .comparison-wrap { padding: 0 16px; }
-  .faq-wrap { padding: 0 16px; }
 }
 </style>
 </head>
 <body>
-
-<div class="orb1"></div>
-<div class="orb2"></div>
 
 <header>
   <a href="/" class="logo-wrap">
@@ -687,393 +324,101 @@ header {
   <a href="/" class="header-btn">← بازگشت</a>
 </header>
 
-<!-- Hero -->
 <section class="hero">
   <div class="hero-tag">⭐ پلن‌های DrMan</div>
   <h1>سلامتی رو جدی بگیر<br>با <span>پلن مناسب</span> خودت</h1>
   <p>از تفسیر ساده آزمایش تا پرونده کامل سلامت — هر پلن برای یه نیاز</p>
-
-  <div class="billing-toggle">
-    <button class="billing-btn active" onclick="setBilling('monthly', this)">ماهانه</button>
-    <button class="billing-btn" onclick="setBilling('yearly', this)">
-      سالانه
-      <span class="save-tag">۲۰٪</span>
-    </button>
-  </div>
 </section>
 
-<!-- Plans -->
-<div class="plans-wrap">
-
-  <!-- Free -->
-  <div class="plan-card">
-    <div class="plan-icon">🆓</div>
-    <div class="plan-name">رایگان</div>
-    <div class="plan-desc">برای شروع و آشنایی با DrMan</div>
-    <div class="plan-price-wrap">
-      <div class="plan-price free">۰</div>
-      <div class="plan-price-unit">تومان / ماه · همیشه رایگان</div>
-    </div>
-    <ul class="features-list">
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>۳ آزمایش در ماه</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>تفسیر پایه با AI</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>شناسایی موارد غیرنرمال</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon no">✕</div>
-        <span class="feature-text dim">پرونده سلامت کامل</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon no">✕</div>
-        <span class="feature-text dim">مقایسه نتایج در طول زمان</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon no">✕</div>
-        <span class="feature-text dim">پشتیبانی اختصاصی</span>
-      </li>
-    </ul>
-    <button class="plan-btn free-btn" onclick="selectPlan('free')">شروع رایگان</button>
-  </div>
-
-  <!-- Silver -->
-  <div class="plan-card popular">
-    <div class="popular-badge">⭐ محبوب‌ترین</div>
-    <div class="plan-icon">🥈</div>
-    <div class="plan-name">نقره‌ای</div>
-    <div class="plan-desc">برای کسایی که سلامتشون مهمه</div>
-    <div class="plan-price-wrap">
-      <div class="plan-price silver" id="silverPrice">۱۴۹,۰۰۰</div>
-      <div class="plan-price-unit">تومان / ماه</div>
-      <div class="plan-price-original" id="silverOriginal" style="display:none">۱۸۶,۰۰۰ تومان</div>
-    </div>
-    <ul class="features-list">
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>۲۰ آزمایش در ماه</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>تفسیر پیشرفته با AI</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>شناسایی موارد غیرنرمال</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>پرونده سلامت کامل</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>مقایسه نتایج در طول زمان</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon no">✕</div>
-        <span class="feature-text dim">پشتیبانی اختصاصی</span>
-      </li>
-    </ul>
-    <button class="plan-btn silver-btn" onclick="selectPlan('silver')">خرید پلن نقره‌ای</button>
-  </div>
-
-  <!-- Gold -->
-  <div class="plan-card">
-    <div class="plan-icon">🥇</div>
-    <div class="plan-name">طلایی</div>
-    <div class="plan-desc">برای کسایی که بهترین رو می‌خوان</div>
-    <div class="plan-price-wrap">
-      <div class="plan-price gold" id="goldPrice">۲۹۹,۰۰۰</div>
-      <div class="plan-price-unit">تومان / ماه</div>
-      <div class="plan-price-original" id="goldOriginal" style="display:none">۳۷۴,۰۰۰ تومان</div>
-    </div>
-    <ul class="features-list">
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>آزمایش نامحدود</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>تفسیر هوشمند کامل</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>شناسایی موارد غیرنرمال</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>پرونده سلامت کامل</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>مقایسه نتایج در طول زمان</span>
-      </li>
-      <li class="feature-item">
-        <div class="feature-icon yes">✓</div>
-        <span>پشتیبانی اختصاصی ۲۴/۷</span>
-      </li>
-    </ul>
-    <button class="plan-btn gold-btn" onclick="selectPlan('gold')">خرید پلن طلایی</button>
-  </div>
-
+<div class="plans-wrap" id="plansWrap">
+  <div class="loading-state">در حال بارگذاری پلن‌ها...</div>
 </div>
 
-<!-- Guarantees -->
-<div class="guarantee-wrap">
-  <div class="guarantee-card">
-    <div class="guarantee-icon">🔒</div>
-    <div class="guarantee-title">پرداخت امن</div>
-    <div class="guarantee-text">پرداخت از طریق درگاه‌های معتبر ایرانی با بالاترین استانداردهای امنیتی</div>
-  </div>
-  <div class="guarantee-card">
-    <div class="guarantee-icon">↩️</div>
-    <div class="guarantee-title">بازگشت وجه</div>
-    <div class="guarantee-text">اگر راضی نبودی، تا ۷ روز بعد از خرید وجه رو برمی‌گردونیم</div>
-  </div>
-  <div class="guarantee-card">
-    <div class="guarantee-icon">⚡</div>
-    <div class="guarantee-title">فعال‌سازی فوری</div>
-    <div class="guarantee-text">بلافاصله بعد از پرداخت، اشتراکت فعال میشه</div>
-  </div>
-</div>
-
-<!-- Comparison -->
-<div class="comparison-wrap">
-  <div class="comparison-title">مقایسه کامل پلن‌ها</div>
-  <div class="comparison-table">
-    <div class="comp-header">
-      <div>ویژگی</div>
-      <div class="plan-col free">رایگان</div>
-      <div class="plan-col silver">نقره‌ای</div>
-      <div class="plan-col gold">طلایی</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">تعداد آزمایش در ماه</div>
-      <div class="comp-val accent">۳</div>
-      <div class="comp-val accent">۲۰</div>
-      <div class="comp-val accent">نامحدود</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">تفسیر با هوش مصنوعی</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">شناسایی موارد غیرنرمال</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">پرونده سلامت</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">مقایسه نتایج تاریخی</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">نمودار روند سلامت</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">یادآوری آزمایش دوره‌ای</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val yes">✓</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">پشتیبانی اختصاصی</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-    <div class="comp-row">
-      <div class="comp-feature">اولویت پردازش</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val no">✕</div>
-      <div class="comp-val yes">✓</div>
-    </div>
-  </div>
-</div>
-
-<!-- FAQ -->
-<div class="faq-wrap">
-  <div class="faq-title">سوالات متداول</div>
-
-  <div class="faq-item" onclick="toggleFaq(this)">
-    <div class="faq-question">
-      چطور پرداخت کنم؟
-      <span class="faq-arrow">▼</span>
-    </div>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">پرداخت از طریق درگاه‌های معتبر ایرانی انجام میشه. کارت‌های شتاب، ملی کارت و سایر کارت‌های بانکی ایرانی پذیرفته میشن.</div>
-    </div>
-  </div>
-
-  <div class="faq-item" onclick="toggleFaq(this)">
-    <div class="faq-question">
-      آیا میتونم اشتراکم رو لغو کنم؟
-      <span class="faq-arrow">▼</span>
-    </div>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">بله، هر زمان که خواستی میتونی اشتراکت رو لغو کنی. تا پایان دوره‌ای که پرداخت کردی دسترسی داری.</div>
-    </div>
-  </div>
-
-  <div class="faq-item" onclick="toggleFaq(this)">
-    <div class="faq-question">
-      آیا اطلاعاتم امن هست؟
-      <span class="faq-arrow">▼</span>
-    </div>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">بله، تمام اطلاعات با رمزگذاری پیشرفته ذخیره میشه. عکس‌های آزمایش فقط برای تفسیر استفاده میشن و قابل دسترسی برای دیگران نیستن.</div>
-    </div>
-  </div>
-
-  <div class="faq-item" onclick="toggleFaq(this)">
-    <div class="faq-question">
-      اگه ماهانه آزمایشم تموم بشه چی؟
-      <span class="faq-arrow">▼</span>
-    </div>
-    <div class="faq-answer">
-      <div class="faq-answer-inner">میتونی پلنت رو ارتقا بدی یا منتظر بمونی تا ماه بعد شروع بشه. در پلن طلایی آزمایش نامحدوده!</div>
-    </div>
-  </div>
-
-</div>
-
-<!-- Payment Modal -->
-<div class="modal-overlay" id="payModal">
+<div class="modal-overlay" id="infoModal">
   <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">💳 تکمیل خرید</div>
-      <div class="modal-close" onclick="closeModal()">✕</div>
-    </div>
-
-    <div class="modal-plan-info">
-      <div>
-        <div class="modal-plan-name" id="modalPlanName">پلن نقره‌ای</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:4px">اشتراک یک ماهه</div>
-      </div>
-      <div class="modal-plan-price" id="modalPlanPrice">۱۴۹,۰۰۰ تومان</div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">کد تخفیف (اختیاری)</label>
-      <div class="coupon-row">
-        <input type="text" class="form-input" id="couponInput" placeholder="کد تخفیف دارید؟">
-        <button class="coupon-btn" onclick="applyCoupon()">اعمال</button>
-      </div>
-      <div id="couponMsg" style="font-size:12px;margin-top:8px;display:none"></div>
-    </div>
-
-    <button class="pay-btn" onclick="goToPayment()">
-      💳 پرداخت و فعال‌سازی
-    </button>
-
-    <div class="secure-note">
-      🔒 پرداخت امن از طریق درگاه بانکی
-    </div>
+    <div class="modal-icon">🔜</div>
+    <div class="modal-title">درگاه پرداخت به‌زودی فعال می‌شود</div>
+    <div class="modal-text">در حال حاضر امکان خرید آنلاین پلن وجود ندارد. برای فعال‌سازی پلن، لطفاً منتظر اطلاع‌رسانی بعدی بمانید یا با پشتیبانی تماس بگیرید.</div>
+    <button class="modal-close-btn" onclick="closeInfoModal()">متوجه شدم</button>
   </div>
 </div>
 
 <script>
-let billingType = 'monthly';
-let selectedPlanName = '';
-let selectedPlanPrice = '';
-
-const prices = {
-  monthly: { silver: '۱۴۹,۰۰۰', gold: '۲۹۹,۰۰۰' },
-  yearly: { silver: '۱۱۹,۰۰۰', gold: '۲۳۹,۰۰۰' }
-};
-
-function setBilling(type, el) {
-  billingType = type;
-  document.querySelectorAll('.billing-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-
-  if (type === 'yearly') {
-    document.getElementById('silverPrice').textContent = prices.yearly.silver;
-    document.getElementById('goldPrice').textContent = prices.yearly.gold;
-    document.getElementById('silverOriginal').style.display = 'block';
-    document.getElementById('goldOriginal').style.display = 'block';
-  } else {
-    document.getElementById('silverPrice').textContent = prices.monthly.silver;
-    document.getElementById('goldPrice').textContent = prices.monthly.gold;
-    document.getElementById('silverOriginal').style.display = 'none';
-    document.getElementById('goldOriginal').style.display = 'none';
+async function loadPlans() {
+  try {
+    const res = await fetch('/api/get-plans');
+    const data = await res.json();
+    renderPlans(data.plans || []);
+  } catch(e) {
+    document.getElementById('plansWrap').innerHTML = '<div class="loading-state">خطا در بارگذاری پلن‌ها. لطفاً صفحه را رفرش کنید.</div>';
   }
 }
 
-function selectPlan(plan) {
-  if (plan === 'free') {
+function renderPlans(plans) {
+  const wrap = document.getElementById('plansWrap');
+
+  if (!plans.length) {
+    wrap.innerHTML = '<div class="loading-state">هنوز پلنی تعریف نشده است.</div>';
+    return;
+  }
+
+  wrap.innerHTML = plans.map(plan => {
+    const priceText = plan.price === 0 ? 'رایگان' : plan.price.toLocaleString('fa-IR');
+    const limitText = plan.test_limit === -1 ? 'آزمایش نامحدود' : `${plan.test_limit.toLocaleString('fa-IR')} آزمایش در ماه`;
+
+    return `
+      <div class="plan-card ${plan.is_popular ? 'popular' : ''}">
+        ${plan.is_popular ? '<div class="popular-badge">⭐ محبوب‌ترین</div>' : ''}
+        <div class="plan-name">${plan.name}</div>
+        <div class="plan-price-wrap">
+          <div class="plan-price">${priceText}</div>
+          <div class="plan-price-unit">${plan.price === 0 ? 'برای همیشه' : 'تومان / ماه'}</div>
+        </div>
+        <ul class="features-list">
+          <li class="feature-item">
+            <div class="feature-icon">✓</div>
+            <span>${limitText}</span>
+          </li>
+          ${(plan.features || []).map(f => `
+            <li class="feature-item">
+              <div class="feature-icon">✓</div>
+              <span>${f}</span>
+            </li>
+          `).join('')}
+        </ul>
+        <button class="plan-btn" onclick="selectPlan('${plan.name.replace(/'/g, "\\'")}', ${plan.price})">
+          ${plan.price === 0 ? 'شروع رایگان' : 'انتخاب این پلن'}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectPlan(name, price) {
+  const user = localStorage.getItem('user');
+
+  if (price === 0) {
+    if (!user) {
+      window.location.href = '/auth.html';
+    } else {
+      window.location.href = '/';
+    }
+    return;
+  }
+
+  if (!user) {
     window.location.href = '/auth.html';
     return;
   }
 
-  const planNames = { silver: 'پلن نقره‌ای 🥈', gold: 'پلن طلایی 🥇' };
-  const planPrices = {
-    silver: billingType === 'yearly' ? '۱,۴۲۸,۰۰۰ تومان / سال' : '۱۴۹,۰۰۰ تومان / ماه',
-    gold: billingType === 'yearly' ? '۲,۸۶۸,۰۰۰ تومان / سال' : '۲۹۹,۰۰۰ تومان / ماه'
-  };
-
-  selectedPlanName = planNames[plan];
-  selectedPlanPrice = planPrices[plan];
-
-  document.getElementById('modalPlanName').textContent = selectedPlanName;
-  document.getElementById('modalPlanPrice').textContent = selectedPlanPrice;
-  document.getElementById('payModal').classList.add('open');
+  document.getElementById('infoModal').classList.add('open');
 }
 
-function closeModal() {
-  document.getElementById('payModal').classList.remove('open');
+function closeInfoModal() {
+  document.getElementById('infoModal').classList.remove('open');
 }
 
-function applyCoupon() {
-  const code = document.getElementById('couponInput').value.toUpperCase();
-  const msg = document.getElementById('couponMsg');
-  
-  if (code === 'HEALTH20') {
-    msg.style.display = 'block';
-    msg.style.color = 'var(--green)';
-    msg.textContent = '✅ کد تخفیف اعمال شد — ۲۰٪ تخفیف';
-  } else if (code === 'DRMAN50') {
-    msg.style.display = 'block';
-    msg.style.color = 'var(--red)';
-    msg.textContent = '❌ این کد منقضی شده است';
-  } else {
-    msg.style.display = 'block';
-    msg.style.color = 'var(--red)';
-    msg.textContent = '❌ کد تخفیف معتبر نیست';
-  }
-}
-
-function goToPayment() {
-  alert('درگاه پرداخت به زودی فعال می‌شود 🔜');
-}
-
-function toggleFaq(el) {
-  el.classList.toggle('open');
-}
-
-// Close modal on overlay click
-document.getElementById('payModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
+loadPlans();
 </script>
 </body>
 </html>
