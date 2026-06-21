@@ -80,7 +80,7 @@ async function uploadImageToStorage(imageBuffer, imageType, userId) {
 
   if (!uploadRes.ok) {
     const errText = await uploadRes.text();
-    throw new Error("Image upload failed: " + errText);
+    throw new Error(`Status ${uploadRes.status}: ${errText}`);
   }
 
   return `${SUPABASE_URL}/storage/v1/object/public/lab-images/${fileName}`;
@@ -110,10 +110,12 @@ export default async function handler(req, res) {
 
     // Upload image to Supabase Storage (don't block analysis if it fails)
     let imageUrl = null;
+    let imageUploadError = null;
     try {
       imageUrl = await uploadImageToStorage(imageBuffer, imageType, userId);
     } catch (uploadErr) {
       console.error("Image upload error:", uploadErr);
+      imageUploadError = uploadErr.message;
     }
 
     const openai = new OpenAI({
@@ -212,7 +214,8 @@ export default async function handler(req, res) {
       status: status,
       status_reason: parsed ? parsed.status_reason : "",
       image_url: imageUrl,
-      debug_save_error: saveError
+      debug_save_error: saveError,
+      debug_image_upload_error: imageUploadError
     });
 
   } catch (err) {
