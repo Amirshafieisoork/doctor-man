@@ -7,7 +7,6 @@ export const config = {
 
 const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
 const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
-const SUPABASE_SERVICE_KEY = "sb_secret_qoQ4qTs8BDVEf4ajnoHdQA_Vm8PzU2H";
 const AVALAI_KEY = "aa-FvZAsrqj1W3oho7UDcqjfymOGUKnip0CnRT9xtgLRFnfkens";
 
 function parseForm(req) {
@@ -51,39 +50,10 @@ function extractJson(text) {
   }
 }
 
-function getExtension(mimeType) {
-  const map = {
-    "image/jpeg": "jpg",
-    "image/jpg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp"
-  };
-  return map[mimeType] || "jpg";
-}
-
-async function uploadImageToStorage(imageBuffer, imageType, userId) {
-  const ext = getExtension(imageType);
-  const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-  const uploadRes = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/lab-images/${fileName}`,
-    {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
-        "Content-Type": imageType,
-        "x-upsert": "true"
-      },
-      body: imageBuffer
-    }
-  );
-
-  if (!uploadRes.ok) {
-    const errText = await uploadRes.text();
-    throw new Error(`Status ${uploadRes.status}: ${errText}`);
-  }
-
-  return `${SUPABASE_URL}/storage/v1/object/public/lab-images/${fileName}`;
+function resizeBase64(base64, maxSize = 800) {
+  // Just return as-is since we can't use canvas in Node.js without extra deps
+  // The image will be stored as-is
+  return base64;
 }
 
 export default async function handler(req, res) {
@@ -102,21 +72,13 @@ export default async function handler(req, res) {
     const gender = fields.gender || "";
     const reason = fields.reason || "";
     const userId = fields.user_id || null;
-    const imageBase64 = imageBuffer.toString("base64");
 
     if (!userId) {
       return res.status(400).json({ success: false, error: "ابتدا باید وارد حساب کاربری خود شوید" });
     }
 
-    // Upload image to Supabase Storage (don't block analysis if it fails)
-    let imageUrl = null;
-    let imageUploadError = null;
-    try {
-      imageUrl = await uploadImageToStorage(imageBuffer, imageType, userId);
-    } catch (uploadErr) {
-      console.error("Image upload error:", uploadErr);
-      imageUploadError = uploadErr.message;
-    }
+    const imageBase64 = imageBuffer.toString("base64");
+    const imageDataUrl = `data:${imageType};base64,${imageBase64}`;
 
     const openai = new OpenAI({
       apiKey: AVALAI_KEY,
@@ -132,7 +94,7 @@ export default async function handler(req, res) {
             {
               type: "image_url",
               image_url: {
-                url: `data:${imageType};base64,${imageBase64}`
+                url: imageDataUrl
               }
             },
             {
@@ -196,7 +158,8 @@ export default async function handler(req, res) {
           reason: reason,
           analysis: fullText,
           status: status,
-          image_url: imageUrl
+          image_url: null,
+          image_base64: imageDataUrl
         })
       });
 
@@ -213,9 +176,7 @@ export default async function handler(req, res) {
       analysis: fullText,
       status: status,
       status_reason: parsed ? parsed.status_reason : "",
-      image_url: imageUrl,
-      debug_save_error: saveError,
-      debug_image_upload_error: imageUploadError
+      debug_save_error: saveError
     });
 
   } catch (err) {
