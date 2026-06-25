@@ -482,8 +482,8 @@ function renderResults(results) {
 
   container.innerHTML = `<div class="records-list">${results.map((r, i) => {
     const status = r.status || 'normal';
-    const thumb = r.image_url
-      ? `<img class="record-thumb" src="${r.image_url}" alt="عکس آزمایش" onclick="openLightbox('${r.image_url}')">`
+    const thumb = r.image_base64 || r.image_url
+      ? `<img class="record-thumb" src="${r.image_base64 || r.image_url}" alt="عکس آزمایش" onclick="openLightbox('${r.image_base64 || r.image_url}')">`
       : `<div class="record-thumb-placeholder">🔬</div>`;
 
     return `
