@@ -315,51 +315,99 @@ select option {
   color: var(--text);
 }
 
-.upload-area {
+.upload-section-title {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 24px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.upload-counter {
+  font-size: 12px;
+  color: var(--accent);
+  background: rgba(0,212,255,0.08);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.image-slot {
+  aspect-ratio: 1;
+  border-radius: 14px;
   border: 2px dashed var(--border);
-  border-radius: 16px;
-  padding: 40px 20px;
-  text-align: center;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
-  background: var(--surface2);
-  margin: 24px 0;
   position: relative;
   overflow: hidden;
 }
 
-.upload-area:hover {
+.image-slot:hover {
   border-color: var(--accent);
   background: rgba(0,212,255,0.05);
 }
 
-.upload-area.has-image {
+.image-slot.filled {
   border-style: solid;
   border-color: var(--accent);
-  padding: 20px;
+  padding: 0;
 }
 
-.upload-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
+.image-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.upload-text {
-  font-size: 15px;
+.image-slot .add-icon {
+  font-size: 24px;
   color: var(--text-dim);
-  margin-bottom: 6px;
 }
 
-.upload-sub {
+.image-slot .remove-btn {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  background: rgba(255,68,102,0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 12px;
-  color: rgba(122,160,196,0.6);
+  color: white;
+  cursor: pointer;
+  z-index: 2;
 }
 
-#previewImg {
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 12px;
-  display: none;
+.image-slot .page-num {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.upload-hint {
+  font-size: 11px;
+  color: rgba(122,160,196,0.6);
+  text-align: center;
+  margin-bottom: 8px;
 }
 
 .analyze-btn {
@@ -380,6 +428,7 @@ select option {
   gap: 10px;
   letter-spacing: 0.5px;
   box-shadow: 0 8px 30px rgba(0,212,255,0.3);
+  margin-top: 10px;
 }
 
 .analyze-btn:hover {
@@ -433,6 +482,12 @@ select option {
 .loading-text {
   color: var(--text-dim);
   font-size: 14px;
+}
+
+.loading-sub {
+  color: rgba(122,160,196,0.6);
+  font-size: 12px;
+  margin-top: 8px;
 }
 
 .result-card {
@@ -595,7 +650,6 @@ footer {
   font-size: 13px;
 }
 
-/* Danger alert modal */
 .alert-overlay {
   display: none;
   position: fixed;
@@ -675,6 +729,7 @@ footer {
   .form-grid { grid-template-columns: 1fr; }
   .features { grid-template-columns: 1fr; }
   .stats { gap: 24px; }
+  .images-grid { gap: 8px; }
 }
 </style>
 </head>
@@ -748,15 +803,27 @@ footer {
       </div>
     </div>
 
-    <input type="file" id="labImage" accept="image/*" style="display:none">
+    <div class="upload-section-title">
+      <span>📷 عکس‌های برگه آزمایش</span>
+      <span class="upload-counter" id="uploadCounter">۰ از ۴</span>
+    </div>
+    <div class="upload-hint">اگر آزمایش چند صفحه دارد، همه صفحات را آپلود کنید</div>
 
-    <div class="upload-area" id="uploadArea" onclick="document.getElementById('labImage').click()">
-      <div id="uploadContent">
-        <div class="upload-icon">🔬</div>
-        <div class="upload-text">عکس آزمایش را اینجا بارگذاری کنید</div>
-        <div class="upload-sub">JPG، PNG یا WEBP — حداکثر ۱۰ مگابایت</div>
+    <input type="file" id="labImageInput" accept="image/*" style="display:none">
+
+    <div class="images-grid" id="imagesGrid">
+      <div class="image-slot" id="slot-0" onclick="openFilePicker()">
+        <span class="add-icon">+</span>
       </div>
-      <img id="previewImg" alt="پیش‌نمایش">
+      <div class="image-slot" id="slot-1" onclick="openFilePicker()">
+        <span class="add-icon">+</span>
+      </div>
+      <div class="image-slot" id="slot-2" onclick="openFilePicker()">
+        <span class="add-icon">+</span>
+      </div>
+      <div class="image-slot" id="slot-3" onclick="openFilePicker()">
+        <span class="add-icon">+</span>
+      </div>
     </div>
 
     <button class="analyze-btn" id="analyzeBtn">
@@ -769,6 +836,7 @@ footer {
         <span></span><span></span><span></span><span></span><span></span>
       </div>
       <div class="loading-text">در حال تحلیل آزمایش... لطفاً صبر کنید</div>
+      <div class="loading-sub">این فرآیند ممکن است تا ۳۰ ثانیه طول بکشد</div>
     </div>
 
     <div class="result-card" id="resultCard">
@@ -811,7 +879,6 @@ footer {
   © DrMan 2025 — دستیار هوشمند سلامت
 </footer>
 
-<!-- Danger Alert Popup -->
 <div class="alert-overlay" id="alertOverlay">
   <div class="alert-box">
     <div class="alert-icon">🚨</div>
@@ -822,10 +889,12 @@ footer {
 </div>
 
 <script>
-const labImage = document.getElementById('labImage');
-const uploadArea = document.getElementById('uploadArea');
-const uploadContent = document.getElementById('uploadContent');
-const previewImg = document.getElementById('previewImg');
+const MAX_IMAGES = 4;
+let selectedFiles = [];
+
+const labImageInput = document.getElementById('labImageInput');
+const imagesGrid = document.getElementById('imagesGrid');
+const uploadCounter = document.getElementById('uploadCounter');
 const analyzeBtn = document.getElementById('analyzeBtn');
 const loading = document.getElementById('loading');
 const resultCard = document.getElementById('resultCard');
@@ -835,35 +904,70 @@ const resultTitle = document.getElementById('resultTitle');
 const errorCard = document.getElementById('errorCard');
 const authLink = document.getElementById('authLink');
 
-let selectedFile = null;
+const persianNums = ['۰', '۱', '۲', '۳', '۴'];
 
-// Update header link based on login status
 const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
 if (currentUser && currentUser.id) {
   authLink.textContent = '📋 پرونده سلامت';
   authLink.href = '/profile.html';
 }
 
-labImage.addEventListener('change', function(e) {
+function openFilePicker() {
+  if (selectedFiles.length >= MAX_IMAGES) return;
+  labImageInput.click();
+}
+
+labImageInput.addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
-  selectedFile = file;
+  if (selectedFiles.length >= MAX_IMAGES) return;
 
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    uploadContent.style.display = 'none';
-    previewImg.src = event.target.result;
-    previewImg.style.display = 'block';
-    uploadArea.classList.add('has-image');
-    analyzeBtn.classList.add('show');
-    resultCard.classList.remove('show');
-    errorCard.classList.remove('show');
-  };
-  reader.readAsDataURL(file);
+  selectedFiles.push(file);
+  renderImageSlots();
+  labImageInput.value = '';
 });
 
+function removeImage(index) {
+  selectedFiles.splice(index, 1);
+  renderImageSlots();
+}
+
+function renderImageSlots() {
+  uploadCounter.textContent = `${persianNums[selectedFiles.length]} از ۴`;
+
+  for (let i = 0; i < MAX_IMAGES; i++) {
+    const slot = document.getElementById('slot-' + i);
+    const file = selectedFiles[i];
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        slot.classList.add('filled');
+        slot.innerHTML = `
+          <img src="${event.target.result}" alt="صفحه ${i + 1}">
+          <div class="remove-btn" onclick="event.stopPropagation(); removeImage(${i})">✕</div>
+          <div class="page-num">صفحه ${persianNums[i + 1] || (i + 1)}</div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      slot.classList.remove('filled');
+      slot.innerHTML = `<span class="add-icon">+</span>`;
+    }
+  }
+
+  if (selectedFiles.length > 0) {
+    analyzeBtn.classList.add('show');
+  } else {
+    analyzeBtn.classList.remove('show');
+  }
+
+  resultCard.classList.remove('show');
+  errorCard.classList.remove('show');
+}
+
 analyzeBtn.addEventListener('click', async function() {
-  if (!selectedFile) return;
+  if (selectedFiles.length === 0) return;
 
   const user = localStorage.getItem('user');
   if (!user) {
@@ -890,7 +994,9 @@ analyzeBtn.addEventListener('click', async function() {
   const reason = document.getElementById('reason').value;
 
   const formData = new FormData();
-  formData.append('image', selectedFile);
+  selectedFiles.forEach(file => {
+    formData.append('images', file);
+  });
   formData.append('age', age);
   formData.append('gender', gender);
   formData.append('reason', reason);
