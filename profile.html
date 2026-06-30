@@ -219,26 +219,39 @@ header {
 
 .record-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 16px; flex-wrap: wrap; }
 
-.record-left { display: flex; gap: 16px; flex: 1; min-width: 200px; }
+.record-left { display: flex; gap: 16px; flex: 1; min-width: 200px; cursor: pointer; }
+
+.thumbs-strip { display: flex; gap: 6px; flex-shrink: 0; }
 
 .record-thumb {
-  width: 64px; height: 64px;
-  border-radius: 12px;
+  width: 56px; height: 56px;
+  border-radius: 10px;
   object-fit: cover;
   border: 1px solid var(--border);
   cursor: pointer;
-  flex-shrink: 0;
   transition: all 0.2s;
 }
 .record-thumb:hover { border-color: var(--accent); transform: scale(1.05); }
 
-.record-thumb-placeholder {
-  width: 64px; height: 64px;
-  border-radius: 12px;
+.record-thumb-extra {
+  width: 56px; height: 56px;
+  border-radius: 10px;
   background: var(--surface2);
   border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.record-thumb-placeholder {
+  width: 56px; height: 56px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
   flex-shrink: 0;
   color: var(--text-dim);
 }
@@ -276,23 +289,71 @@ header {
 
 .loading-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
 
-/* Image lightbox */
+/* Image lightbox with multi-image navigation */
 .lightbox-overlay {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.9);
+  background: rgba(0,0,0,0.92);
   z-index: 1000;
   align-items: center; justify-content: center;
   padding: 20px;
-  cursor: zoom-out;
+  flex-direction: column;
 }
 .lightbox-overlay.open { display: flex; }
-.lightbox-img { max-width: 90vw; max-height: 90vh; border-radius: 12px; box-shadow: 0 0 60px rgba(0,212,255,0.2); }
+
+.lightbox-img-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 90vw;
+  max-height: 80vh;
+}
+
+.lightbox-img { max-width: 90vw; max-height: 80vh; border-radius: 12px; box-shadow: 0 0 60px rgba(0,212,255,0.2); }
+
+.lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px; height: 44px;
+  background: rgba(0,212,255,0.15);
+  border: 1px solid rgba(0,212,255,0.3);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.lightbox-nav-btn.prev { right: -60px; }
+.lightbox-nav-btn.next { left: -60px; }
+
+.lightbox-close {
+  position: absolute;
+  top: -50px;
+  left: 0;
+  width: 36px; height: 36px;
+  background: rgba(255,68,102,0.15);
+  border: 1px solid rgba(255,68,102,0.3);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.lightbox-counter {
+  margin-top: 16px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
 
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; padding: 20px 16px; }
   .summary-grid { grid-template-columns: 1fr 1fr; }
   header { padding: 14px 16px; }
+  .lightbox-nav-btn.prev { right: 8px; }
+  .lightbox-nav-btn.next { left: 8px; }
 }
 
 @media (max-width: 500px) {
@@ -387,8 +448,14 @@ header {
   </div>
 </div>
 
-<div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightbox()">
-  <img class="lightbox-img" id="lightboxImg" src="" alt="عکس آزمایش">
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <div class="lightbox-img-wrap">
+    <div class="lightbox-close" onclick="closeLightbox()">✕</div>
+    <div class="lightbox-nav-btn prev" id="lightboxPrev" onclick="lightboxNav(1)">›</div>
+    <img class="lightbox-img" id="lightboxImg" src="" alt="عکس آزمایش">
+    <div class="lightbox-nav-btn next" id="lightboxNext" onclick="lightboxNav(-1)">‹</div>
+  </div>
+  <div class="lightbox-counter" id="lightboxCounter"></div>
 </div>
 
 <script>
@@ -408,6 +475,9 @@ if (user.phone) {
   document.getElementById('profilePhone').textContent = user.phone;
 }
 
+let lightboxImages = [];
+let lightboxIndex = 0;
+
 function formatDate(dateStr) {
   const d = new Date(dateStr);
   return d.toLocaleDateString('fa-IR');
@@ -417,6 +487,15 @@ function statusLabel(status) {
   if (status === 'danger') return '⛔ غیرنرمال';
   if (status === 'warning') return '⚠ نیاز به توجه';
   return '✓ نرمال';
+}
+
+function getRecordImages(r) {
+  if (Array.isArray(r.images_base64) && r.images_base64.length > 0) {
+    return r.images_base64;
+  }
+  if (r.image_base64) return [r.image_base64];
+  if (r.image_url) return [r.image_url];
+  return [];
 }
 
 async function loadResults() {
@@ -482,19 +561,33 @@ function renderResults(results) {
 
   container.innerHTML = `<div class="records-list">${results.map((r, i) => {
     const status = r.status || 'normal';
-    const thumb = r.image_base64 || r.image_url
-      ? `<img class="record-thumb" src="${r.image_base64 || r.image_url}" alt="عکس آزمایش" onclick="openLightbox('${r.image_base64 || r.image_url}')">`
-      : `<div class="record-thumb-placeholder">🔬</div>`;
+    const images = getRecordImages(r);
+
+    let thumbsHtml = '';
+    if (images.length > 0) {
+      const visibleThumbs = images.slice(0, 2);
+      thumbsHtml = `<div class="thumbs-strip">${visibleThumbs.map((img, idx) => 
+        `<img class="record-thumb" src="${img}" alt="صفحه ${idx + 1}" onclick="event.stopPropagation(); openLightbox(${i}, ${idx})">`
+      ).join('')}`;
+      
+      if (images.length > 2) {
+        thumbsHtml += `<div class="record-thumb-extra" onclick="event.stopPropagation(); openLightbox(${i}, 2)">+${(images.length - 2).toLocaleString('fa-IR')}</div>`;
+      }
+      thumbsHtml += `</div>`;
+    } else {
+      thumbsHtml = `<div class="record-thumb-placeholder">🔬</div>`;
+    }
 
     return `
-      <div class="record-card ${status}">
+      <div class="record-card ${status}" data-images='${JSON.stringify(images)}'>
         <div class="record-top">
-          <div class="record-left" onclick="toggleRecord(${i})" style="cursor:pointer">
-            ${thumb}
+          <div class="record-left" onclick="toggleRecord(${i})">
+            ${thumbsHtml}
             <div class="record-info">
               <div class="record-reason">${r.reason || 'آزمایش عمومی'}</div>
               <div class="record-meta">
                 <span>👤 ${r.gender || '—'}، ${r.age || '—'} سال</span>
+                ${images.length > 1 ? `<span>📄 ${images.length.toLocaleString('fa-IR')} صفحه</span>` : ''}
               </div>
             </div>
           </div>
@@ -517,14 +610,36 @@ function toggleRecord(i) {
   toggle.textContent = el.classList.contains('open') ? 'بستن جزئیات ▲' : 'نمایش جزئیات ▼';
 }
 
-function openLightbox(url) {
-  document.getElementById('lightboxImg').src = url;
+function openLightbox(recordIndex, imageIndex) {
+  const card = document.querySelectorAll('.record-card')[recordIndex];
+  lightboxImages = JSON.parse(card.dataset.images);
+  lightboxIndex = imageIndex;
+  updateLightboxImage();
   document.getElementById('lightboxOverlay').classList.add('open');
+}
+
+function updateLightboxImage() {
+  document.getElementById('lightboxImg').src = lightboxImages[lightboxIndex];
+  const nav = lightboxImages.length > 1;
+  document.getElementById('lightboxPrev').style.display = nav ? 'flex' : 'none';
+  document.getElementById('lightboxNext').style.display = nav ? 'flex' : 'none';
+  document.getElementById('lightboxCounter').textContent = nav 
+    ? `صفحه ${(lightboxIndex + 1).toLocaleString('fa-IR')} از ${lightboxImages.length.toLocaleString('fa-IR')}` 
+    : '';
+}
+
+function lightboxNav(direction) {
+  lightboxIndex = (lightboxIndex + direction + lightboxImages.length) % lightboxImages.length;
+  updateLightboxImage();
 }
 
 function closeLightbox() {
   document.getElementById('lightboxOverlay').classList.remove('open');
 }
+
+document.getElementById('lightboxOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeLightbox();
+});
 
 loadResults();
 </script>
