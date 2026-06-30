@@ -8,13 +8,13 @@ export const config = {
 const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
 const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
 const AVALAI_KEY = "aa-FvZAsrqj1W3oho7UDcqjfymOGUKnip0CnRT9xtgLRFnfkens";
+const MAX_IMAGES = 4;
 
 function parseForm(req) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({ headers: req.headers });
     const fields = {};
-    let imageBuffer = null;
-    let imageType = "image/jpeg";
+    const images = []; // { buffer, mimeType }
 
     busboy.on("field", (name, val) => {
       fields[name] = val;
@@ -22,16 +22,18 @@ function parseForm(req) {
 
     busboy.on("file", (name, file, info) => {
       const chunks = [];
-      if (info && info.mimeType) imageType = info.mimeType;
+      const mimeType = (info && info.mimeType) || "image/jpeg";
 
       file.on("data", (chunk) => chunks.push(chunk));
       file.on("end", () => {
-        imageBuffer = Buffer.concat(chunks);
+        if (images.length < MAX_IMAGES) {
+          images.push({ buffer: Buffer.concat(chunks), mimeType });
+        }
       });
     });
 
     busboy.on("finish", () => {
-      resolve({ fields, imageBuffer, imageType });
+      resolve({ fields, images });
     });
 
     busboy.on("error", reject);
@@ -56,10 +58,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fields, imageBuffer, imageType } = await parseForm(req);
+    const { fields, images } = await parseForm(req);
 
-    if (!imageBuffer) {
-      return res.status(400).json({ success: false, error: "تصویری ارسال نشده است" });
+    if (!images || images.length === 0) {
+      return res.status(400).json({ success: false, error: "حداقل یک تصویر باید ارسال شود" });
     }
 
     const age = fields.age || "";
@@ -71,13 +73,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: "ابتدا باید وارد حساب کاربری خود شوید" });
     }
 
-    const imageBase64 = imageBuffer.toString("base64");
-    const imageDataUrl = `data:${imageType};base64,${imageBase64}`;
+    const imageDataUrls = images.map(img => `data:${img.mimeType};base64,${img.buffer.toString("base64")}`);
 
     const openai = new OpenAI({
       apiKey: AVALAI_KEY,
       baseURL: "https://api.avalai.ir/v1"
     });
+
+    const imageContentBlocks = imageDataUrls.map(url => ({
+      type: "image_url",
+      image_url: { url }
+    }));
+
+    const pageNote = imageDataUrls.length > 1
+      ? `توجه: ${imageDataUrls.length} عکس برای تو ارسال شده که همگی صفحات مختلف یک برگه آزمایش واحد هستند (مثلاً صفحه اول و دوم). لطفاً اطلاعات همه عکس‌ها را با هم در نظر بگیر و یک تفسیر یکپارچه و کامل از مجموع تمام صفحات بنویس، نه تفسیر جداگانه برای هر عکس.`
+      : "";
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -85,22 +95,19 @@ export default async function handler(req, res) {
         {
           role: "user",
           content: [
-            {
-              type: "image_url",
-              image_url: {
-                url: imageDataUrl
-              }
-            },
+            ...imageContentBlocks,
             {
               type: "text",
               text: `تو یک پزشک متخصص داخلی بسیار باتجربه و دلسوز هستی که الان داری برگه آزمایش یک بیمار را بررسی می‌کنی و قرار است نتیجه را مثل یک ویزیت حضوری کامل، با جزئیات و با لحن گرم و انسانی برایش توضیح بدهی. بیمار این متن را می‌خواند، پس باید کاملاً قابل فهم، دلسوزانه و در عین حال علمی و دقیق باشد.
+
+${pageNote}
 
 اطلاعات بیمار:
 سن: ${age}
 جنسیت: ${gender}
 علت انجام آزمایش: ${reason}
 
-با دقت کامل تمام مقادیر موجود در عکس آزمایش را بررسی کن. سرسری از کنار هیچ مقداری رد نشو.
+با دقت کامل تمام مقادیر موجود در عکس‌های آزمایش را بررسی کن. سرسری از کنار هیچ مقداری رد نشو.
 
 پاسخ خود را دقیقاً به فرمت JSON زیر بده، بدون هیچ متن اضافه قبل یا بعد از آن، و بدون استفاده از backtick یا markdown:
 
@@ -116,9 +123,9 @@ export default async function handler(req, res) {
 یک یا دو پاراگراف که در آن وضعیت کلی بیمار را با توجه به سن، جنسیت، علت آزمایش و مجموع نتایج توضیح می‌دهی. لحن باید گرم و مثل یک پزشک با‌تجربه باشد.
 
 ۲. بررسی تک‌تک مقادیر آزمایش
-برای هر آیتمی که در عکس آزمایش وجود دارد (حتی اگر کاملاً نرمال باشد)، یک خط جداگانه با این فرمت دقیق بنویس:
+برای هر آیتمی که در عکس‌های آزمایش وجود دارد (حتی اگر کاملاً نرمال باشد)، یک خط جداگانه با این فرمت دقیق بنویس:
 نام آزمایش: مقدار اندازه‌گیری شده — محدوده نرمال — وضعیت (نرمال / بالاتر از حد / پایین‌تر از حد) — توضیح کوتاه یک خطی درباره معنای این مقدار برای بدن.
-هیچ آیتمی از قلم نیفتد، حتی اگر ده‌ها مورد در آزمایش وجود داشته باشد.
+هیچ آیتمی از قلم نیفتد، حتی اگر ده‌ها مورد در آزمایش وجود داشته باشد و حتی اگر در چند صفحه پخش شده باشند.
 
 ۳. توضیح تفصیلی موارد غیرنرمال
 برای هر مقداری که از محدوده نرمال خارج است، یک پاراگراف جداگانه بنویس درباره دلایل احتمالی، ارتباط با سایر اندام‌ها و سیستم‌های بدن، و اهمیت آن. اگر هیچ مقدار غیرنرمالی نیست، یک جمله مثبت بنویس.
@@ -188,7 +195,7 @@ export default async function handler(req, res) {
           analysis: fullText,
           status: status,
           image_url: null,
-          image_base64: imageDataUrl
+          images_base64: imageDataUrls
         })
       });
 
