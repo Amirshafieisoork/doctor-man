@@ -1,647 +1,89 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DrMan — پرونده سلامت</title>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #050d1a;
-  --surface: #0a1628;
-  --surface2: #0f1e36;
-  --accent: #00d4ff;
-  --accent2: #0066ff;
-  --green: #00ff9d;
-  --yellow: #ffd060;
-  --red: #ff4466;
-  --purple: #a855f7;
-  --text: #e8f4ff;
-  --text-dim: #7aa0c4;
-  --border: rgba(0,212,255,0.12);
-  --glow: 0 0 30px rgba(0,212,255,0.15);
-}
-
-* { margin:0; padding:0; box-sizing:border-box; }
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Vazirmatn', sans-serif;
-  min-height: 100vh;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
-  background-size: 60px 60px;
-  pointer-events: none;
-  z-index: 0;
-}
-
-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 32px;
-  background: rgba(5,13,26,0.9);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-}
-
-.logo-wrap { display: flex; align-items: center; gap: 10px; }
-
-.logo-icon {
-  width: 36px; height: 36px;
-  background: linear-gradient(135deg, var(--accent), var(--green));
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  box-shadow: 0 0 15px rgba(0,212,255,0.3);
-}
-
-.logo-text {
-  font-size: 20px; font-weight: 900;
-  background: linear-gradient(135deg, var(--accent), var(--green));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-}
-
-.header-left { display: flex; align-items: center; gap: 16px; }
-
-.user-info {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 50px;
-  padding: 8px 16px;
-}
-
-.user-avatar {
-  width: 28px; height: 28px;
-  background: linear-gradient(135deg, var(--accent), var(--purple));
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px;
-}
-
-.user-name { font-size: 13px; font-weight: 600; }
-
-.back-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px 16px;
-  color: var(--text-dim);
-  font-family: 'Vazirmatn', sans-serif;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: flex; align-items: center; gap: 6px;
-}
-
-.back-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-.layout {
-  position: relative;
-  z-index: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 24px;
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 24px;
-}
-
-.sidebar {}
-
-.profile-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 28px 24px;
-  text-align: center;
-  margin-bottom: 16px;
-  box-shadow: var(--glow);
-}
-
-.profile-avatar {
-  width: 80px; height: 80px;
-  background: linear-gradient(135deg, var(--accent), var(--purple));
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px;
-  margin: 0 auto 16px;
-  box-shadow: 0 0 25px rgba(0,212,255,0.3);
-}
-
-.profile-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-.profile-phone { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; direction: ltr; }
-
-.profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-.p-stat { background: var(--surface2); border-radius: 12px; padding: 12px; }
-.p-stat-num {
-  font-size: 22px; font-weight: 900;
-  background: linear-gradient(135deg, var(--accent), var(--green));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-}
-.p-stat-label { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-
-.quick-info { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
-.quick-title { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
-.info-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
-.info-item:last-child { border-bottom: none; }
-.info-label { color: var(--text-dim); }
-.info-value { font-weight: 600; }
-
-.main-content {}
-
-.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.section-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-.section-title::before { content: ''; width: 4px; height: 20px; background: linear-gradient(to bottom, var(--accent), var(--green)); border-radius: 2px; }
-
-.new-test-btn {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none; border-radius: 12px; padding: 10px 20px;
-  color: white; font-family: 'Vazirmatn', sans-serif; font-size: 13px; font-weight: 700;
-  cursor: pointer; transition: all 0.2s; text-decoration: none;
-  display: inline-flex; align-items: center; gap: 6px;
-  box-shadow: 0 4px 15px rgba(0,212,255,0.25);
-}
-.new-test-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.35); }
-
-.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
-
-.summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; transition: all 0.3s; }
-.summary-card:hover { border-color: var(--accent); transform: translateY(-3px); }
-.summary-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 12px; }
-.summary-icon.blue { background: rgba(0,212,255,0.1); }
-.summary-icon.green { background: rgba(0,255,157,0.1); }
-.summary-icon.yellow { background: rgba(255,208,96,0.1); }
-.summary-num { font-size: 26px; font-weight: 900; margin-bottom: 4px; }
-.summary-num.blue { color: var(--accent); }
-.summary-num.green { color: var(--green); }
-.summary-num.yellow { color: var(--yellow); }
-.summary-label { font-size: 12px; color: var(--text-dim); }
-
-.records-list { display: flex; flex-direction: column; gap: 14px; }
-
-.record-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 22px 24px;
-  transition: all 0.3s;
-  position: relative;
-  overflow: hidden;
-}
-
-.record-card::before {
-  content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 4px;
-  background: linear-gradient(to bottom, var(--accent), var(--green));
-  border-radius: 0 4px 4px 0; opacity: 0; transition: opacity 0.3s;
-}
-
-.record-card:hover { border-color: rgba(0,212,255,0.3); }
-.record-card:hover::before { opacity: 1; }
-.record-card.warning { border-color: rgba(255,208,96,0.2); }
-.record-card.warning::before { background: var(--yellow); }
-.record-card.danger { border-color: rgba(255,68,102,0.2); }
-.record-card.danger::before { background: var(--red); }
-
-.record-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 16px; flex-wrap: wrap; }
-
-.record-left { display: flex; gap: 16px; flex: 1; min-width: 200px; cursor: pointer; }
-
-.thumbs-strip { display: flex; gap: 6px; flex-shrink: 0; }
-
-.record-thumb {
-  width: 56px; height: 56px;
-  border-radius: 10px;
-  object-fit: cover;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.record-thumb:hover { border-color: var(--accent); transform: scale(1.05); }
-
-.record-thumb-extra {
-  width: 56px; height: 56px;
-  border-radius: 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent);
-  cursor: pointer;
-}
-
-.record-thumb-placeholder {
-  width: 56px; height: 56px;
-  border-radius: 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px;
-  flex-shrink: 0;
-  color: var(--text-dim);
-}
-
-.record-info {}
-.record-reason { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-.record-meta { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
-.record-status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-
-.status-badge { font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 600; }
-.status-badge.normal { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
-.status-badge.warning { background: rgba(255,208,96,0.1); color: var(--yellow); border: 1px solid rgba(255,208,96,0.2); }
-.status-badge.danger { background: rgba(255,68,102,0.1); color: var(--red); border: 1px solid rgba(255,68,102,0.2); }
-
-.record-date { font-size: 11px; color: var(--text-dim); }
-
-.record-summary {
-  margin-top: 14px; padding-top: 14px;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  font-size: 13px; color: var(--text-dim); line-height: 1.7;
-  display: none; white-space: pre-wrap;
-}
-.record-summary.open { display: block; }
-
-.record-toggle { font-size: 11px; color: var(--accent); margin-top: 10px; cursor: pointer; display: inline-block; }
-
-.empty-state {
-  text-align: center; padding: 60px 20px; color: var(--text-dim);
-  background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
-}
-.empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-.empty-text { font-size: 15px; margin-bottom: 8px; }
-.empty-sub { font-size: 13px; opacity: 0.6; margin-bottom: 20px; }
-
-.loading-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
-
-/* Image lightbox with multi-image navigation */
-.lightbox-overlay {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.92);
-  z-index: 1000;
-  align-items: center; justify-content: center;
-  padding: 20px;
-  flex-direction: column;
-}
-.lightbox-overlay.open { display: flex; }
-
-.lightbox-img-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 90vw;
-  max-height: 80vh;
-}
-
-.lightbox-img { max-width: 90vw; max-height: 80vh; border-radius: 12px; box-shadow: 0 0 60px rgba(0,212,255,0.2); }
-
-.lightbox-nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px; height: 44px;
-  background: rgba(0,212,255,0.15);
-  border: 1px solid rgba(0,212,255,0.3);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
-  color: var(--accent);
-  cursor: pointer;
-}
-.lightbox-nav-btn.prev { right: -60px; }
-.lightbox-nav-btn.next { left: -60px; }
-
-.lightbox-close {
-  position: absolute;
-  top: -50px;
-  left: 0;
-  width: 36px; height: 36px;
-  background: rgba(255,68,102,0.15);
-  border: 1px solid rgba(255,68,102,0.3);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--red);
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.lightbox-counter {
-  margin-top: 16px;
-  color: var(--text-dim);
-  font-size: 13px;
-}
-
-@media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; padding: 20px 16px; }
-  .summary-grid { grid-template-columns: 1fr 1fr; }
-  header { padding: 14px 16px; }
-  .lightbox-nav-btn.prev { right: 8px; }
-  .lightbox-nav-btn.next { left: 8px; }
-}
-
-@media (max-width: 500px) {
-  .summary-grid { grid-template-columns: 1fr; }
-  .record-top { flex-direction: column; gap: 10px; }
-  .record-status { align-items: flex-start; }
-}
-
-@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.sidebar { animation: fadeUp 0.5s ease 0.1s both; }
-.main-content { animation: fadeUp 0.5s ease 0.2s both; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrMan — پرونده سلامت</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+    .card { background-color: #1e2937; transition: all 0.3s; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3); }
+    .teal-accent { color: #14b8a6; }
+  </style>
 </head>
-<body>
+<body class="min-h-screen pb-12">
 
-<header>
-  <div class="logo-wrap">
-    <div class="logo-icon">🩺</div>
-    <div class="logo-text">DrMan</div>
-  </div>
-  <div class="header-left">
-    <div class="user-info">
-      <div class="user-avatar">👤</div>
-      <span class="user-name" id="userName">کاربر</span>
-    </div>
-    <a href="/" class="back-btn">🔬 آزمایش جدید</a>
-    <a href="/auth.html" onclick="localStorage.removeItem('user')" class="back-btn" style="color:var(--red);border-color:rgba(255,68,102,0.2)">🚪 خروج</a>
-  </div>
-</header>
-
-<div class="layout">
-
-  <div class="sidebar">
-    <div class="profile-card">
-      <div class="profile-avatar">👤</div>
-      <div class="profile-name" id="profileName">کاربر</div>
-      <div class="profile-phone" id="profilePhone">—</div>
-      <div class="profile-stats">
-        <div class="p-stat">
-          <div class="p-stat-num" id="totalTestsSide">۰</div>
-          <div class="p-stat-label">آزمایش</div>
-        </div>
-        <div class="p-stat">
-          <div class="p-stat-num" id="activeMonths">۰</div>
-          <div class="p-stat-label">ماه فعال</div>
-        </div>
+  <div class="max-w-6xl mx-auto p-4">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-2xl">🧬</div>
+        <h1 class="text-3xl font-bold teal-accent">DrMan</h1>
       </div>
+      <a href="/" class="bg-teal-600 hover:bg-teal-500 px-5 py-2.5 rounded-2xl flex items-center gap-2">
+        <i class="fas fa-plus"></i> آزمایش جدید
+      </a>
     </div>
 
-    <div class="quick-info">
-      <div class="quick-title">📋 اطلاعات سریع</div>
-      <div class="info-item">
-        <span class="info-label">آخرین آزمایش</span>
-        <span class="info-value" id="lastTestDate">—</span>
+    <!-- User Info -->
+    <div class="card rounded-3xl p-6 mb-8 flex flex-col md:flex-row gap-6 items-center md:items-start">
+      <div class="w-24 h-24 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center text-5xl shadow-lg">
+        👤
       </div>
-      <div class="info-item">
-        <span class="info-label">کل آزمایش‌ها</span>
-        <span class="info-value" id="totalTestsInfo">۰</span>
+      <div class="flex-1 text-center md:text-right">
+        <h2 class="text-2xl font-semibold">امیرحسین</h2>
+        <p class="text-gray-400 text-lg">۰۹۱۳۵۱۷۴۵۷۷</p>
       </div>
+      <div class="text-teal-400 text-sm">فعال از ۱۴۰۴</div>
     </div>
-  </div>
 
-  <div class="main-content">
-
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="summary-icon blue">🔬</div>
-        <div class="summary-num blue" id="summaryTotal">۰</div>
-        <div class="summary-label">کل آزمایش‌ها</div>
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div class="card rounded-3xl p-6 text-center">
+        <div class="text-4xl mb-2">⚠️</div>
+        <div class="text-3xl font-bold text-orange-400">۲</div>
+        <div class="text-sm text-gray-400 mt-1">نیاز به توجه</div>
       </div>
-      <div class="summary-card">
-        <div class="summary-icon green">✅</div>
-        <div class="summary-num green" id="summaryNormal">۰</div>
-        <div class="summary-label">نتایج نرمال</div>
+      <div class="card rounded-3xl p-6 text-center">
+        <div class="text-4xl mb-2">✅</div>
+        <div class="text-3xl font-bold text-emerald-400">۸</div>
+        <div class="text-sm text-gray-400 mt-1">نتایج نرمال</div>
       </div>
-      <div class="summary-card">
-        <div class="summary-icon yellow">⚠️</div>
-        <div class="summary-num yellow" id="summaryWarning">۰</div>
-        <div class="summary-label">نیاز به توجه</div>
+      <div class="card rounded-3xl p-6 text-center">
+        <div class="text-4xl mb-2">📋</div>
+        <div class="text-3xl font-bold">۱۲</div>
+        <div class="text-sm text-gray-400 mt-1">کل آزمایش‌ها</div>
+      </div>
+      <div class="card rounded-3xl p-6 text-center">
+        <div class="text-4xl mb-2">📅</div>
+        <div class="text-3xl font-bold">۳</div>
+        <div class="text-sm text-gray-400 mt-1">ماه فعال</div>
       </div>
     </div>
 
-    <div class="section-header">
-      <div class="section-title">تاریخچه آزمایش‌ها</div>
-      <a href="/" class="new-test-btn">+ آزمایش جدید</a>
-    </div>
-
-    <div id="recordsContainer">
-      <div class="loading-state">در حال بارگذاری اطلاعات...</div>
-    </div>
-
-  </div>
-</div>
-
-<div class="lightbox-overlay" id="lightboxOverlay">
-  <div class="lightbox-img-wrap">
-    <div class="lightbox-close" onclick="closeLightbox()">✕</div>
-    <div class="lightbox-nav-btn prev" id="lightboxPrev" onclick="lightboxNav(1)">›</div>
-    <img class="lightbox-img" id="lightboxImg" src="" alt="عکس آزمایش">
-    <div class="lightbox-nav-btn next" id="lightboxNext" onclick="lightboxNav(-1)">‹</div>
-  </div>
-  <div class="lightbox-counter" id="lightboxCounter"></div>
-</div>
-
-<script>
-const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
-const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
-
-const user = JSON.parse(localStorage.getItem('user') || '{}');
-if (!user.id) {
-  window.location.href = '/auth.html';
-}
-
-if (user.name) {
-  document.getElementById('userName').textContent = user.name;
-  document.getElementById('profileName').textContent = user.name;
-}
-if (user.phone) {
-  document.getElementById('profilePhone').textContent = user.phone;
-}
-
-let lightboxImages = [];
-let lightboxIndex = 0;
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('fa-IR');
-}
-
-function statusLabel(status) {
-  if (status === 'danger') return '⛔ غیرنرمال';
-  if (status === 'warning') return '⚠ نیاز به توجه';
-  return '✓ نرمال';
-}
-
-function getRecordImages(r) {
-  if (Array.isArray(r.images_base64) && r.images_base64.length > 0) {
-    return r.images_base64;
-  }
-  if (r.image_base64) return [r.image_base64];
-  if (r.image_url) return [r.image_url];
-  return [];
-}
-
-async function loadResults() {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/test_results?user_id=eq.${user.id}&select=*&order=created_at.desc`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    const results = await res.json();
-    renderResults(results);
-  } catch (e) {
-    document.getElementById('recordsContainer').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⚠️</div>
-        <div class="empty-text">خطا در بارگذاری اطلاعات</div>
-        <div class="empty-sub">لطفاً صفحه را رفرش کنید</div>
-      </div>
-    `;
-  }
-}
-
-function renderResults(results) {
-  const total = results.length;
-  let normalCount = 0, warningCount = 0, dangerCount = 0;
-
-  results.forEach(r => {
-    const status = r.status || 'normal';
-    if (status === 'normal') normalCount++;
-    else if (status === 'warning') warningCount++;
-    else dangerCount++;
-  });
-
-  document.getElementById('summaryTotal').textContent = total.toLocaleString('fa-IR');
-  document.getElementById('summaryNormal').textContent = normalCount.toLocaleString('fa-IR');
-  document.getElementById('summaryWarning').textContent = (warningCount + dangerCount).toLocaleString('fa-IR');
-  document.getElementById('totalTestsSide').textContent = total.toLocaleString('fa-IR');
-  document.getElementById('totalTestsInfo').textContent = total.toLocaleString('fa-IR');
-
-  if (results.length > 0) {
-    document.getElementById('lastTestDate').textContent = formatDate(results[0].created_at);
-    const months = new Set(results.map(r => {
-      const d = new Date(r.created_at);
-      return `${d.getFullYear()}-${d.getMonth()}`;
-    }));
-    document.getElementById('activeMonths').textContent = months.size.toLocaleString('fa-IR');
-  }
-
-  const container = document.getElementById('recordsContainer');
-
-  if (results.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🔬</div>
-        <div class="empty-text">هنوز آزمایشی ثبت نشده</div>
-        <div class="empty-sub">برای شروع، یک آزمایش جدید آپلود کنید</div>
-        <a href="/" class="new-test-btn">+ آزمایش جدید</a>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = `<div class="records-list">${results.map((r, i) => {
-    const status = r.status || 'normal';
-    const images = getRecordImages(r);
-
-    let thumbsHtml = '';
-    if (images.length > 0) {
-      const visibleThumbs = images.slice(0, 2);
-      thumbsHtml = `<div class="thumbs-strip">${visibleThumbs.map((img, idx) => 
-        `<img class="record-thumb" src="${img}" alt="صفحه ${idx + 1}" onclick="event.stopPropagation(); openLightbox(${i}, ${idx})">`
-      ).join('')}`;
+    <!-- History -->
+    <div class="card rounded-3xl p-8">
+      <h3 class="text-xl font-semibold mb-6 flex items-center gap-3">
+        <i class="fas fa-history"></i> تاریخچه آزمایش‌ها
+      </h3>
       
-      if (images.length > 2) {
-        thumbsHtml += `<div class="record-thumb-extra" onclick="event.stopPropagation(); openLightbox(${i}, 2)">+${(images.length - 2).toLocaleString('fa-IR')}</div>`;
-      }
-      thumbsHtml += `</div>`;
-    } else {
-      thumbsHtml = `<div class="record-thumb-placeholder">🔬</div>`;
-    }
-
-    return `
-      <div class="record-card ${status}" data-images='${JSON.stringify(images)}'>
-        <div class="record-top">
-          <div class="record-left" onclick="toggleRecord(${i})">
-            ${thumbsHtml}
-            <div class="record-info">
-              <div class="record-reason">${r.reason || 'آزمایش عمومی'}</div>
-              <div class="record-meta">
-                <span>👤 ${r.gender || '—'}، ${r.age || '—'} سال</span>
-                ${images.length > 1 ? `<span>📄 ${images.length.toLocaleString('fa-IR')} صفحه</span>` : ''}
-              </div>
-            </div>
+      <div class="space-y-4">
+        <!-- Sample items - بعداً با JS داینامیک می‌کنی -->
+        <div class="bg-slate-800 rounded-2xl p-5 flex justify-between items-center hover:bg-slate-700 transition-colors">
+          <div>
+            <p class="font-medium">آزمایش خون کامل (CBC)</p>
+            <p class="text-sm text-gray-400">۱۴۰۴/۰۴/۱۵ • ۳ صفحه</p>
           </div>
-          <div class="record-status">
-            <span class="status-badge ${status}">${statusLabel(status)}</span>
-            <span class="record-date">${formatDate(r.created_at)}</span>
-          </div>
+          <div class="text-emerald-400 font-medium">نرمال</div>
+          <button onclick="alert('جزئیات باز شد')" class="bg-teal-600 hover:bg-teal-500 px-6 py-2 rounded-xl text-sm">مشاهده</button>
         </div>
-        <div class="record-summary" id="record-${i}">${r.analysis || 'بدون توضیح'}</div>
-        <span class="record-toggle" onclick="toggleRecord(${i})" id="toggle-${i}">نمایش جزئیات ▼</span>
+        
+        <!-- می‌تونی آیتم‌های بیشتر اضافه کنی -->
       </div>
-    `;
-  }).join('')}</div>`;
-}
+    </div>
+  </div>
 
-function toggleRecord(i) {
-  const el = document.getElementById('record-' + i);
-  const toggle = document.getElementById('toggle-' + i);
-  el.classList.toggle('open');
-  toggle.textContent = el.classList.contains('open') ? 'بستن جزئیات ▲' : 'نمایش جزئیات ▼';
-}
-
-function openLightbox(recordIndex, imageIndex) {
-  const card = document.querySelectorAll('.record-card')[recordIndex];
-  lightboxImages = JSON.parse(card.dataset.images);
-  lightboxIndex = imageIndex;
-  updateLightboxImage();
-  document.getElementById('lightboxOverlay').classList.add('open');
-}
-
-function updateLightboxImage() {
-  document.getElementById('lightboxImg').src = lightboxImages[lightboxIndex];
-  const nav = lightboxImages.length > 1;
-  document.getElementById('lightboxPrev').style.display = nav ? 'flex' : 'none';
-  document.getElementById('lightboxNext').style.display = nav ? 'flex' : 'none';
-  document.getElementById('lightboxCounter').textContent = nav 
-    ? `صفحه ${(lightboxIndex + 1).toLocaleString('fa-IR')} از ${lightboxImages.length.toLocaleString('fa-IR')}` 
-    : '';
-}
-
-function lightboxNav(direction) {
-  lightboxIndex = (lightboxIndex + direction + lightboxImages.length) % lightboxImages.length;
-  updateLightboxImage();
-}
-
-function closeLightbox() {
-  document.getElementById('lightboxOverlay').classList.remove('open');
-}
-
-document.getElementById('lightboxOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeLightbox();
-});
-
-loadResults();
-</script>
 </body>
 </html>
