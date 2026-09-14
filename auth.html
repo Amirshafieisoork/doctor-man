@@ -174,6 +174,21 @@ input:focus {
       <input type="password" id="loginPassword" autocomplete="current-password" placeholder="رمز عبور" aria-label="رمز عبور">
     </div>
     <button class="btn" id="loginButton" type="button" onclick="login()">ورود به حساب</button>
+    <button class="tab" type="button" style="width:100%;margin-top:12px" onclick="showTab('reset')">رمز عبور را فراموش کرده‌اید؟</button>
+  </div>
+
+  <!-- Reset password -->
+  <div id="resetForm" style="display:none">
+    <div class="form-group">
+      <label for="resetPhone">شماره تماس</label>
+      <input type="tel" id="resetPhone" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx" aria-label="شماره تماس برای بازیابی رمز">
+    </div>
+    <div class="form-group">
+      <label for="resetPassword">رمز عبور جدید</label>
+      <input type="password" id="resetPassword" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر" aria-label="رمز عبور جدید">
+    </div>
+    <button class="btn" id="resetButton" type="button" onclick="resetPassword()">تغییر رمز عبور</button>
+    <button class="tab" type="button" style="width:100%;margin-top:12px" onclick="showTab('login')">بازگشت به ورود</button>
   </div>
 
   <!-- Register -->
@@ -200,7 +215,8 @@ input:focus {
 function showTab(tab) {
   document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
   document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
-  document.querySelectorAll('.tab').forEach((t, i) => {
+  document.getElementById('resetForm').style.display = tab === 'reset' ? 'block' : 'none';
+  document.querySelectorAll('.tabs .tab').forEach((t, i) => {
     t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
   });
   document.getElementById('message').className = 'message';
@@ -222,7 +238,12 @@ function setSubmitting(buttonId, value) {
   submitting = value;
   const button = document.getElementById(buttonId);
   button.disabled = value;
-  button.textContent = value ? 'در حال بررسی...' : buttonId === 'loginButton' ? 'ورود به حساب' : 'ایجاد حساب';
+  const labels = {
+    loginButton: 'ورود به حساب',
+    registerButton: 'ایجاد حساب',
+    resetButton: 'تغییر رمز عبور'
+  };
+  button.textContent = value ? 'در حال بررسی...' : labels[buttonId];
 }
 
 async function requestAuth(url, payload, buttonId, successMessage, onSuccess) {
@@ -256,6 +277,19 @@ async function login() {
   });
 }
 
+async function resetPassword() {
+  const phone = normalizePhone(document.getElementById('resetPhone').value);
+  const password = document.getElementById('resetPassword').value;
+  if (!/^09\d{9}$/.test(phone)) return showMsg('شماره تماس صحیح نیست', 'error');
+  if (password.length < 8 || password.length > 128) return showMsg('رمز باید بین ۸ تا ۱۲۸ کاراکتر باشد', 'error');
+
+  await requestAuth('/api/reset-password', { phone, password }, 'resetButton', 'رمز عبور با موفقیت تغییر کرد', () => {
+    document.getElementById('loginPhone').value = phone;
+    document.getElementById('loginPassword').value = '';
+    setTimeout(() => showTab('login'), 900);
+  });
+}
+
 async function register() {
   const name = document.getElementById('regName').value.trim().slice(0, 80);
   const phone = normalizePhone(document.getElementById('regPhone').value);
@@ -271,7 +305,9 @@ async function register() {
 document.querySelectorAll('input').forEach(input => input.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) {
     event.preventDefault();
-    input.closest('#loginForm') ? login() : register();
+    if (input.closest('#loginForm')) login();
+    else if (input.closest('#resetForm')) resetPassword();
+    else register();
   }
 }));
 </script>
