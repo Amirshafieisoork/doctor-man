@@ -346,12 +346,17 @@ header {
 <script>
 async function loadPlans() {
   try {
-    const res = await fetch('/api/get-plans');
-    const data = await res.json();
-    renderPlans(data.plans || []);
+    const res = await fetch('/api/get-plans', { headers: { Accept: 'application/json' } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'خطا در بارگذاری پلن‌ها');
+    renderPlans(Array.isArray(data.plans) ? data.plans : []);
   } catch(e) {
-    document.getElementById('plansWrap').innerHTML = '<div class="loading-state">خطا در بارگذاری پلن‌ها. لطفاً صفحه را رفرش کنید.</div>';
+    document.getElementById('plansWrap').innerHTML = '<div class="loading-state" role="alert">خطا در بارگذاری پلن‌ها. لطفاً صفحه را رفرش کنید.</div>';
   }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 }
 
 function renderPlans(plans) {
@@ -363,38 +368,41 @@ function renderPlans(plans) {
   }
 
   wrap.innerHTML = plans.map(plan => {
-    const priceText = plan.price === 0 ? 'رایگان' : plan.price.toLocaleString('fa-IR');
-    const limitText = plan.test_limit === -1 ? 'آزمایش نامحدود' : `${plan.test_limit.toLocaleString('fa-IR')} آزمایش در ماه`;
+    const price = Number.isFinite(Number(plan.price)) ? Number(plan.price) : 0;
+    const testLimit = Number(plan.test_limit);
+    const priceText = price === 0 ? 'رایگان' : price.toLocaleString('fa-IR');
+    const limitText = testLimit === -1 ? 'آزمایش نامحدود' : `${Math.max(0, testLimit || 0).toLocaleString('fa-IR')} آزمایش در ماه`;
+    const safeName = escapeHtml(plan.name || 'پلن DrMan');
 
     return `
       <div class="plan-card ${plan.is_popular ? 'popular' : ''}">
-        ${plan.is_popular ? '<div class="popular-badge">⭐ محبوب‌ترین</div>' : ''}
-        <div class="plan-name">${plan.name}</div>
+        ${plan.is_popular ? '<div class="popular-badge">محبوب‌ترین</div>' : ''}
+        <div class="plan-name">${safeName}</div>
         <div class="plan-price-wrap">
           <div class="plan-price">${priceText}</div>
-          <div class="plan-price-unit">${plan.price === 0 ? 'برای همیشه' : 'تومان / ماه'}</div>
+          <div class="plan-price-unit">${price === 0 ? 'برای همیشه' : 'تومان / ماه'}</div>
         </div>
         <ul class="features-list">
           <li class="feature-item">
             <div class="feature-icon">✓</div>
             <span>${limitText}</span>
           </li>
-          ${(plan.features || []).map(f => `
+          ${(Array.isArray(plan.features) ? plan.features : []).map(f => `
             <li class="feature-item">
               <div class="feature-icon">✓</div>
-              <span>${f}</span>
+              <span>${escapeHtml(f)}</span>
             </li>
           `).join('')}
         </ul>
-        <button class="plan-btn" onclick="selectPlan('${plan.name.replace(/'/g, "\\'")}', ${plan.price})">
-          ${plan.price === 0 ? 'شروع رایگان' : 'انتخاب این پلن'}
+        <button class="plan-btn" onclick="selectPlan(${price})">
+          ${price === 0 ? 'شروع رایگان' : 'انتخاب این پلن'}
         </button>
       </div>
     `;
   }).join('');
 }
 
-function selectPlan(name, price) {
+function selectPlan(price) {
   const user = localStorage.getItem('user');
 
   if (price === 0) {

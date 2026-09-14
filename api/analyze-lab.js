@@ -5,9 +5,13 @@ export const config = {
   api: { bodyParser: false }
 };
 
-const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
-const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
-const AVALAI_KEY = "aa-FvZAsrqj1W3oho7UDcqjfymOGUKnip0CnRT9xtgLRFnfkens";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const AVALAI_KEY = process.env.AVALAI_API_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY || !AVALAI_KEY) {
+  throw new Error("Server configuration is missing");
+}
 const MAX_IMAGES = 4;
 
 function parseForm(req) {
@@ -64,12 +68,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: "حداقل یک تصویر باید ارسال شود" });
     }
 
-    const age = fields.age || "";
-    const gender = fields.gender || "";
-    const reason = fields.reason || "";
-    const userId = fields.user_id || null;
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    if (images.some((image) => !allowedTypes.has(image.mimeType) || image.buffer.length > 8 * 1024 * 1024)) {
+      return res.status(400).json({ success: false, error: "فرمت یا حجم یکی از تصاویر مجاز نیست" });
+    }
 
-    if (!userId) {
+    const age = String(fields.age || "").trim();
+    const gender = String(fields.gender || "").trim();
+    const reason = String(fields.reason || "").trim().slice(0, 500);
+    const userId = String(fields.user_id || "").trim();
+
+    if (!userId || !/^[a-zA-Z0-9-]{8,128}$/.test(userId)) {
       return res.status(400).json({ success: false, error: "ابتدا باید وارد حساب کاربری خود شوید" });
     }
 
