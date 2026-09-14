@@ -19,10 +19,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { phone, password } = req.body;
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const phone = String(body.phone || '').trim();
+  const password = String(body.password || '');
 
-  if (!phone || !password) {
-    return res.status(400).json({ error: 'شماره و رمز الزامی است' });
+  if (!/^09\d{9}$/.test(phone) || password.length < 1 || password.length > 128) {
+    return res.status(400).json({ error: 'شماره تماس یا رمز عبور معتبر نیست' });
   }
 
   const { data, error } = await supabase

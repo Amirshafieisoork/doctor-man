@@ -166,14 +166,14 @@ input:focus {
   <!-- Login -->
   <div id="loginForm">
     <div class="form-group">
-      <label>شماره تماس</label>
-      <input type="tel" id="loginPhone" placeholder="09xxxxxxxxx">
+      <label for="loginPhone">شماره تماس</label>
+      <input type="tel" id="loginPhone" inputmode="tel" autocomplete="tel" placeholder="09xxxxxxxxx" aria-label="شماره تماس">
     </div>
     <div class="form-group">
-      <label>رمز عبور</label>
-      <input type="password" id="loginPassword" placeholder="رمز عبور">
+      <label for="loginPassword">رمز عبور</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" placeholder="رمز عبور" aria-label="رمز عبور">
     </div>
-    <button class="btn" onclick="login()">ورود به حساب</button>
+    <button class="btn" id="loginButton" type="button" onclick="login()">ورود به حساب</button>
   </div>
 
   <!-- Register -->
@@ -190,7 +190,7 @@ input:focus {
       <label>رمز عبور</label>
       <input type="password" id="regPassword" placeholder="حداقل ۶ کاراکتر">
     </div>
-    <button class="btn" onclick="register()">ایجاد حساب</button>
+    <button class="btn" id="registerButton" type="button" onclick="register()">ایجاد حساب</button>
   </div>
 
   <div class="message" id="message"></div>
@@ -212,48 +212,68 @@ function showMsg(text, type) {
   m.className = 'message ' + type;
 }
 
-async function login() {
-  const phone = document.getElementById('loginPhone').value;
-  const password = document.getElementById('loginPassword').value;
-  if (!phone || !password) return showMsg('لطفاً همه فیلدها را پر کنید', 'error');
+let submitting = false;
 
-  const res = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, password })
-  });
-  const data = await res.json();
+function normalizePhone(value) {
+  return value.trim().replace(/[۰-۹]/g, digit => '۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)).replace(/\s|-/g, '');
+}
 
-  if (data.success) {
-    localStorage.setItem('user', JSON.stringify(data.user));
-    showMsg('ورود موفق! در حال انتقال...', 'success');
-    setTimeout(() => window.location.href = '/', 1500);
-  } else {
-    showMsg(data.error || 'خطا در ورود', 'error');
+function setSubmitting(buttonId, value) {
+  submitting = value;
+  const button = document.getElementById(buttonId);
+  button.disabled = value;
+  button.textContent = value ? 'در حال بررسی...' : buttonId === 'loginButton' ? 'ورود به حساب' : 'ایجاد حساب';
+}
+
+async function requestAuth(url, payload, buttonId, successMessage, onSuccess) {
+  if (submitting) return;
+  setSubmitting(buttonId, true);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'خطا در ارتباط با سرور');
+    showMsg(successMessage, 'success');
+    onSuccess(data);
+  } catch (error) {
+    showMsg(error.message || 'خطای غیرمنتظره رخ داد', 'error');
+  } finally {
+    setSubmitting(buttonId, false);
   }
+}
+
+async function login() {
+  const phone = normalizePhone(document.getElementById('loginPhone').value);
+  const password = document.getElementById('loginPassword').value;
+  if (!/^09\d{9}$/.test(phone) || !password) return showMsg('شماره تماس یا رمز عبور صحیح نیست', 'error');
+
+  await requestAuth('/api/login', { phone, password }, 'loginButton', 'ورود موفق! در حال انتقال...', data => {
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setTimeout(() => window.location.href = '/', 900);
+  });
 }
 
 async function register() {
-  const name = document.getElementById('regName').value;
-  const phone = document.getElementById('regPhone').value;
+  const name = document.getElementById('regName').value.trim().slice(0, 80);
+  const phone = normalizePhone(document.getElementById('regPhone').value);
   const password = document.getElementById('regPassword').value;
-  if (!phone || !password) return showMsg('شماره و رمز الزامی است', 'error');
-  if (password.length < 6) return showMsg('رمز باید حداقل ۶ کاراکتر باشد', 'error');
+  if (!/^09\d{9}$/.test(phone) || !password) return showMsg('شماره تماس و رمز عبور الزامی است', 'error');
+  if (password.length < 8) return showMsg('رمز باید حداقل ۸ کاراکتر باشد', 'error');
 
-  const res = await fetch('/api/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, password, name })
+  await requestAuth('/api/register', { phone, password, name }, 'registerButton', 'ثبت‌نام موفق! لطفاً وارد شوید', () => {
+    setTimeout(() => showTab('login'), 900);
   });
-  const data = await res.json();
-
-  if (data.success) {
-    showMsg('ثبت‌نام موفق! لطفاً وارد شوید', 'success');
-    setTimeout(() => showTab('login'), 1500);
-  } else {
-    showMsg(data.error || 'خطا در ثبت‌نام', 'error');
-  }
 }
+
+document.querySelectorAll('input').forEach(input => input.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) {
+    event.preventDefault();
+    input.closest('#loginForm') ? login() : register();
+  }
+}));
 </script>
 </body>
 </html>
