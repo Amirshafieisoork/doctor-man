@@ -1,5 +1,9 @@
-const SUPABASE_URL = "https://dhciuxijsagtskrrtxua.supabase.co";
-const SUPABASE_KEY = "sb_publishable_iFvEeEdG6dEvdYrqOhAVew_WmGr4276";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error("Supabase configuration is missing");
+}
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {

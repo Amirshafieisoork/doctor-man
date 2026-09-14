@@ -380,7 +380,7 @@ header {
       <span class="user-name" id="userName">کاربر</span>
     </div>
     <a href="/" class="back-btn">🔬 آزمایش جدید</a>
-    <a href="/auth.html" onclick="localStorage.removeItem('user')" class="back-btn" style="color:var(--red);border-color:rgba(255,68,102,0.2)">🚪 خروج</a>
+    <a href="/auth.html" onclick="event.preventDefault(); localStorage.removeItem('user'); window.location.href='/auth.html';" class="back-btn" style="color:var(--red);border-color:rgba(255,68,102,0.2)">خروج</a>
   </div>
 </header>
 
