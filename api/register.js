@@ -38,15 +38,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'این شماره قبلاً ثبت شده است' });
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('users')
-    .insert([{ phone, password: hashPassword(password), name }])
-    .select()
-    .single();
+    .insert([{ phone, password: hashPassword(password), name }]);
 
   if (error) {
     return res.status(500).json({ error: 'خطا در ثبت‌نام: ' + error.message });
   }
 
-  return res.status(200).json({ success: true, userId: data.id });
+  return res.status(200).json({ success: true });
 }
