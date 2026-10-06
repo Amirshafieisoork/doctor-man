@@ -1,12 +1,13 @@
 {
   "version": 2,
   "routes": [
+    { "src": "/api/analyze-lab", "dest": "/api/analyze-secure" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/404.html", "status": 404 }
   ],
   "functions": {
-    "api/analyze-lab.js": {
+    "api/analyze-secure.js": {
       "maxDuration": 30
     }
   }
