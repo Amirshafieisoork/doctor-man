@@ -20,7 +20,6 @@ export default async function handler(req, res) {
   const source = req.method === 'GET' ? req.query : req.body;
   const providerId = bodyValue(source, 'providerId') || bodyValue(source, 'provider_id');
   const trackingCode = bodyValue(source, 'trackingCode') || bodyValue(source, 'tracking_code');
-  const result = bodyValue(source, 'result');
   const callbackAmount = Number(bodyValue(source, 'amount') || 0);
 
   if (!providerId) return redirect(res, 'failed');
@@ -36,8 +35,10 @@ export default async function handler(req, res) {
 
   await supabase.from('payments').update({ raw_callback: source || {}, tracking_code: trackingCode || null }).eq('id', payment.id);
 
-  if (!trackingCode || (result && !['SUCCESS', '0', 'OK', 'success'].includes(result))) {
-    await supabase.from('payments').update({ status: result ? 'cancelled' : 'failed' }).eq('id', payment.id);
+  // Callback fields are not trusted as proof of payment. Without a tracking code
+  // there is nothing to verify server-side, so the transaction stays unsuccessful.
+  if (!trackingCode) {
+    await supabase.from('payments').update({ status: 'failed' }).eq('id', payment.id);
     return redirect(res, 'failed', payment.id);
   }
 
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
     const verified = await verifyDigiPayPayment({ trackingCode, providerId: payment.id });
     const verifiedAmount = Number(verified.amount || 0);
     if (verified.providerId && String(verified.providerId) !== String(payment.id)) throw new Error('PROVIDER_MISMATCH');
-    if (verifiedAmount && verifiedAmount !== Number(payment.amount) * 10) throw new Error('AMOUNT_MISMATCH');
+    if (!verifiedAmount || verifiedAmount !== Number(payment.amount) * 10) throw new Error('AMOUNT_MISMATCH');
 
     const now = new Date();
     const duration = Number(payment.plans?.duration_days || 30);
