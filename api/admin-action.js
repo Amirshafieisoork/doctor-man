@@ -1,6 +1,9 @@
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
+function text(v,max=1000){return v==null?'':String(v).trim().slice(0,max)}
+async function audit(action,type,id,metadata={}){try{await supabase.from('audit_logs').insert({actor_type:'admin',action,resource_type:type,resource_id:id,metadata})}catch{}}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!requireAdmin(req, res)) return;
@@ -11,37 +14,60 @@ export default async function handler(req, res) {
   try {
     if (action === 'block-user' || action === 'unblock-user') {
       const status = action === 'block-user' ? 'blocked' : 'active';
-      const { error } = await supabase.from('users').update({ status }).eq('id', id);
-      if (error) throw error;
-      return res.status(200).json({ success: true, status });
+      const { error } = await supabase.from('users').update({ status }).eq('id', id); if (error) throw error;
+      await audit(`user.${status}`,'user',id); return res.status(200).json({ success: true, status });
     }
     if (action === 'set-plan') {
-      const planId = String(req.body?.plan_id || '');
-      if (!planId) return res.status(400).json({ success: false, error: 'پلن انتخاب نشده است' });
-      const { data: plan } = await supabase.from('plans').select('id,duration_days').eq('id', planId).single();
+      const planId = String(req.body?.plan_id || ''); if (!planId) return res.status(400).json({ success: false, error: 'پلن انتخاب نشده است' });
+      const { data: plan } = await supabase.from('plans').select('id,duration_days,active,name').eq('id', planId).single();
       if (!plan) return res.status(404).json({ success: false, error: 'پلن پیدا نشد' });
-      const now = new Date();
-      const expires = new Date(now.getTime() + Number(plan.duration_days || 30) * 86400000);
-      const { error } = await supabase.from('users').update({ plan_id: plan.id, plan_started_at: now.toISOString(), plan_expires_at: expires.toISOString() }).eq('id', id);
-      if (error) throw error;
-      return res.status(200).json({ success: true });
+      const now = new Date(), expires = new Date(now.getTime() + Number(plan.duration_days || 30) * 86400000);
+      const { error } = await supabase.from('users').update({ plan_id: plan.id, plan_started_at: now.toISOString(), plan_expires_at: expires.toISOString() }).eq('id', id); if (error) throw error;
+      await audit('user.plan_changed','user',id,{plan_id:plan.id,plan_name:plan.name}); return res.status(200).json({ success: true });
     }
     if (action === 'mark-payment-failed') {
-      const { error } = await supabase.from('payments').update({ status: 'failed' }).eq('id', id).neq('status', 'paid');
-      if (error) throw error;
-      return res.status(200).json({ success: true });
+      const { error } = await supabase.from('payments').update({ status: 'failed' }).eq('id', id).neq('status', 'paid'); if (error) throw error;
+      await audit('payment.failed','payment',id); return res.status(200).json({ success: true });
     }
-    if (['approve-doctor','reject-doctor','suspend-doctor'].includes(action)) {
-      const status = action === 'approve-doctor' ? 'verified' : action === 'reject-doctor' ? 'rejected' : 'suspended';
-      const { data: doctor, error } = await supabase.from('doctor_profiles').update({ verification_status: status, public_profile: status === 'verified', updated_at: new Date().toISOString() }).eq('id', id).select('id,user_id,full_name,specialty,verification_status,public_profile').single();
+    if (['approve-doctor','reject-doctor','suspend-doctor','publish-doctor','hide-doctor'].includes(action)) {
+      let patch={updated_at:new Date().toISOString()};
+      if(action==='approve-doctor')patch={...patch,verification_status:'verified',public_profile:true};
+      if(action==='reject-doctor')patch={...patch,verification_status:'rejected',public_profile:false};
+      if(action==='suspend-doctor')patch={...patch,verification_status:'suspended',public_profile:false};
+      if(action==='publish-doctor')patch.public_profile=true;
+      if(action==='hide-doctor')patch.public_profile=false;
+      const { data: doctor, error } = await supabase.from('doctor_profiles').update(patch).eq('id', id).select('id,user_id,full_name,specialty,verification_status,public_profile').single();
       if (error || !doctor) throw error || new Error('DOCTOR_NOT_FOUND');
-      if (doctor.user_id) await supabase.from('users').update({ account_type: 'doctor' }).eq('id', doctor.user_id);
-      await supabase.from('audit_logs').insert({ actor_type: 'admin', action: `doctor.${status}`, resource_type: 'doctor_profile', resource_id: id, metadata: { doctor_name: doctor.full_name, specialty: doctor.specialty } });
-      return res.status(200).json({ success: true, doctor });
+      if (doctor.user_id && doctor.verification_status==='verified') await supabase.from('users').update({ account_type: 'doctor' }).eq('id', doctor.user_id);
+      await audit(`doctor.${action}`,'doctor_profile',id,{doctor_name:doctor.full_name}); return res.status(200).json({ success: true, doctor });
+    }
+    if (action === 'verify-org' || action === 'unverify-org') {
+      const verified=action==='verify-org'; const {data,error}=await supabase.from('organizations').update({verified}).eq('id',id).select('*').single(); if(error)throw error;
+      await audit(`organization.${verified?'verified':'unverified'}`,'organization',id,{name:data.name}); return res.status(200).json({success:true,organization:data});
+    }
+    if (action === 'appointment-status') {
+      const status=String(req.body?.status||''); if(!['requested','confirmed','completed','cancelled','no_show'].includes(status)) return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
+      const patch={status,updated_at:new Date().toISOString()}; if(req.body?.cancellation_reason!==undefined)patch.cancellation_reason=text(req.body.cancellation_reason,1000);
+      const {data,error}=await supabase.from('appointments').update(patch).eq('id',id).select('id,patient_id,doctor_id,status').single(); if(error)throw error;
+      await audit(`appointment.${status}`,'appointment',id); return res.status(200).json({success:true,appointment:data});
+    }
+    if (action === 'task-status') {
+      const status=String(req.body?.status||''); if(!['open','completed','cancelled'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
+      const {data,error}=await supabase.from('care_tasks').update({status,completed_at:status==='completed'?new Date().toISOString():null}).eq('id',id).select('*').single(); if(error)throw error;
+      await audit(`care_task.${status}`,'care_task',id); return res.status(200).json({success:true,item:data});
+    }
+    if (action === 'order-status') {
+      const status=String(req.body?.status||''); if(!['ordered','scheduled','in_progress','completed','cancelled'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
+      const {data,error}=await supabase.from('diagnostic_orders').update({status,completed_at:status==='completed'?new Date().toISOString():null}).eq('id',id).select('*').single(); if(error)throw error;
+      await audit(`diagnostic_order.${status}`,'diagnostic_order',id); return res.status(200).json({success:true,item:data});
+    }
+    if (action === 'article-status') {
+      const status=String(req.body?.status||''); if(!['draft','review','published','archived'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
+      const {data,error}=await supabase.from('medical_articles').update({status,published_at:status==='published'?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq('id',id).select('id,title,status,published_at').single(); if(error)throw error;
+      await audit(`article.${status}`,'medical_article',id,{title:data.title}); return res.status(200).json({success:true,item:data});
     }
     return res.status(400).json({ success: false, error: 'عملیات پشتیبانی نمی‌شود' });
   } catch (error) {
-    console.error('admin-action', error);
-    return res.status(500).json({ success: false, error: 'عملیات مدیریت انجام نشد' });
+    console.error('admin-action', error); return res.status(500).json({ success: false, error: 'عملیات مدیریت انجام نشد' });
   }
 }
