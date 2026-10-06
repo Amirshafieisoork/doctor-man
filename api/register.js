@@ -1,15 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 import { setUserSession } from './_lib/session.js';
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) throw new Error('Supabase server configuration is missing');
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { supabase } from './_lib/db.js';
 
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `scrypt$${salt}$${hash}`;
 }
 
 export default async function handler(req, res) {
@@ -27,13 +23,27 @@ export default async function handler(req, res) {
   const { data: existing } = await supabase.from('users').select('id').eq('phone', phone).maybeSingle();
   if (existing) return res.status(409).json({ error: 'این شماره قبلاً ثبت شده است' });
 
+  const { data: freePlan } = await supabase.from('plans').select('id,duration_days').eq('slug', 'free').single();
+  const now = new Date();
+  const expires = new Date(now.getTime() + Number(freePlan?.duration_days || 30) * 86400000);
+
   const { data, error } = await supabase
     .from('users')
-    .insert([{ phone, password: hashPassword(password), name }])
+    .insert([{
+      phone,
+      password: hashPassword(password),
+      name,
+      plan_id: freePlan?.id || null,
+      plan_started_at: now.toISOString(),
+      plan_expires_at: expires.toISOString()
+    }])
     .select('id, name, phone')
     .single();
 
-  if (error) return res.status(500).json({ error: 'خطا در ثبت‌نام' });
+  if (error) {
+    console.error('register', error);
+    return res.status(500).json({ error: 'خطا در ثبت‌نام' });
+  }
 
   setUserSession(res, data);
   return res.status(200).json({ success: true, user: data });
