@@ -2,10 +2,16 @@
   "version": 2,
   "routes": [
     { "src": "/api/analyze-lab", "dest": "/api/analyze-secure" },
+    { "src": "/sitemap.xml", "dest": "/api/sitemap" },
+    { "src": "/doctor/([^/]+)", "dest": "/api/doctor-page?slug=$1" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/", "dest": "/home-v2.html" },
     { "src": "/auth", "dest": "/auth-v2.html" },
     { "src": "/auth.html", "dest": "/auth-v2.html" },
+    { "src": "/health", "dest": "/health-v3.html" },
+    { "src": "/doctors", "dest": "/doctors.html" },
+    { "src": "/doctor-onboarding", "dest": "/doctor-onboarding.html" },
+    { "src": "/doctor-portal", "dest": "/doctor-portal.html" },
     { "src": "/profile", "dest": "/profile-v2.html" },
     { "src": "/profile.html", "dest": "/profile-v2.html" },
     { "src": "/pricing", "dest": "/pricing-v2.html" },
@@ -21,6 +27,7 @@
   ],
   "functions": {
     "api/analyze-secure.js": { "maxDuration": 30 },
-    "api/support-chat.js": { "maxDuration": 30 }
+    "api/support-chat.js": { "maxDuration": 30 },
+    "api/health-navigator.js": { "maxDuration": 30 }
   }
 }
