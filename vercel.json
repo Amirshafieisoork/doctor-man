@@ -4,6 +4,8 @@
     { "src": "/api/analyze-lab", "dest": "/api/analyze-secure" },
     { "src": "/sitemap.xml", "dest": "/api/sitemap" },
     { "src": "/doctor/([^/]+)", "dest": "/api/doctor-page?slug=$1" },
+    { "src": "/learn/([^/]+)", "dest": "/api/learn-page?slug=$1" },
+    { "src": "/learn", "dest": "/api/learn-page" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/", "dest": "/home-v2.html" },
     { "src": "/auth", "dest": "/auth-v2.html" },
