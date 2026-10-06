@@ -14,7 +14,8 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Check serverless JavaScript syntax
         run: find api -type f -name '*.js' -print0 | xargs -0 -n1 node --check
       - name: Validate JSON configuration
