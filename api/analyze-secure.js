@@ -1,17 +1,15 @@
 import OpenAI from 'openai';
 import Busboy from 'busboy';
 import { requireUser } from './_lib/session.js';
+import { supabase } from './_lib/db.js';
 
 export const config = { api: { bodyParser: false } };
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const AVALAI_KEY = process.env.AVALAI_API_KEY;
 const MAX_IMAGES = 4;
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
-if (!SUPABASE_URL || !SUPABASE_KEY || !AVALAI_KEY) throw new Error('Server configuration is missing');
+if (!AVALAI_KEY) throw new Error('AVALAI_API_KEY is missing');
 
 function parseForm(req) {
   return new Promise((resolve, reject) => {
@@ -19,7 +17,6 @@ function parseForm(req) {
     const fields = {};
     const images = [];
     let invalidFile = false;
-
     busboy.on('field', (name, value) => { fields[name] = String(value).slice(0, 1000); });
     busboy.on('file', (_name, file, info) => {
       const chunks = [];
@@ -44,12 +41,48 @@ function extractJson(text) {
   } catch { return null; }
 }
 
+function monthStart() {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+}
+
+async function getEntitlement(userId) {
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('status,plan_expires_at,plans(id,name,slug,test_limit)')
+    .eq('id', userId)
+    .single();
+  if (error || !user) throw new Error('USER_NOT_FOUND');
+  if (user.status === 'blocked') throw new Error('USER_BLOCKED');
+
+  let plan = user.plans;
+  if (!plan || (user.plan_expires_at && new Date(user.plan_expires_at) < new Date())) {
+    const { data: freePlan } = await supabase.from('plans').select('id,name,slug,test_limit').eq('slug', 'free').single();
+    plan = freePlan;
+    if (freePlan) {
+      await supabase.from('users').update({ plan_id: freePlan.id, plan_started_at: new Date().toISOString(), plan_expires_at: new Date(Date.now() + 30 * 86400000).toISOString() }).eq('id', userId);
+    }
+  }
+
+  const { count } = await supabase.from('test_results').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', monthStart());
+  const used = Number(count || 0);
+  const limit = Number(plan?.test_limit ?? 2);
+  if (limit >= 0 && used >= limit) {
+    const error = new Error('QUOTA_EXCEEDED');
+    error.plan = plan;
+    error.used = used;
+    throw error;
+  }
+  return { plan, used, remaining: limit < 0 ? null : Math.max(0, limit - used) };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const session = requireUser(req, res);
   if (!session) return;
 
   try {
+    const entitlement = await getEntitlement(session.sub);
     const { fields, images } = await parseForm(req);
     if (!images.length) return res.status(400).json({ success: false, error: 'حداقل یک تصویر باید ارسال شود' });
 
@@ -62,21 +95,9 @@ export default async function handler(req, res) {
 
     const imageDataUrls = images.map(img => `data:${img.mimeType};base64,${img.buffer.toString('base64')}`);
     const openai = new OpenAI({ apiKey: AVALAI_KEY, baseURL: 'https://api.avalai.ir/v1' });
-
-    const prompt = `تو یک دستیار آموزشی سلامت هستی. تصاویر، برگه آزمایش پزشکی یک کاربر هستند. اطلاعات بیمار: سن ${age || 'نامشخص'}، جنسیت ${gender || 'نامشخص'}، علت آزمایش ${reason || 'ذکر نشده'}.
-
-تمام صفحات را با هم بررسی کن و فقط JSON معتبر با ساختار زیر برگردان:
-{"status":"normal|warning|danger","status_reason":"...","full_text":"..."}
-
-قواعد:
-- هیچ تشخیص قطعی، نسخه دارویی، تغییر دوز، یا تضمین پزشکی ارائه نکن.
-- اگر تصویر ناخوانا یا داده‌ای نامطمئن است، صریحاً بگو و مقدار را حدس نزن.
-- محدوده مرجع چاپ‌شده روی خود برگه را بر محدوده عمومی مقدم بدان.
-- status=danger فقط وقتی استفاده شود که مقدار یا ترکیبی از مقادیر در خود برگه به شکل واضح بسیار غیرطبیعی است یا متن برگه هشدار جدی دارد؛ در این حالت توصیه به ارزیابی فوری پزشکی بده، نه تشخیص بیماری.
-- full_text فارسی، روشن و ساختارمند باشد و این بخش‌ها را داشته باشد: خلاصه، بررسی تک‌تک مقادیر قابل‌خواندن، موارد خارج از محدوده، توصیه‌های عمومی کم‌خطر، زمان مناسب مراجعه به پزشک، و یادآوری اینکه تفسیر آموزشی است و جای پزشک را نمی‌گیرد.
-- برای هر آیتم قابل‌خواندن: نام، مقدار، محدوده مرجع درج‌شده، وضعیت، و توضیح کوتاه را ذکر کن.
-- از توصیه گیاه دارویی، مکمل یا داروی مشخص خودداری کن مگر صرفاً بگویی قبل از مصرف با پزشک/داروساز مشورت شود.
-- اگر داده کافی نیست، همین را در status_reason و full_text منعکس کن.`;
+    const prompt = `تو دستیار آموزشی سلامت DrMan هستی. تصاویر، برگه آزمایش پزشکی کاربر هستند. اطلاعات: سن ${age || 'نامشخص'}، جنسیت ${gender || 'نامشخص'}، علت آزمایش ${reason || 'ذکر نشده'}.
+فقط JSON معتبر برگردان: {"status":"normal|warning|danger","status_reason":"...","full_text":"..."}
+قواعد: تشخیص قطعی، نسخه، تغییر دوز یا تضمین پزشکی نده. مقدار ناخوانا را حدس نزن. محدوده مرجع خود برگه مقدم است. status=danger فقط برای وضعیت واضحاً بسیار غیرطبیعی/هشداردهنده استفاده شود. متن فارسی و شامل خلاصه، بررسی آیتم‌های قابل‌خواندن، موارد خارج محدوده، توصیه‌های عمومی کم‌خطر، زمان مراجعه به پزشک و یادآوری آموزشی بودن تفسیر باشد.`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -95,31 +116,24 @@ export default async function handler(req, res) {
     const analysis = String(parsed?.full_text || raw || 'نتیجه قابل پردازش نبود').slice(0, 30000);
     const statusReason = String(parsed?.status_reason || '').slice(0, 1000);
 
-    const saveRes = await fetch(`${SUPABASE_URL}/rest/v1/test_results`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        Prefer: 'return=minimal'
-      },
-      body: JSON.stringify({
-        user_id: session.sub,
-        age: age || null,
-        gender: gender || null,
-        reason: reason || null,
-        analysis,
-        status,
-        image_url: null,
-        images_base64: imageDataUrls
-      })
+    const { error: saveError } = await supabase.from('test_results').insert({
+      user_id: session.sub,
+      age: age || null,
+      gender: gender || null,
+      reason: reason || null,
+      analysis,
+      status,
+      image_url: null,
+      images_base64: imageDataUrls
     });
+    if (saveError) console.error('Failed to save lab result', saveError);
 
-    if (!saveRes.ok) console.error('Failed to save lab result', saveRes.status, await saveRes.text());
-
-    return res.status(200).json({ success: true, analysis, status, status_reason: statusReason });
+    const remainingAfter = entitlement.remaining == null ? null : Math.max(0, entitlement.remaining - 1);
+    return res.status(200).json({ success: true, analysis, status, status_reason: statusReason, plan: entitlement.plan?.name, remaining: remainingAfter });
   } catch (error) {
     console.error('analyze-secure', error);
+    if (error.message === 'QUOTA_EXCEEDED') return res.status(402).json({ success: false, error: 'سهمیه تحلیل این ماه شما تمام شده است. برای ادامه پلن خود را ارتقا دهید.', code: 'QUOTA_EXCEEDED', plan: error.plan?.name });
+    if (error.message === 'USER_BLOCKED') return res.status(403).json({ success: false, error: 'حساب کاربری شما غیرفعال شده است' });
     return res.status(500).json({ success: false, error: 'تحلیل آزمایش انجام نشد. لطفاً دوباره تلاش کنید.' });
   }
 }
