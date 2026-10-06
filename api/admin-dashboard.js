@@ -1,16 +1,9 @@
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
-
-async function rows(query, fallback = []) {
-  try { const { data, error } = await query; if (error) throw error; return data || fallback; }
-  catch (e) { console.error('admin-dashboard section', e); return fallback; }
-}
-
-export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  if (!requireAdmin(req, res)) return;
-
-  const [users, patients, doctors, appointments, tests, plans, payments, support, organizations, articles, tasks, orders, audits] = await Promise.all([
+async function rows(query,fallback=[]){try{const {data,error}=await query;if(error)throw error;return data||fallback}catch(e){console.error('admin-dashboard section',e);return fallback}}
+export default async function handler(req,res){
+  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});if(!requireAdmin(req,res))return;
+  const [users,patients,doctors,appointments,tests,plans,payments,support,organizations,articles,tasks,orders,audits]=await Promise.all([
     rows(supabase.from('users').select('id,name,phone,status,account_type,created_at,plan_id,plan_started_at,plan_expires_at,plans(name,slug)').order('created_at',{ascending:false}).limit(1000)),
     rows(supabase.from('patients').select('id,owner_user_id,relation,display_name,birth_date,sex,created_at').order('created_at',{ascending:false}).limit(1000)),
     rows(supabase.from('doctor_profiles').select('id,user_id,slug,full_name,medical_license_number,specialty,sub_specialty,city,phone,verification_status,public_profile,accepts_online,accepts_in_person,consultation_fee,created_at,updated_at').order('created_at',{ascending:false}).limit(1000)),
@@ -22,34 +15,9 @@ export default async function handler(req, res) {
     rows(supabase.from('organizations').select('*').order('created_at',{ascending:false}).limit(500)),
     rows(supabase.from('medical_articles').select('id,slug,title,summary,category,keywords,seo_title,seo_description,author_name,reviewer_doctor_id,status,published_at,created_at,updated_at').order('updated_at',{ascending:false}).limit(500)),
     rows(supabase.from('care_tasks').select('id,patient_id,type,title,due_at,status,created_at,patients(display_name)').order('created_at',{ascending:false}).limit(500)),
-    rows(supabase.from('diagnostic_orders').select('id,patient_id,order_type,items,priority,status,ordered_at,completed_at,patients(display_name),doctor_profiles:ordered_by_doctor_id(full_name)').order('ordered_at',{ascending:false}).limit(500)),
+    rows(supabase.from('diagnostic_orders').select('id,patient_id,order_type,items,priority,status,ordered_at,completed_at,patients(display_name),doctor_profiles(full_name)').order('ordered_at',{ascending:false}).limit(500)),
     rows(supabase.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(300))
   ]);
-
-  const revenue = payments.filter(p=>p.status==='paid').reduce((s,p)=>s+Number(p.amount||0),0);
-  const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0,0,0,0);
-  const monthRevenue = payments.filter(p=>p.status==='paid' && new Date(p.paid_at||p.created_at)>=monthStart).reduce((s,p)=>s+Number(p.amount||0),0);
-  const now = Date.now();
-  const next24 = appointments.filter(a=>new Date(a.starts_at).getTime()>=now && new Date(a.starts_at).getTime()<=now+86400000 && !['cancelled','completed'].includes(a.status)).length;
-
-  return res.status(200).json({
-    success:true,
-    stats:{
-      users:users.length, active_users:users.filter(u=>u.status==='active').length, blocked_users:users.filter(u=>u.status==='blocked').length,
-      patients:patients.length, doctors:doctors.length, verified_doctors:doctors.filter(d=>d.verification_status==='verified').length, pending_doctors:doctors.filter(d=>d.verification_status==='pending').length,
-      appointments:appointments.length, next_24h_appointments:next24, tests:tests.length, danger_tests:tests.filter(t=>t.status==='danger').length,
-      paid_payments:payments.filter(p=>p.status==='paid').length, revenue, month_revenue:monthRevenue,
-      organizations:organizations.length, articles:articles.length, published_articles:articles.filter(a=>a.status==='published').length,
-      open_tasks:tasks.filter(t=>t.status==='open').length, open_orders:orders.filter(o=>!['completed','cancelled'].includes(o.status)).length
-    },
-    system:{
-      supabase:Boolean(process.env.SUPABASE_URL&&process.env.SUPABASE_SERVICE_ROLE_KEY),
-      ai:Boolean(process.env.AVALAI_API_KEY),
-      digipay:Boolean(process.env.DIGIPAY_CLIENT_ID&&process.env.DIGIPAY_CLIENT_SECRET&&process.env.DIGIPAY_USERNAME&&process.env.DIGIPAY_PASSWORD),
-      session_secret:Boolean(process.env.SESSION_SECRET||process.env.SUPABASE_SERVICE_ROLE_KEY),
-      node:process.version,
-      environment:process.env.NODE_ENV||'unknown'
-    },
-    users,patients,doctors,appointments,tests,plans,payments,support,organizations,articles,tasks,orders,audits
-  });
+  const revenue=payments.filter(p=>p.status==='paid').reduce((s,p)=>s+Number(p.amount||0),0),monthStart=new Date();monthStart.setUTCDate(1);monthStart.setUTCHours(0,0,0,0);const monthRevenue=payments.filter(p=>p.status==='paid'&&new Date(p.paid_at||p.created_at)>=monthStart).reduce((s,p)=>s+Number(p.amount||0),0),now=Date.now(),next24=appointments.filter(a=>new Date(a.starts_at).getTime()>=now&&new Date(a.starts_at).getTime()<=now+86400000&&!['cancelled','completed'].includes(a.status)).length;
+  return res.status(200).json({success:true,stats:{users:users.length,active_users:users.filter(u=>u.status==='active').length,blocked_users:users.filter(u=>u.status==='blocked').length,patients:patients.length,doctors:doctors.length,verified_doctors:doctors.filter(d=>d.verification_status==='verified').length,pending_doctors:doctors.filter(d=>d.verification_status==='pending').length,appointments:appointments.length,next_24h_appointments:next24,tests:tests.length,danger_tests:tests.filter(t=>t.status==='danger').length,paid_payments:payments.filter(p=>p.status==='paid').length,revenue,month_revenue:monthRevenue,organizations:organizations.length,articles:articles.length,published_articles:articles.filter(a=>a.status==='published').length,open_tasks:tasks.filter(t=>t.status==='open').length,open_orders:orders.filter(o=>!['completed','cancelled'].includes(o.status)).length},system:{supabase:Boolean(process.env.SUPABASE_URL&&process.env.SUPABASE_SERVICE_ROLE_KEY),ai:Boolean(process.env.AVALAI_API_KEY),digipay:Boolean(process.env.DIGIPAY_CLIENT_ID&&process.env.DIGIPAY_CLIENT_SECRET&&process.env.DIGIPAY_USERNAME&&process.env.DIGIPAY_PASSWORD),session_secret:Boolean(process.env.SESSION_SECRET||process.env.SUPABASE_SERVICE_ROLE_KEY),node:process.version,environment:process.env.NODE_ENV||'unknown'},users,patients,doctors,appointments,tests,plans,payments,support,organizations,articles,tasks,orders,audits});
 }
