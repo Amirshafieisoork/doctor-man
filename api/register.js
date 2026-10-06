@@ -1,13 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+import { setUserSession } from './_lib/session.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase server configuration is missing');
-}
-
+if (!supabaseUrl || !supabaseServiceKey) throw new Error('Supabase server configuration is missing');
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 function hashPassword(password) {
@@ -15,9 +13,7 @@ function hashPassword(password) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const phone = String(body.phone || '').trim();
@@ -28,25 +24,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'شماره تماس یا رمز عبور معتبر نیست' });
   }
 
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id')
-    .eq('phone', phone)
-    .single();
-
-  if (existing) {
-    return res.status(400).json({ error: 'این شماره قبلاً ثبت شده است' });
-  }
+  const { data: existing } = await supabase.from('users').select('id').eq('phone', phone).maybeSingle();
+  if (existing) return res.status(409).json({ error: 'این شماره قبلاً ثبت شده است' });
 
   const { data, error } = await supabase
     .from('users')
     .insert([{ phone, password: hashPassword(password), name }])
-    .select()
+    .select('id, name, phone')
     .single();
 
-  if (error) {
-    return res.status(500).json({ error: 'خطا در ثبت‌نام: ' + error.message });
-  }
+  if (error) return res.status(500).json({ error: 'خطا در ثبت‌نام' });
 
-  return res.status(200).json({ success: true, userId: data.id });
+  setUserSession(res, data);
+  return res.status(200).json({ success: true, user: data });
 }
