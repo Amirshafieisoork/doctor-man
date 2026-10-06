@@ -1,139 +1,32 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DrMan</title>
+# DrMan
 
-<style>
+DrMan is a Persian health ecosystem that combines a longitudinal medical record, AI-assisted lab interpretation, family profiles, doctor discovery, appointments, consent-based record sharing, care follow-up, subscriptions, DigiPay checkout, medical content/SEO, and a secure admin console.
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:tahoma;
-}
+## Current architecture
+- Static RTL frontend pages served by Vercel
+- Vercel serverless APIs in `/api`
+- Supabase PostgreSQL + private Storage
+- Signed HttpOnly user/admin sessions
+- AvalAI/OpenAI-compatible AI endpoints
+- DigiPay server-side checkout + verification flow
 
-body{
-background:#f5f7fb;
-}
+## Main product surfaces
+- `/` home and lab analysis
+- `/health` longitudinal medical record and family profiles
+- `/doctors` doctor directory
+- `/doctor/:slug` public SEO doctor profile
+- `/doctor-portal` doctor workspace
+- `/pricing` subscriptions and checkout
+- `/learn` reviewed medical content
+- `/admin` ecosystem management console
 
-.hero{
-text-align:center;
-padding:80px 20px;
-}
+## Admin console
+The admin console manages users, doctors, appointments, plans/quotas, payments, organizations, care operations, content/SEO, support messages, audit logs, product settings and integration health.
 
-.logo{
-font-size:48px;
-font-weight:bold;
-color:#2563eb;
-}
+Secrets are never displayed or edited from the browser. Provider credentials remain server-side environment variables.
 
-.subtitle{
-font-size:22px;
-margin-top:15px;
-color:#444;
-}
+## Required environment variables
+See `.env.example`. DigiPay requires merchant credentials before live payments can be enabled.
 
-.desc{
-max-width:700px;
-margin:25px auto;
-line-height:2;
-color:#666;
-}
-
-.btn{
-display:inline-block;
-background:#2563eb;
-color:white;
-padding:14px 30px;
-border-radius:10px;
-text-decoration:none;
-margin-top:20px;
-}
-
-.features{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-gap:20px;
-padding:50px 20px;
-}
-
-.card{
-background:white;
-width:280px;
-padding:25px;
-border-radius:15px;
-box-shadow:0 0 15px rgba(0,0,0,.08);
-}
-
-.card h3{
-margin-bottom:10px;
-color:#2563eb;
-}
-
-.footer{
-text-align:center;
-padding:30px;
-color:#777;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<section class="hero">
-
-<div class="logo">
-DrMan
-</div>
-
-<div class="subtitle">
-دستیار هوشمند سلامت شما
-</div>
-
-<div class="desc">
-آپلود عکس آزمایش، دریافت تفسیر ساده،
-مدیریت سوابق پزشکی و همراهی هوشمند در مسیر سلامت.
-</div>
-
-<a href="#" class="btn">
-به زودی شروع کنید
-</a>
-
-</section>
-
-<section class="features">
-
-<div class="card">
-<h3>تفسیر آزمایش</h3>
-<p>
-آپلود عکس آزمایش و دریافت توضیح قابل فهم.
-</p>
-</div>
-
-<div class="card">
-<h3>پرونده سلامت</h3>
-<p>
-نگهداری سوابق و نتایج آزمایش‌ها.
-</p>
-</div>
-
-<div class="card">
-<h3>یادآوری پزشکی</h3>
-<p>
-یادآوری دارو، آزمایش و مراجعه بعدی.
-</p>
-</div>
-
-</section>
-
-<div class="footer">
-© DrMan 2025
-</div>
-
-</body>
-</html>
+## Deployment
+The production Vercel project should be the single `drman` project linked to this repository. Duplicate Vercel projects should be removed to avoid consuming build quota multiple times per commit.
