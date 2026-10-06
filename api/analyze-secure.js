@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import Busboy from 'busboy';
+import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
@@ -7,7 +8,7 @@ export const config = { api: { bodyParser: false } };
 
 const AVALAI_KEY = process.env.AVALAI_API_KEY;
 const MAX_IMAGES = 4;
-const MAX_FILE_SIZE = 8 * 1024 * 1024;
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 if (!AVALAI_KEY) throw new Error('AVALAI_API_KEY is missing');
 
@@ -21,11 +22,12 @@ function parseForm(req) {
     busboy.on('file', (_name, file, info) => {
       const chunks = [];
       const mimeType = info?.mimeType || '';
+      let limited = false;
       if (!allowedTypes.has(mimeType)) invalidFile = true;
-      file.on('limit', () => { invalidFile = true; });
-      file.on('data', chunk => chunks.push(chunk));
+      file.on('limit', () => { limited = true; invalidFile = true; });
+      file.on('data', chunk => { if (!limited) chunks.push(chunk); });
       file.on('end', () => {
-        if (!invalidFile && images.length < MAX_IMAGES) images.push({ buffer: Buffer.concat(chunks), mimeType });
+        if (!limited && allowedTypes.has(mimeType) && images.length < MAX_IMAGES) images.push({ buffer: Buffer.concat(chunks), mimeType });
       });
     });
     busboy.on('finish', () => invalidFile ? reject(new Error('فرمت یا حجم تصویر مجاز نیست')) : resolve({ fields, images }));
@@ -47,33 +49,38 @@ function monthStart() {
 }
 
 async function getEntitlement(userId) {
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('status,plan_expires_at,plans(id,name,slug,test_limit)')
-    .eq('id', userId)
-    .single();
+  const { data: user, error } = await supabase.from('users').select('status,plan_expires_at,plans(id,name,slug,test_limit)').eq('id', userId).single();
   if (error || !user) throw new Error('USER_NOT_FOUND');
   if (user.status === 'blocked') throw new Error('USER_BLOCKED');
-
   let plan = user.plans;
   if (!plan || (user.plan_expires_at && new Date(user.plan_expires_at) < new Date())) {
     const { data: freePlan } = await supabase.from('plans').select('id,name,slug,test_limit').eq('slug', 'free').single();
     plan = freePlan;
-    if (freePlan) {
-      await supabase.from('users').update({ plan_id: freePlan.id, plan_started_at: new Date().toISOString(), plan_expires_at: new Date(Date.now() + 30 * 86400000).toISOString() }).eq('id', userId);
-    }
+    if (freePlan) await supabase.from('users').update({ plan_id: freePlan.id, plan_started_at: new Date().toISOString(), plan_expires_at: new Date(Date.now() + 30 * 86400000).toISOString() }).eq('id', userId);
   }
-
   const { count } = await supabase.from('test_results').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', monthStart());
   const used = Number(count || 0);
   const limit = Number(plan?.test_limit ?? 2);
-  if (limit >= 0 && used >= limit) {
-    const error = new Error('QUOTA_EXCEEDED');
-    error.plan = plan;
-    error.used = used;
+  if (limit >= 0 && used >= limit) { const error = new Error('QUOTA_EXCEEDED'); error.plan = plan; throw error; }
+  return { plan, remaining: limit < 0 ? null : Math.max(0, limit - used) };
+}
+
+async function uploadPrivateImages(userId, images) {
+  const uploaded = [];
+  try {
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      const ext = img.mimeType === 'image/png' ? 'png' : img.mimeType === 'image/webp' ? 'webp' : 'jpg';
+      const path = `${userId}/${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}-${i+1}.${ext}`;
+      const { error } = await supabase.storage.from('lab-images').upload(path, img.buffer, { contentType: img.mimeType, upsert: false, cacheControl: '3600' });
+      if (error) throw error;
+      uploaded.push(path);
+    }
+    return uploaded;
+  } catch (error) {
+    if (uploaded.length) await supabase.storage.from('lab-images').remove(uploaded).catch(() => null);
     throw error;
   }
-  return { plan, used, remaining: limit < 0 ? null : Math.max(0, limit - used) };
 }
 
 export default async function handler(req, res) {
@@ -81,6 +88,7 @@ export default async function handler(req, res) {
   const session = requireUser(req, res);
   if (!session) return;
 
+  let storedPaths = [];
   try {
     const entitlement = await getEntitlement(session.sub);
     const { fields, images } = await parseForm(req);
@@ -89,26 +97,14 @@ export default async function handler(req, res) {
     const age = String(fields.age || '').trim();
     const gender = String(fields.gender || '').trim().slice(0, 20);
     const reason = String(fields.reason || '').trim().slice(0, 500);
-    if (age && (!/^\d{1,3}$/.test(age) || Number(age) < 1 || Number(age) > 120)) {
-      return res.status(400).json({ success: false, error: 'سن واردشده معتبر نیست' });
-    }
+    if (age && (!/^\d{1,3}$/.test(age) || Number(age) < 1 || Number(age) > 120)) return res.status(400).json({ success: false, error: 'سن واردشده معتبر نیست' });
 
     const imageDataUrls = images.map(img => `data:${img.mimeType};base64,${img.buffer.toString('base64')}`);
     const openai = new OpenAI({ apiKey: AVALAI_KEY, baseURL: 'https://api.avalai.ir/v1' });
     const prompt = `تو دستیار آموزشی سلامت DrMan هستی. تصاویر، برگه آزمایش پزشکی کاربر هستند. اطلاعات: سن ${age || 'نامشخص'}، جنسیت ${gender || 'نامشخص'}، علت آزمایش ${reason || 'ذکر نشده'}.
 فقط JSON معتبر برگردان: {"status":"normal|warning|danger","status_reason":"...","full_text":"..."}
 قواعد: تشخیص قطعی، نسخه، تغییر دوز یا تضمین پزشکی نده. مقدار ناخوانا را حدس نزن. محدوده مرجع خود برگه مقدم است. status=danger فقط برای وضعیت واضحاً بسیار غیرطبیعی/هشداردهنده استفاده شود. متن فارسی و شامل خلاصه، بررسی آیتم‌های قابل‌خواندن، موارد خارج محدوده، توصیه‌های عمومی کم‌خطر، زمان مراجعه به پزشک و یادآوری آموزشی بودن تفسیر باشد.`;
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: [
-        ...imageDataUrls.map(url => ({ type: 'image_url', image_url: { url } })),
-        { type: 'text', text: prompt }
-      ] }],
-      max_tokens: 3500,
-      temperature: 0.2
-    });
-
+    const response = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: [...imageDataUrls.map(url => ({ type: 'image_url', image_url: { url } })), { type: 'text', text: prompt }] }], max_tokens: 3500, temperature: 0.2 });
     const raw = response.choices?.[0]?.message?.content || '';
     const parsed = extractJson(raw);
     const allowedStatus = new Set(['normal', 'warning', 'danger']);
@@ -116,17 +112,9 @@ export default async function handler(req, res) {
     const analysis = String(parsed?.full_text || raw || 'نتیجه قابل پردازش نبود').slice(0, 30000);
     const statusReason = String(parsed?.status_reason || '').slice(0, 1000);
 
-    const { error: saveError } = await supabase.from('test_results').insert({
-      user_id: session.sub,
-      age: age || null,
-      gender: gender || null,
-      reason: reason || null,
-      analysis,
-      status,
-      image_url: null,
-      images_base64: imageDataUrls
-    });
-    if (saveError) console.error('Failed to save lab result', saveError);
+    storedPaths = await uploadPrivateImages(session.sub, images);
+    const { error: saveError } = await supabase.from('test_results').insert({ user_id: session.sub, age: age || null, gender: gender || null, reason: reason || null, analysis, status, image_url: null, images_base64: null, image_paths: storedPaths });
+    if (saveError) { await supabase.storage.from('lab-images').remove(storedPaths); throw saveError; }
 
     const remainingAfter = entitlement.remaining == null ? null : Math.max(0, entitlement.remaining - 1);
     return res.status(200).json({ success: true, analysis, status, status_reason: statusReason, plan: entitlement.plan?.name, remaining: remainingAfter });
