@@ -6,7 +6,7 @@ export default async function handler(req,res){
   const [users,patients,doctors,appointments,tests,plans,payments,support,organizations,articles,tasks,orders,audits]=await Promise.all([
     rows(supabase.from('users').select('id,name,phone,status,account_type,created_at,plan_id,plan_started_at,plan_expires_at,plans(name,slug)').order('created_at',{ascending:false}).limit(1000)),
     rows(supabase.from('patients').select('id,owner_user_id,relation,display_name,birth_date,sex,created_at').order('created_at',{ascending:false}).limit(1000)),
-    rows(supabase.from('doctor_profiles').select('id,user_id,slug,full_name,medical_license_number,specialty,sub_specialty,city,phone,verification_status,public_profile,accepts_online,accepts_in_person,consultation_fee,created_at,updated_at').order('created_at',{ascending:false}).limit(1000)),
+    rows(supabase.from('doctor_profiles').select('id,user_id,slug,full_name,medical_license_number,specialty,sub_specialty,bio,city,phone,verification_status,public_profile,accepts_online,accepts_in_person,consultation_fee,created_at,updated_at').order('created_at',{ascending:false}).limit(1000)),
     rows(supabase.from('appointments').select('id,patient_id,doctor_id,starts_at,ends_at,mode,status,reason,created_at,doctor_profiles(full_name,specialty),patients(display_name)').order('starts_at',{ascending:false}).limit(1000)),
     rows(supabase.from('test_results').select('id,user_id,patient_id,age,gender,reason,status,created_at').order('created_at',{ascending:false}).limit(1000)),
     rows(supabase.from('plans').select('*').order('display_order',{ascending:true})),
