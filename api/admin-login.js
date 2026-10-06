@@ -16,5 +16,5 @@ export default async function handler(req, res) {
   if (!valid) return res.status(401).json({ error: 'رمز اشتباه است' });
 
   setAdminSession(res);
-  return res.status(200).json({ success: true });
+  return res.status(200).json({ success: true, token: 'server-session' });
 }
