@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+import { setUserSession } from './_lib/session.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,9 +16,7 @@ function hashPassword(password) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const phone = String(body.phone || '').trim();
@@ -34,9 +33,8 @@ export default async function handler(req, res) {
     .eq('password', hashPassword(password))
     .single();
 
-  if (error || !data) {
-    return res.status(401).json({ error: 'شماره یا رمز اشتباه است' });
-  }
+  if (error || !data) return res.status(401).json({ error: 'شماره یا رمز اشتباه است' });
 
+  setUserSession(res, data);
   return res.status(200).json({ success: true, user: data });
 }
