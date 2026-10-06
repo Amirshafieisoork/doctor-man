@@ -5,11 +5,12 @@ const ADMIN_COOKIE_NAME = 'drman_admin';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 
 function getSecret() {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error('SESSION_SECRET must be at least 32 characters');
-  }
-  return secret;
+  const explicit = process.env.SESSION_SECRET;
+  if (explicit && explicit.length >= 32) return explicit;
+
+  const serverOnlyKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serverOnlyKey) throw new Error('Session signing secret is missing');
+  return crypto.createHash('sha256').update(`drman-session:${serverOnlyKey}`).digest('hex');
 }
 
 function b64url(value) {
