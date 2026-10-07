@@ -17,6 +17,27 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Check serverless JavaScript syntax
         run: find api -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Check inline page JavaScript syntax
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const files = ['home-v2.html','auth-v2.html','health-v4.html','pricing-v2.html','support.html','doctors.html','doctor-onboarding.html','doctor-portal-v2.html','admin-v7.html','visit-intake.html','payment-result.html'];
+          let failed = false;
+          for (const file of files) {
+            if (!fs.existsSync(file)) continue;
+            const html = fs.readFileSync(file, 'utf8');
+            const re = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
+            let m, i = 0;
+            while ((m = re.exec(html))) {
+              i++;
+              if (/type\s*=\s*["']application\/ld\+json["']/i.test(m[1])) continue;
+              if (/\bsrc\s*=/i.test(m[1])) continue;
+              try { new Function(m[2]); }
+              catch (e) { console.error(`${file} inline script #${i}: ${e.message}`); failed = true; }
+            }
+          }
+          if (failed) process.exit(1);
+          NODE
       - name: Validate JSON configuration
         run: |
           node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"
