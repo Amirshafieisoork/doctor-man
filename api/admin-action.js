@@ -63,8 +63,18 @@ export default async function handler(req, res) {
     }
     if (action === 'article-status') {
       const status=String(req.body?.status||''); if(!['draft','review','published','archived'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
-      const {data,error}=await supabase.from('medical_articles').update({status,published_at:status==='published'?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq('id',id).select('id,title,status,published_at').single(); if(error)throw error;
-      await audit(`article.${status}`,'medical_article',id,{title:data.title}); return res.status(200).json({success:true,item:data});
+      if(status==='published'){
+        const {data:a}=await supabase.from('medical_articles').select('id,title,risk_level,review_level,reviewer_doctor_id,doctor_profiles(verification_status)').eq('id',id).maybeSingle();
+        if(!a)return res.status(404).json({success:false,error:'مقاله پیدا نشد'});
+        const verified=a.doctor_profiles?.verification_status==='verified';
+        if(a.review_level==='medical'&&!verified)return res.status(409).json({success:false,error:'مقاله با بازبینی پزشکی فقط پس از انتخاب پزشک تأییدشده قابل انتشار است'});
+        if(a.risk_level!=='low'&&!verified)return res.status(409).json({success:false,error:'محتوای متوسط یا پرریسک بدون بازبینی پزشک تأییدشده قابل انتشار نیست'});
+      }
+      const now=new Date().toISOString();
+      const patch={status,published_at:status==='published'?now:null,updated_at:now};
+      if(status==='published')patch.reviewed_at=now;
+      const {data,error}=await supabase.from('medical_articles').update(patch).eq('id',id).select('id,title,status,published_at,risk_level,review_level').single(); if(error)throw error;
+      await audit(`article.${status}`,'medical_article',id,{title:data.title,risk_level:data.risk_level,review_level:data.review_level}); return res.status(200).json({success:true,item:data});
     }
     return res.status(400).json({ success: false, error: 'عملیات پشتیبانی نمی‌شود' });
   } catch (error) {

@@ -15,7 +15,15 @@ function articlePayload(b,partial=false){const x={};
   if(!partial||b.seo_description!==undefined)x.seo_description=text(b.seo_description,300);
   if(!partial||b.author_name!==undefined)x.author_name=text(b.author_name,160);
   if(!partial||b.reviewer_doctor_id!==undefined)x.reviewer_doctor_id=b.reviewer_doctor_id||null;
-  if(!partial||b.source_links!==undefined)x.source_links=Array.isArray(b.source_links)?b.source_links.map(v=>text(v,500)).filter(Boolean).slice(0,20):[];
+  if(!partial||b.source_links!==undefined)x.source_links=Array.isArray(b.source_links)?b.source_links.map(v=>typeof v==='string'?text(v,500):{title:text(v?.title,180),url:text(v?.url,500)}).filter(v=>typeof v==='string'?Boolean(v):Boolean(v.url)).slice(0,20):[];
+  if(!partial||b.risk_level!==undefined)x.risk_level=['low','moderate','high'].includes(b.risk_level)?b.risk_level:'moderate';
+  if(!partial||b.review_level!==undefined)x.review_level=['editorial','medical'].includes(b.review_level)?b.review_level:'medical';
+  if(!partial||b.ai_assisted!==undefined)x.ai_assisted=b.ai_assisted===true;
+  if(!partial||b.featured!==undefined)x.featured=b.featured===true;
+  if(!partial||b.noindex!==undefined)x.noindex=b.noindex===true;
+  if(!partial||b.review_notes!==undefined)x.review_notes=text(b.review_notes,2000);
+  if(!partial||b.evidence_updated_at!==undefined)x.evidence_updated_at=b.evidence_updated_at||null;
+  if(!partial||b.next_review_at!==undefined)x.next_review_at=b.next_review_at||null;
   x.updated_at=new Date().toISOString(); return x;}
 
 export default async function handler(req,res){
