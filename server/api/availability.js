@@ -14,7 +14,7 @@ async function slotsForDate(doctor,schedule,date){
   for(const r of rows){const start=mins(r.start_time),end=mins(r.end_time),step=Math.max(10,Math.min(180,Number(r.slot_minutes)||30));for(let n=start;n+step<=end;n+=step){const local=hhmm(n),s=zonedDate(date,local,tz),e=new Date(s.getTime()+step*60000),busy=(appointments||[]).some(a=>{const as=new Date(a.starts_at),ae=a.ends_at?new Date(a.ends_at):new Date(as.getTime()+step*60000);return s<ae&&e>as});if(!busy&&s.getTime()>Date.now()+5*60000)slots.push({starts_at:s.toISOString(),ends_at:e.toISOString(),local_time:local,mode:r.mode,organization_id:r.organization_id,slot_minutes:step})}}
   return slots;
 }
-async function nextAvailable(doctor,schedule,days=14){
+export async function nextAvailable(doctor,schedule,days=14){
   const today=new Date().toISOString().slice(0,10);let date=today;
   for(let i=0;i<days;i++){const slots=await slotsForDate(doctor,schedule,date);if(slots.length)return {...slots[0],date};date=addDay(date)}
   return null;
