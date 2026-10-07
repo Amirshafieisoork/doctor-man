@@ -1,7 +1,7 @@
 {
   "name": "DrMan - دکتر من",
   "short_name": "DrMan",
-  "description": "پرونده سلامت، تحلیل آموزشی آزمایش، پزشکان و پیگیری سلامت",
+  "description": "پرونده سلامت، تحلیل آموزشی آزمایش، مدارک پزشکی و پیگیری سلامت",
   "lang": "fa",
   "dir": "rtl",
   "start_url": "/",
@@ -9,10 +9,31 @@
   "display": "standalone",
   "background_color": "#050d1a",
   "theme_color": "#050d1a",
-  "categories": ["medical", "health", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/drman-logo.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "medical",
+    "health",
+    "productivity"
+  ],
   "shortcuts": [
-    {"name":"پرونده سلامت","url":"/health"},
-    {"name":"پزشکان","url":"/doctors"},
-    {"name":"تحلیل آزمایش","url":"/"}
+    {
+      "name": "پرونده سلامت",
+      "url": "/health"
+    },
+    {
+      "name": "پزشکان",
+      "url": "/doctors"
+    },
+    {
+      "name": "تحلیل آزمایش",
+      "url": "/"
+    }
   ]
 }
