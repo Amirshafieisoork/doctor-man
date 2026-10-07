@@ -53,12 +53,13 @@ export default async function handler(req, res) {
     }
     if (action === 'set-plan') {
       const planId = String(req.body?.plan_id || ''); if (!planId) return res.status(400).json({ success: false, error: 'پلن انتخاب نشده است' });
-      const { data: plan } = await supabase.from('plans').select('id,duration_days,active,name').eq('id', planId).single();
+      const reason = text(req.body?.reason||'',500); if(reason.length<5)return res.status(400).json({success:false,error:'برای تغییر دستی پلن، دلیل حداقل ۵ حرفی لازم است'});
+      const { data: plan } = await supabase.from('plans').select('id,duration_days,active,name,slug,price').eq('id', planId).single();
       if (!plan) return res.status(404).json({ success: false, error: 'پلن پیدا نشد' });
       if (!plan.active) return res.status(409).json({ success: false, error: 'پلن غیرفعال را نمی‌توان به کاربر اختصاص داد' });
       const now = new Date(), expires = new Date(now.getTime() + Number(plan.duration_days || 30) * 86400000);
       const { error } = await supabase.from('users').update({ plan_id: plan.id, plan_started_at: now.toISOString(), plan_expires_at: expires.toISOString() }).eq('id', id); if (error) throw error;
-      await audit('user.plan_changed','user',id,{plan_id:plan.id,plan_name:plan.name}); return res.status(200).json({ success: true });
+      await audit('user.plan_manual_grant','user',id,{plan_id:plan.id,plan_name:plan.name,plan_slug:plan.slug,plan_price:plan.price,reason}); return res.status(200).json({ success: true });
     }
     if (action === 'mark-payment-failed') {
       const { error } = await supabase.from('payments').update({ status: 'failed' }).eq('id', id).neq('status', 'paid'); if (error) throw error;
