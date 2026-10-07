@@ -688,6 +688,42 @@ select option{background:#0d1d31;color:#dcecf7}
   background:rgba(25,214,237,.035);
 }
 .future-action.primary b{color:#b8d7e5}
+.roadmap{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.roadmap-item{
+  min-height:92px;
+  padding:12px 13px;
+  border:1px solid rgba(25,214,237,.07);
+  border-radius:12px;
+  background:rgba(5,13,26,.24);
+}
+.roadmap-item span{
+  display:inline-flex;
+  align-items:center;
+  padding:2px 6px;
+  border:1px solid rgba(31,230,163,.11);
+  border-radius:999px;
+  color:#66a996;
+  font-size:7px;
+  font-weight:600;
+}
+.roadmap-item b{
+  display:block;
+  margin-top:7px;
+  font-size:9.5px;
+  font-weight:600;
+  color:#a8c4d4;
+}
+.roadmap-item p{
+  margin:3px 0 0;
+  color:#57748d;
+  font-size:8px;
+  line-height:1.8;
+}
 
 .continuity{
   position:relative;
@@ -761,6 +797,7 @@ footer{
   .header-link{display:none}
   .value-grid{grid-template-columns:1fr 1fr}
   .future-card{grid-template-columns:1fr}
+  .roadmap{grid-template-columns:1fr}
   .continuity-card{grid-template-columns:1fr}
 }
 @media(max-width:620px){
@@ -1000,6 +1037,24 @@ footer{
             </div>
             <span>←</span>
           </a>
+        </div>
+      </div>
+
+      <div class="roadmap" aria-label="قابلیت‌های آینده دکتر من">
+        <div class="roadmap-item">
+          <span>به‌زودی</span>
+          <b>نوبت آنلاین</b>
+          <p>رزرو زمان مراجعه با پزشکان فعال شبکه، پس از تکمیل و تأیید پروفایل پزشک.</p>
+        </div>
+        <div class="roadmap-item">
+          <span>به‌زودی</span>
+          <b>ارتباط امن با پزشک</b>
+          <p>گفت‌وگوی مرتبط با مراقبت، در چارچوب دسترسی و ارتباط تأییدشده بیمار و پزشک.</p>
+        </div>
+        <div class="roadmap-item">
+          <span>به‌زودی</span>
+          <b>اشتراک انتخابی پرونده</b>
+          <p>ارسال فقط بخش‌های موردنیاز پرونده برای پزشک، با رضایت کاربر و امکان لغو دسترسی.</p>
         </div>
       </div>
     </div>
