@@ -1,32 +1,29 @@
 # DrMan
 
-DrMan is a Persian health ecosystem that combines a longitudinal medical record, AI-assisted lab interpretation, family profiles, doctor discovery, appointments, consent-based record sharing, care follow-up, subscriptions, DigiPay checkout, medical content/SEO, and a secure admin console.
+DrMan is a Persian digital-health ecosystem focused on an understandable lab-analysis entry point, a longitudinal personal/family health record, personalized care guidance, reminders, reviewed health education, doctor discovery and consent-based clinical workflows.
 
-## Current architecture
-- Static RTL frontend pages served by Vercel
-- Vercel serverless APIs in `/api`
+## Runtime architecture
+- Static RTL product pages on Vercel
+- One Hobby-compatible Vercel serverless entrypoint: `api/router.js`
+- Internal handlers in `server/api`
 - Supabase PostgreSQL + private Storage
-- Signed HttpOnly user/admin sessions
-- AvalAI/OpenAI-compatible AI endpoints
-- DigiPay server-side checkout + verification flow
+- Signed HttpOnly sessions and server-side authorization
+- AvalAI/OpenAI-compatible AI providers
+- DigiPay checkout with server verification and database-atomic plan activation
 
-## Main product surfaces
-- `/` home and lab analysis
-- `/health` longitudinal medical record and family profiles
-- `/doctors` doctor directory
-- `/doctor/:slug` public SEO doctor profile
-- `/doctor-portal` doctor workspace
-- `/pricing` subscriptions and checkout
-- `/learn` reviewed medical content
-- `/admin` ecosystem management console
+## Main surfaces
+- `/` refined lab-analysis landing experience
+- `/health` longitudinal health record, trends and care plan
+- `/doctors` verified doctor discovery
+- `/doctor/:slug` public doctor profile, real availability and verified reviews
+- `/doctor-portal` clinician workspace
+- `/pricing` subscriptions
+- `/learn` reviewed health knowledge hub
+- `/account` personal data export and deletion requests
+- `/admin` ecosystem management and moderation
 
-## Admin console
-The admin console manages users, doctors, appointments, plans/quotas, payments, organizations, care operations, content/SEO, support messages, audit logs, product settings and integration health.
-
-Secrets are never displayed or edited from the browser. Provider credentials remain server-side environment variables.
-
-## Required environment variables
-See `.env.example`. DigiPay requires merchant credentials before live payments can be enabled.
+## Security rules
+Paid plans are activated only by the database finalization function after a verified DigiPay response, or by an explicit audited admin grant. Browser-side state never authorizes plan access. Medical tables are not directly writable from the browser.
 
 ## Deployment
-The production Vercel project should be the single `drman` project linked to this repository. Duplicate Vercel projects should be removed to avoid consuming build quota multiple times per commit.
+Only the Vercel project `drman` should be linked to this repository. Preview deployments are created deliberately at milestones to conserve Hobby build quota. See `.env.example` for external credentials that must be supplied by the corresponding providers.
