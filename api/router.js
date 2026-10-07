@@ -24,6 +24,7 @@ const ROUTES = {
   "doctor-onboarding": () => import("../server/api/doctor-onboarding.js"),
   "doctor-page": () => import("../server/api/doctor-page.js"),
   "doctor-patient-record": () => import("../server/api/doctor-patient-record.js"),
+  "doctor-reviews": () => import("../server/api/doctor-reviews.js"),
   "doctors": () => import("../server/api/doctors.js"),
   "documents": () => import("../server/api/documents.js"),
   "emergency-card": () => import("../server/api/emergency-card.js"),
