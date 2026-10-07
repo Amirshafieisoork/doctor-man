@@ -1,6 +1,7 @@
 export const config = { api: { bodyParser: false } };
 
 const ROUTES = {
+  "status": () => import("../server/api/status.js"),
   "account": () => import("../server/api/account.js"),
   "account-deletion-request": () => import("../server/api/account-deletion-request.js"),
   "account-export": () => import("../server/api/account-export.js"),
