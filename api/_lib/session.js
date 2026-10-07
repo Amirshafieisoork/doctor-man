@@ -7,7 +7,7 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 function getSecret() {
   const explicit = process.env.SESSION_SECRET;
   if (explicit && explicit.length >= 32) return explicit;
-  const serverOnlyKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serverOnlyKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serverOnlyKey) throw new Error('Session signing secret is missing');
   return crypto.createHash('sha256').update(`drman-session:${serverOnlyKey}`).digest('hex');
 }
