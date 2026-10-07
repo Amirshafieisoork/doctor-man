@@ -139,6 +139,18 @@ nav a{
   transition:.2s ease;
 }
 nav a:hover{color:var(--accent);background:rgba(25,214,237,.04)}
+.soon-inline{
+  display:inline-flex;
+  align-items:center;
+  margin-right:4px;
+  padding:1px 5px;
+  border:1px solid rgba(31,230,163,.14);
+  border-radius:999px;
+  color:#66a996;
+  font-size:7px;
+  font-weight:600;
+  vertical-align:middle;
+}
 .header-actions{
   display:flex;
   align-items:center;
@@ -606,6 +618,77 @@ select option{background:#0d1d31;color:#dcecf7}
   line-height:1.9;
 }
 
+.future-section{
+  position:relative;
+  z-index:1;
+  padding:0 0 82px;
+}
+.future-card{
+  display:grid;
+  grid-template-columns:1.15fr .85fr;
+  gap:30px;
+  align-items:center;
+  padding:30px 32px;
+  border:1px solid rgba(31,230,163,.11);
+  border-radius:20px;
+  background:linear-gradient(135deg,rgba(31,230,163,.035),rgba(25,214,237,.018));
+}
+.future-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  width:max-content;
+  padding:5px 9px;
+  border:1px solid rgba(31,230,163,.14);
+  border-radius:999px;
+  color:#71bba5;
+  background:rgba(31,230,163,.03);
+  font-size:8px;
+  font-weight:600;
+}
+.future-badge:before{
+  content:"";
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 10px rgba(31,230,163,.35);
+}
+.future-card h2{
+  margin:10px 0 8px;
+  font-size:22px;
+  line-height:1.6;
+}
+.future-card p{
+  margin:0;
+  max-width:650px;
+  color:#6987a1;
+  font-size:10px;
+  line-height:2;
+}
+.future-actions{
+  display:grid;
+  gap:8px;
+}
+.future-action{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  min-height:50px;
+  padding:0 13px;
+  border:1px solid rgba(25,214,237,.08);
+  border-radius:11px;
+  background:rgba(5,13,26,.32);
+}
+.future-action b{font-size:9.5px;font-weight:600}
+.future-action small{display:block;margin-top:1px;color:#57738b;font-size:8px}
+.future-action span{color:#567f91;font-size:13px}
+.future-action.primary{
+  border-color:rgba(25,214,237,.16);
+  background:rgba(25,214,237,.035);
+}
+.future-action.primary b{color:#b8d7e5}
+
 .continuity{
   position:relative;
   z-index:1;
@@ -677,6 +760,7 @@ footer{
   nav{display:none}
   .header-link{display:none}
   .value-grid{grid-template-columns:1fr 1fr}
+  .future-card{grid-template-columns:1fr}
   .continuity-card{grid-template-columns:1fr}
 }
 @media(max-width:620px){
@@ -700,6 +784,8 @@ footer{
   .value-section{padding-bottom:62px}
   .value-grid{grid-template-columns:1fr}
   .value-card{min-height:0}
+  .future-section{padding-bottom:62px}
+  .future-card{padding:23px 18px}
   .continuity{padding-bottom:62px}
   .continuity-card{padding:23px 18px}
   .footer-in{padding:18px 0;flex-direction:column;align-items:flex-start}
@@ -723,7 +809,7 @@ footer{
       <a href="#lab-analyzer">تفسیر آزمایش</a>
       <a href="/health">پرونده سلامت</a>
       <a href="/learn">مرکز دانش</a>
-      <a href="/doctors">پزشکان</a>
+      <a href="/doctors">پزشکان <span class="soon-inline">به‌زودی</span></a>
     </nav>
 
     <div class="header-actions">
@@ -889,6 +975,36 @@ footer{
     </div>
   </section>
 
+
+  <section class="future-section">
+    <div class="container">
+      <div class="future-card">
+        <div>
+          <span class="future-badge">به‌زودی در دکتر من</span>
+          <h2>شبکه پزشکان دکتر من در حال شکل‌گیری است.</h2>
+          <p>در مسیر بعدی، کاربران می‌توانند پزشکان تأییدشده را پیدا کنند و با رضایت خود، بخش‌های لازم از پرونده سلامت را برای مراجعه در اختیار پزشک قرار دهند. این بخش مرحله‌به‌مرحله و فقط با پزشکان احرازشده فعال خواهد شد.</p>
+        </div>
+
+        <div class="future-actions">
+          <a class="future-action primary" href="/doctor-onboarding">
+            <div>
+              <b>پزشک هستید؟ درخواست عضویت ثبت کنید</b>
+              <small>برای پیوستن به شبکه اولیه دکتر من</small>
+            </div>
+            <span>←</span>
+          </a>
+          <a class="future-action" href="/doctors">
+            <div>
+              <b>مشاهده بخش پزشکان</b>
+              <small>شبکه عمومی به‌تدریج فعال می‌شود</small>
+            </div>
+            <span>←</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="continuity">
     <div class="container">
       <div class="continuity-card">
@@ -908,7 +1024,7 @@ footer{
           <a class="continuity-link" href="/doctors">
             <div>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3v5a4 4 0 0 0 8 0V3M10 16a5 5 0 0 0 10 0v-2"/><circle cx="20" cy="11" r="2"/></svg>
-              <b>پزشکان تأییدشده</b>
+              <b>پزشکان تأییدشده · به‌زودی</b>
             </div>
             <span>←</span>
           </a>
