@@ -2,7 +2,8 @@ import Busboy from 'busboy';
 import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
-import { avalaiClient, LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './_lib/ai-models.js';\nimport { validateLabResult } from './_lib/lab-validation.js';
+import { avalaiClient, LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './_lib/ai-models.js';
+import { validateLabResult } from './_lib/lab-validation.js';
 
 export const config = { api: { bodyParser: false } };
 
