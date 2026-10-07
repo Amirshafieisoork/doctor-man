@@ -11,7 +11,7 @@
 <meta property="og:locale" content="fa_IR">
 <meta property="og:title" content="دکتر من | همراه هوشمند سلامت">
 <meta property="og:description" content="از تفسیر آزمایش تا پرونده سلامت و پیگیری روندها؛ اطلاعات مهم سلامت را یک‌جا و منظم دنبال کنید.">
-<meta property="og:url" content="https://drman.vercel.app/">
+<meta property="og:url" content="https://drman.vercel.app/"><meta property="og:image" content="https://drman.vercel.app/assets/drman-logo.png"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="دکتر من | همراه هوشمند سلامت"><meta name="twitter:description" content="تفسیر آموزشی آزمایش، پرونده سلامت و پیگیری روندها در یک تجربه منظم و امن.">
 <link rel="icon" type="image/svg+xml" href="/assets/drman-logo.svg">
 <link rel="apple-touch-icon" href="/assets/drman-logo.png">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -1337,6 +1337,11 @@ btn.onclick=async function(){
 
 loadAccount();
 renderGallery();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/service-worker.js').catch(function(){});
+  });
+}
 </script>
 </body>
 </html>
