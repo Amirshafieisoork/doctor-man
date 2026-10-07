@@ -22,14 +22,14 @@ export default async function handler(req, res) {
 
   const [{ count: usedThisMonth }, { data: recentTests }, { data: payments }] = await Promise.all([
     supabase.from('test_results').select('id', { count: 'exact', head: true }).eq('user_id', session.sub).gte('created_at', monthStart()),
-    supabase.from('test_results').select('id,age,gender,reason,analysis,status,created_at,images_base64').eq('user_id', session.sub).order('created_at', { ascending: false }).limit(50),
+    supabase.from('test_results').select('id,age,gender,reason,analysis,status,status_reason,structured_analysis,ai_confidence,created_at').eq('user_id', session.sub).order('created_at', { ascending: false }).limit(50),
     supabase.from('payments').select('id,amount,status,tracking_code,created_at,paid_at,plans(name,slug)').eq('user_id', session.sub).order('created_at', { ascending: false }).limit(20)
   ]);
 
   const plan = user.plans || null;
   const limit = Number(plan?.test_limit ?? 2);
   const used = Number(usedThisMonth || 0);
-  const remaining = limit < 0 ? null : Math.max(0, limit - used);
+  const remaining = Math.max(0, limit - used);
 
   return res.status(200).json({
     success: true,

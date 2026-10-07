@@ -14,7 +14,7 @@ const ALIASES=new Map(Object.entries({
   creatinine:'creatinine',cr:'creatinine',bun:'bun',urea:'urea',
   alt:'alt',sgpt:'alt',ast:'ast',sgot:'ast',alp:'alp',
   ferritin:'ferritin',iron:'iron',tibc:'tibc',
-  vitamind:'vitamin-d',vitamind3:'vitamin-d',25ohvitamind:'vitamin-d',
+  vitamind:'vitamin-d',vitamind3:'vitamin-d','25ohvitamind':'vitamin-d',
   b12:'vitamin-b12',vitaminb12:'vitamin-b12',
   crp:'crp',esr:'esr',uricacid:'uric-acid'
 }));
