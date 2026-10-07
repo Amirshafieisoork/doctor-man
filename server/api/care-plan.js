@@ -40,9 +40,18 @@ async function generate(client,messages,safetyIdentifier){
 }
 async function ownedPatient(userId,patientId){const {data}=await supabase.from('patients').select('id,display_name,birth_date,sex,blood_type,height_cm,relation,updated_at').eq('id',patientId).eq('owner_user_id',userId).maybeSingle();return data}
 async function latestPlan(userId,patientId){const {data}=await supabase.from('personalized_care_plans').select('id,patient_id,plan,ai_model,ai_version,generated_at,valid_until,status').eq('user_id',userId).eq('patient_id',patientId).eq('status','active').order('generated_at',{ascending:false}).limit(1).maybeSingle();return data}
-async function relatedArticles(){
-  const {data}=await supabase.from('medical_articles').select('slug,title,summary,category,featured,risk_level,review_level').eq('status','published').eq('noindex',false).order('featured',{ascending:false}).order('published_at',{ascending:false}).limit(8);
-  return data||[];
+function topicTerms(plan){
+  const raw=[...(plan?.education_topics||[]),...(plan?.priorities||[]).map(x=>x?.title),...(plan?.nutrition?.focus||[]),...(plan?.movement?.start_with||[])].filter(Boolean).join(' ');
+  return [...new Set(String(raw).toLocaleLowerCase('fa').split(/[\s،,؛;:\-\/()]+/).map(x=>x.trim()).filter(x=>x.length>=3))].slice(0,40);
+}
+async function relatedArticles(plan=null){
+  const {data}=await supabase.from('medical_articles').select('slug,title,summary,category,keywords,featured,risk_level,review_level').eq('status','published').eq('noindex',false).order('featured',{ascending:false}).order('published_at',{ascending:false}).limit(60);
+  const rows=data||[],terms=topicTerms(plan);
+  return rows.map(a=>{
+    const hay=[a.title,a.summary,a.category,...(Array.isArray(a.keywords)?a.keywords:[])].filter(Boolean).join(' ').toLocaleLowerCase('fa');
+    const score=terms.reduce((n,t)=>n+(hay.includes(t)?2:0),a.featured?1:0);
+    return {...a,_score:score};
+  }).sort((a,b)=>b._score-a._score).slice(0,8).map(({_score,...a})=>a);
 }
 function addRecommendationIds(plan){return {...plan,follow_up:safeArr(plan.follow_up,12).map(x=>({...x,recommendation_id:crypto.randomUUID()}))}}
 function trendSummary(rows){const m=new Map();for(const x of rows||[]){if(!m.has(x.name_key))m.set(x.name_key,[]);m.get(x.name_key).push(x)}const out=[];for(const [key,a] of m){a.sort((x,y)=>new Date(y.observed_at)-new Date(x.observed_at));const latest=a[0],prev=a.find((x,i)=>i>0&&x.value_numeric!=null);out.push({key,name:latest.name_raw,latest_value:latest.value_text,latest_numeric:latest.value_numeric==null?null:Number(latest.value_numeric),unit:latest.unit,flag:latest.flag,observed_at:latest.observed_at,previous_numeric:prev?.value_numeric==null?null:Number(prev.value_numeric),previous_at:prev?.observed_at||null})}return out.slice(0,40)}
@@ -54,7 +63,7 @@ export default async function handler(req,res){
   const patient=await ownedPatient(session.sub,patientId);if(!patient)return res.status(404).json({success:false,error:'پرونده پیدا نشد'});
   try{
     if(req.method==='GET'){
-      const [plan,articles]=await Promise.all([latestPlan(session.sub,patientId),relatedArticles()]);
+      const plan=await latestPlan(session.sub,patientId);const articles=await relatedArticles(plan?.plan||null);
       return res.status(200).json({success:true,care_plan:plan||null,articles,disclaimer:'این برنامه آموزشی و حمایتی است و جای تشخیص، نسخه یا ارزیابی پزشک را نمی‌گیرد.'});
     }
     if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
@@ -107,7 +116,7 @@ export default async function handler(req,res){
     await supabase.from('personalized_care_plans').update({status:'superseded'}).eq('user_id',session.sub).eq('patient_id',patientId).eq('status','active');
     const {data:saved,error}=await supabase.from('personalized_care_plans').insert({patient_id:patientId,user_id:session.sub,status:'active',plan,source_snapshot:snapshot(record),ai_model:model,ai_version:AI_VERSION,valid_until:days(14)}).select('id,patient_id,plan,ai_model,ai_version,generated_at,valid_until,status').single();if(error)throw error;
     await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'ai.care_plan_generated',resource_type:'personalized_care_plan',resource_id:saved.id,metadata:{model,request_id:requestId}}).catch(()=>null);
-    const articles=await relatedArticles();
+    const articles=await relatedArticles(plan);
     return res.status(201).json({success:true,care_plan:saved,articles,remaining_today:Math.max(0,dailyLimit-Number(todayCount||0)-1),disclaimer:'این برنامه آموزشی است و جای تشخیص، نسخه یا ارزیابی پزشک را نمی‌گیرد.'});
   }catch(error){console.error('care-plan',error);return res.status(500).json({success:false,error:'ساخت یا ذخیره برنامه مراقبت انجام نشد'})}
 }
