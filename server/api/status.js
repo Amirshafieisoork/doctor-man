@@ -8,7 +8,7 @@ export default async function handler(req,res){
     const {error}=await supabase.from('plans').select('id',{head:true,count:'exact'}).limit(1);
     database=!error;
   }catch{}
-  const models=configuredModels();
+  const models=await configuredModels();
   return res.status(database?200:503).json({
     success:database,
     service:'drman',

@@ -81,7 +81,7 @@ export default async function handler(req,res){
     }
     if(action!=='generate')return res.status(400).json({success:false,error:'عملیات نامعتبر است'});
     if(!(await consent(session.sub,patientId)))return res.status(428).json({success:false,code:'AI_CONSENT_REQUIRED',error:'برای ساخت برنامه شخصی، رضایت پردازش هوش مصنوعی لازم است'});
-    const client=avalaiClient();if(!client)return res.status(503).json({success:false,error:'سرویس برنامه شخصی هنوز تنظیم نشده است'});
+    const client=await avalaiClient();if(!client)return res.status(503).json({success:false,error:'سرویس برنامه شخصی هنوز تنظیم نشده است'});
     const [{data:user},{count:todayCount},biomarkers,episodes,conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters]=await Promise.all([
       supabase.from('users').select('plans(navigator_daily_limit,name)').eq('id',session.sub).single(),
       supabase.from('personalized_care_plans').select('id',{count:'exact',head:true}).eq('user_id',session.sub).gte('generated_at',dayStart()),

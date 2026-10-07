@@ -21,7 +21,7 @@ function renderAnswer(x){const lines=['برداشت کلی',String(x.overall||'�
 export default async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
   const session=requireUser(req,res);if(!session)return;
-  const client=avalaiClient();if(!client)return res.status(503).json({success:false,error:'راهنمای هوشمند هنوز تنظیم نشده است'});
+  const client=await avalaiClient();if(!client)return res.status(503).json({success:false,error:'راهنمای هوشمند هنوز تنظیم نشده است'});
   const body=req.body||{},patientId=String(body.patient_id||''),question=String(body.question||'').trim().slice(0,2500);if(!question)return res.status(400).json({success:false,error:'سؤال را وارد کنید'});
   try{
     const [{data:patient},{data:user},{count:todayCount}]=await Promise.all([

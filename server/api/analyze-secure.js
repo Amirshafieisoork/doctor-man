@@ -191,7 +191,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const session = requireUser(req, res);
   if (!session) return;
-  const client = avalaiClient();
+  const client = await avalaiClient();
   if (!client) return res.status(503).json({ success: false, error: 'سرویس هوش مصنوعی هنوز تنظیم نشده است' });
 
   let storedPaths = [];

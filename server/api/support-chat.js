@@ -9,7 +9,7 @@ async function answerWithFallback(client,messages,safetyIdentifier){const models
 export default async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
   const session=requireUser(req,res); if(!session)return;
-  const client=avalaiClient(); if(!client)return res.status(503).json({success:false,error:'پشتیبانی هوشمند هنوز تنظیم نشده است'});
+  const client=await avalaiClient(); if(!client)return res.status(503).json({success:false,error:'پشتیبانی هوشمند هنوز تنظیم نشده است'});
   const message=String(req.body?.message||'').trim().slice(0,2500); if(!message)return res.status(400).json({success:false,error:'پیام خالی است'});
   try{
     const [{count:todayCount},{data:history},{data:user}]=await Promise.all([

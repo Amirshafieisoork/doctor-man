@@ -9,6 +9,7 @@
   "dependencies": {
     "@supabase/supabase-js": "2.105.4",
     "busboy": "1.6.0",
-    "openai": "4.104.0"
+    "openai": "4.104.0",
+    "@vercel/oidc": "4.0.0"
   }
 }
