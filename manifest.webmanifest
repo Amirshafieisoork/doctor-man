@@ -1,15 +1,21 @@
 {
-  "name": "DrMan - دکتر من",
-  "short_name": "DrMan",
+  "name": "دکتر من - DrMan",
+  "short_name": "دکتر من",
   "description": "پرونده سلامت، تحلیل آموزشی آزمایش، مدارک پزشکی و پیگیری سلامت",
   "lang": "fa",
   "dir": "rtl",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#050d1a",
-  "theme_color": "#050d1a",
+  "background_color": "#f6faff",
+  "theme_color": "#ffffff",
   "icons": [
+    {
+      "src": "/assets/drman-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/assets/drman-logo.png",
       "sizes": "256x256",
