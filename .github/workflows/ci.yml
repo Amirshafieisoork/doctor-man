@@ -16,7 +16,7 @@ jobs:
       - name: Install pinned dependencies
         run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Check serverless JavaScript syntax
-        run: find api -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+        run: find api server/api -type f -name '*.js' -print0 | xargs -0 -n1 node --check
       - name: Check inline page JavaScript syntax
         run: |
           node <<'NODE'
@@ -49,6 +49,6 @@ jobs:
           test -f doctors.html
           test -f doctor-portal-v2.html
           test -f admin-v7.html
-          test -f api/care-plan.js
-          test -f api/care-episodes.js
-          test -f api/learn-page.js
+          test -f server/api/care-plan.js
+          test -f server/api/care-episodes.js
+          test -f server/api/learn-page.js
