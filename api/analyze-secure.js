@@ -4,6 +4,7 @@ import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { avalaiClient, LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './_lib/ai-models.js';
 import { validateLabResult } from './_lib/lab-validation.js';
+import { saveBiomarkers } from './_lib/biomarkers.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -176,7 +177,8 @@ async function analyze(client, content, safetyIdentifier) {
       const raw = response.choices?.[0]?.message?.content || '';
       const parsed = normalizeResult(JSON.parse(raw));
       if (!parsed) throw new Error('INVALID_AI_JSON');
-      return { parsed, model: response.model || model, requestId: response._request_id || null };
+      const validated = validateLabResult(parsed);
+      return { parsed: validated, model: response.model || model, requestId: response._request_id || null };
     } catch (error) {
       lastError = error;
       console.error('lab model attempt failed', model, error?.message || error);
@@ -200,7 +202,7 @@ export default async function handler(req, res) {
 
     const patient = await resolvePatient(session.sub, String(fields.patient_id || '').trim());
     const enteredAge = String(fields.age || '').trim();
-    if (enteredAge && (!/^\d{1,3}$/.test(enteredAge) || Number(enteredAge) < 1 || Number(enteredAge) > 120)) return res.status(400).json({ success: false, error: 'سن واردشده معتبر نیست' });
+    if (enteredAge && (!/^\d{1,3}$/.test(enteredAge) || Number(enteredAge) < 0 || Number(enteredAge) > 120)) return res.status(400).json({ success: false, error: 'سن واردشده معتبر نیست' });
     const derivedAge = ageFromBirthDate(patient?.birth_date);
     const age = derivedAge ?? (enteredAge ? Number(enteredAge) : null);
     const gender = String(patient?.sex || fields.gender || 'نامشخص').slice(0, 40);
@@ -234,6 +236,7 @@ export default async function handler(req, res) {
     };
     const { data: saved, error: saveError } = await supabase.from('test_results').insert(insert).select('id').single();
     if (saveError) { await supabase.storage.from('lab-images').remove(storedPaths); throw saveError; }
+    await saveBiomarkers(supabase,{testResultId:saved?.id,patientId:patient?.id||null,userId:session.sub,items:parsed.items,confidence:parsed.confidence,observedAt:new Date().toISOString()}).catch(e=>console.error('biomarker save',e));
 
     await supabase.from('audit_logs').insert({
       actor_user_id: session.sub,
