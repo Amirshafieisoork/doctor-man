@@ -10,7 +10,7 @@ export default async function handler(req,res){
  const slug=String(req.query?.slug||'').trim();res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=86400');
  if(!slug){
    const q=String(req.query?.q||'').trim().slice(0,80),category=String(req.query?.category||'').trim().slice(0,100);
-   const {data}=await supabase.from('medical_articles').select('slug,title,summary,category,published_at,updated_at,featured,risk_level,review_level,author_name,doctor_profiles(full_name,specialty,slug,verification_status)').eq('status','published').order('featured',{ascending:false}).order('published_at',{ascending:false}).limit(300);
+   const {data}=await supabase.from('medical_articles').select('slug,title,summary,category,published_at,updated_at,featured,risk_level,review_level,author_name,status,doctor_profiles(full_name,specialty,slug,verification_status)').eq('status','published').order('featured',{ascending:false}).order('published_at',{ascending:false}).limit(300);
    let items=(data||[]).filter(allowed);
    const categories=[...new Set(items.map(x=>x.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fa'));
    if(category)items=items.filter(x=>x.category===category);
