@@ -46,6 +46,16 @@ export default async function handler(req, res) {
       if(error)throw error;if(!data)return res.status(409).json({success:false,error:'درخواست قابل رد نیست'});
       await audit('account.erasure_rejected','account_deletion_request',id,{note});return res.status(200).json({success:true,item:data});
     }
+    if (['publish-review','reject-review','hide-review'].includes(action)) {
+      const status=action==='publish-review'?'published':action==='reject-review'?'rejected':'hidden';
+      const {data:review,error}=await supabase.from('doctor_reviews')
+        .update({status,updated_at:new Date().toISOString()})
+        .eq('id',id).select('id,doctor_id,user_id,appointment_id,rating,verified_visit,status').maybeSingle();
+      if(error)throw error;if(!review)return res.status(404).json({success:false,error:'نظر پیدا نشد'});
+      if(status==='published'&&!review.verified_visit)return res.status(409).json({success:false,error:'نظر بدون ویزیت تأییدشده قابل انتشار نیست'});
+      await audit('doctor_review.'+status,'doctor_review',id,{doctor_id:review.doctor_id,appointment_id:review.appointment_id,rating:review.rating});
+      return res.status(200).json({success:true,review});
+    }
     if (action === 'block-user' || action === 'unblock-user') {
       const status = action === 'block-user' ? 'blocked' : 'active';
       const { error } = await supabase.from('users').update({ status }).eq('id', id); if (error) throw error;
