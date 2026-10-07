@@ -45,7 +45,7 @@ async function relatedArticles(){
   return data||[];
 }
 function addRecommendationIds(plan){return {...plan,follow_up:safeArr(plan.follow_up,12).map(x=>({...x,recommendation_id:crypto.randomUUID()}))}}
-function snapshot(record){return{generated_from:{conditions:record.conditions.length,medications:record.medications.length,allergies:record.allergies.length,vitals:record.vitals.length,tests:record.tests.length,screenings:record.screenings.length,vaccinations:record.vaccinations.length,tasks:record.tasks.length,encounters:record.encounters.length},latest_vital_at:record.vitals[0]?.measured_at||null,latest_test_at:record.tests[0]?.created_at||null}}
+function snapshot(record){return{generated_from:{episodes:record.episodes.length,conditions:record.conditions.length,medications:record.medications.length,allergies:record.allergies.length,vitals:record.vitals.length,tests:record.tests.length,screenings:record.screenings.length,vaccinations:record.vaccinations.length,tasks:record.tasks.length,encounters:record.encounters.length},latest_vital_at:record.vitals[0]?.measured_at||null,latest_test_at:record.tests[0]?.created_at||null}}
 export default async function handler(req,res){
   const session=requireUser(req,res);if(!session)return;
   const patientId=String((req.method==='GET'?req.query?.patient_id:req.body?.patient_id)||'').trim();
@@ -72,9 +72,10 @@ export default async function handler(req,res){
     if(action!=='generate')return res.status(400).json({success:false,error:'عملیات نامعتبر است'});
     if(!(await consent(session.sub,patientId)))return res.status(428).json({success:false,code:'AI_CONSENT_REQUIRED',error:'برای ساخت برنامه شخصی، رضایت پردازش هوش مصنوعی لازم است'});
     const client=avalaiClient();if(!client)return res.status(503).json({success:false,error:'سرویس برنامه شخصی هنوز تنظیم نشده است'});
-    const [{data:user},{count:todayCount},conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters]=await Promise.all([
+    const [{data:user},{count:todayCount},episodes,conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters]=await Promise.all([
       supabase.from('users').select('plans(navigator_daily_limit,name)').eq('id',session.sub).single(),
       supabase.from('personalized_care_plans').select('id',{count:'exact',head:true}).eq('user_id',session.sub).gte('generated_at',dayStart()),
+      supabase.from('care_episodes').select('title,kind,summary,goal,urgency,status,started_at').eq('patient_id',patientId).in('status',['open','monitoring']).order('updated_at',{ascending:false}).limit(20),
       supabase.from('patient_conditions').select('name,status,diagnosed_at,notes').eq('patient_id',patientId).eq('status','active').limit(30),
       supabase.from('patient_allergies').select('allergen,allergy_type,severity,reaction').eq('patient_id',patientId).limit(30),
       supabase.from('patient_medications').select('name,dose,frequency,route,instructions,status').eq('patient_id',patientId).eq('status','active').limit(40),
@@ -86,7 +87,7 @@ export default async function handler(req,res){
       supabase.from('encounters').select('occurred_at,encounter_type,chief_complaint,summary,assessment,plan,pregnancy_status').eq('patient_id',patientId).order('occurred_at',{ascending:false}).limit(8)
     ]);
     const dailyLimit=Math.max(0,Math.min(3,Number(user?.plans?.navigator_daily_limit??1)));if(Number(todayCount||0)>=dailyLimit)return res.status(429).json({success:false,error:'سقف ساخت برنامه شخصی امروز تمام شده است'});
-    const record={patient,conditions:conditions.data||[],allergies:allergies.data||[],medications:meds.data||[],vitals:vitals.data||[],tests:(tests.data||[]).map(t=>({created_at:t.created_at,status:t.status,status_reason:t.status_reason,reason:t.reason,summary:t.structured_analysis?.summary||null,abnormal_items:safeArr(t.structured_analysis?.abnormal_items,20)})),screenings:screenings.data||[],vaccinations:vaccinations.data||[],tasks:tasks.data||[],encounters:encounters.data||[]};
+    const record={patient,episodes:episodes.data||[],conditions:conditions.data||[],allergies:allergies.data||[],medications:meds.data||[],vitals:vitals.data||[],tests:(tests.data||[]).map(t=>({created_at:t.created_at,status:t.status,status_reason:t.status_reason,reason:t.reason,summary:t.structured_analysis?.summary||null,abnormal_items:safeArr(t.structured_analysis?.abnormal_items,20)})),screenings:screenings.data||[],vaccinations:vaccinations.data||[],tasks:tasks.data||[],encounters:encounters.data||[]};
     const system=`تو موتور برنامه مراقبت شخصی DrMan هستی. خروجی باید آموزشی، محافظه‌کارانه، عملی و بر اساس پرونده باشد؛ نه تشخیص و نه نسخه.
 قواعد الزامی:
 - هیچ تشخیص جدیدی قطعی اعلام نکن و هیچ داروی نسخه‌ای، شروع/قطع/تغییر دوز پیشنهاد نده.
