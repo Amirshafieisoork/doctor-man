@@ -1,8 +1,14 @@
 {
+  "name": "drman",
+  "version": "0.1.0-beta",
+  "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "dependencies": {
-    "openai": "^4.0.0",
-    "@supabase/supabase-js": "^2.0.0",
-    "busboy": "^1.6.0"
+    "@supabase/supabase-js": "2.105.4",
+    "busboy": "1.6.0",
+    "openai": "4.104.0"
   }
 }
