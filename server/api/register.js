@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { setUserSession } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
+import { allowRate, recordRate } from './_lib/rate-limit.js';
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -15,6 +16,8 @@ export default async function handler(req, res) {
   const phone = String(body.phone || '').trim();
   const password = String(body.password || '');
   const name = String(body.name || '').trim().slice(0, 80);
+  const gate=await allowRate(req,{action:'register',subject:phone,limit:5,windowMinutes:60});
+  if(!gate.allowed){res.setHeader('Retry-After',String(gate.retry_after_seconds));return res.status(429).json({error:'تعداد تلاش ثبت‌نام زیاد بوده است. بعداً دوباره امتحان کنید'})}
 
   if (!/^09\d{9}$/.test(phone) || password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: 'شماره تماس یا رمز عبور معتبر نیست' });
@@ -45,6 +48,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'خطا در ثبت‌نام' });
   }
 
+  await recordRate(gate.keyHash,'register',true);
   setUserSession(res, data);
   return res.status(200).json({ success: true, user: data });
 }
