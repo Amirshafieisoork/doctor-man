@@ -2,14 +2,14 @@ import Busboy from 'busboy';
 import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
-import { avalaiClient, LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './_lib/ai-models.js';
+import { avalaiClient, LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './_lib/ai-models.js';\nimport { validateLabResult } from './_lib/lab-validation.js';
 
 export const config = { api: { bodyParser: false } };
 
 const MAX_IMAGES = 4;
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const AI_VERSION = 'lab-v3-structured-2026-10';
+const AI_VERSION = 'lab-v4-validated-2026-10';
 
 const LAB_SCHEMA = {
   type: 'object',
