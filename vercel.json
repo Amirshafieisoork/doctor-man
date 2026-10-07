@@ -1,39 +1,136 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/api/analyze-lab", "dest": "/api/analyze-secure" },
-    { "src": "/robots.txt", "dest": "/api/robots" },
-    { "src": "/sitemap.xml", "dest": "/api/sitemap" },
-    { "src": "/doctor/([^/]+)", "dest": "/api/doctor-page?slug=$1" },
-    { "src": "/emergency/([^/]+)", "dest": "/api/emergency-page?token=$1" },
-    { "src": "/learn/([^/]+)", "dest": "/api/learn-page?slug=$1" },
-    { "src": "/learn", "dest": "/api/learn-page" },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/", "dest": "/home-v2.html" },
-    { "src": "/auth", "dest": "/auth-v2.html" },
-    { "src": "/auth.html", "dest": "/auth-v2.html" },
-    { "src": "/health", "dest": "/health-v4.html" },
-    { "src": "/profile", "dest": "/health-v4.html" },
-    { "src": "/profile.html", "dest": "/health-v4.html" },
-    { "src": "/account", "dest": "/profile-v2.html" },
-    { "src": "/settings", "dest": "/profile-v2.html" },
-    { "src": "/settings.html", "dest": "/profile-v2.html" },
-    { "src": "/doctors", "dest": "/doctors.html" },
-    { "src": "/doctor-onboarding", "dest": "/doctor-onboarding.html" },
-    { "src": "/doctor-portal", "dest": "/doctor-portal-v2.html" },
-    { "src": "/pricing", "dest": "/pricing-v2.html" },
-    { "src": "/pricing.html", "dest": "/pricing-v2.html" },
-    { "src": "/admin", "dest": "/admin-v7.html" },
-    { "src": "/admin.html", "dest": "/admin-v7.html" },
-    { "src": "/medical-methodology", "dest": "/medical-methodology.html" },
-    { "src": "/privacy", "dest": "/legal.html" },
-    { "src": "/terms", "dest": "/legal.html" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/404.html", "status": 404 }
+    {
+      "src": "/api/analyze-lab",
+      "dest": "/api/analyze-secure"
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/api/robots"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "/api/sitemap"
+    },
+    {
+      "src": "/doctor/([^/]+)",
+      "dest": "/api/doctor-page?slug=$1"
+    },
+    {
+      "src": "/emergency/([^/]+)",
+      "dest": "/api/emergency-page?token=$1"
+    },
+    {
+      "src": "/learn/([^/]+)",
+      "dest": "/api/learn-page?slug=$1"
+    },
+    {
+      "src": "/learn",
+      "dest": "/api/learn-page"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/home-v2.html"
+    },
+    {
+      "src": "/auth",
+      "dest": "/auth-v2.html"
+    },
+    {
+      "src": "/auth.html",
+      "dest": "/auth-v2.html"
+    },
+    {
+      "src": "/health",
+      "dest": "/health-v4.html"
+    },
+    {
+      "src": "/profile",
+      "dest": "/health-v4.html"
+    },
+    {
+      "src": "/profile.html",
+      "dest": "/health-v4.html"
+    },
+    {
+      "src": "/account",
+      "dest": "/profile-v2.html"
+    },
+    {
+      "src": "/settings",
+      "dest": "/profile-v2.html"
+    },
+    {
+      "src": "/settings.html",
+      "dest": "/profile-v2.html"
+    },
+    {
+      "src": "/doctors",
+      "dest": "/doctors.html"
+    },
+    {
+      "src": "/doctor-onboarding",
+      "dest": "/doctor-onboarding.html"
+    },
+    {
+      "src": "/doctor-portal",
+      "dest": "/doctor-portal-v2.html"
+    },
+    {
+      "src": "/visit-intake",
+      "dest": "/visit-intake.html"
+    },
+    {
+      "src": "/pricing",
+      "dest": "/pricing-v2.html"
+    },
+    {
+      "src": "/pricing.html",
+      "dest": "/pricing-v2.html"
+    },
+    {
+      "src": "/admin",
+      "dest": "/admin-v7.html"
+    },
+    {
+      "src": "/admin.html",
+      "dest": "/admin-v7.html"
+    },
+    {
+      "src": "/medical-methodology",
+      "dest": "/medical-methodology.html"
+    },
+    {
+      "src": "/privacy",
+      "dest": "/legal.html"
+    },
+    {
+      "src": "/terms",
+      "dest": "/legal.html"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/404.html",
+      "status": 404
+    }
   ],
   "functions": {
-    "api/analyze-secure.js": { "maxDuration": 45 },
-    "api/support-chat.js": { "maxDuration": 30 },
-    "api/health-navigator.js": { "maxDuration": 45 }
+    "api/analyze-secure.js": {
+      "maxDuration": 45
+    },
+    "api/support-chat.js": {
+      "maxDuration": 30
+    },
+    "api/health-navigator.js": {
+      "maxDuration": 45
+    }
   }
 }
