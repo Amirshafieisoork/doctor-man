@@ -1,5 +1,6 @@
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
+import { InputValidationError, numberField } from './_lib/validate.js';
 
 function slugify(input) {
   return String(input || '')
@@ -22,6 +23,8 @@ export default async function handler(req, res) {
   const license = String(body.medical_license_number || '').trim().slice(0, 80);
   if (!fullName || !specialty || !license) return res.status(400).json({ success: false, error: 'نام، تخصص و شماره نظام پزشکی الزامی است' });
 
+  let consultationFee;try{consultationFee=numberField(body.consultation_fee,{label:'هزینه ویزیت',min:0,max:100000000,integer:true})}catch(e){if(e instanceof InputValidationError)return res.status(400).json({success:false,error:e.message});throw e}
+
   const payload = {
     full_name: fullName,
     medical_license_number: license,
@@ -32,7 +35,7 @@ export default async function handler(req, res) {
     phone: body.phone ? String(body.phone).trim().slice(0, 30) : null,
     accepts_online: Boolean(body.accepts_online),
     accepts_in_person: body.accepts_in_person !== false,
-    consultation_fee: body.consultation_fee ? Math.max(0, Number(body.consultation_fee)) : null,
+    consultation_fee: consultationFee,
     verification_status: 'pending',
     public_profile: false,
     updated_at: new Date().toISOString()

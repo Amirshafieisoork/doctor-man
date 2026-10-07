@@ -1,8 +1,10 @@
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
+import { InputValidationError, numberField } from './_lib/validate.js';
 
 function text(v,max=3000){return v==null?null:String(v).trim().slice(0,max)}
 function safeObject(v,maxKeys=40){if(!v||typeof v!=='object'||Array.isArray(v))return{};return Object.fromEntries(Object.entries(v).slice(0,maxKeys).map(([k,val])=>[String(k).slice(0,80),typeof val==='string'?val.slice(0,500):val]));}
+function homeVitals(v){const x=safeObject(v,20),out={};if(x.blood_pressure){const m=String(x.blood_pressure).trim().match(/^(\d{1,3})\s*\/\s*(\d{1,3})$/);if(!m)throw new InputValidationError('فشار خون باید به شکل 120/80 وارد شود');out.blood_pressure=`${numberField(m[1],{label:'فشار سیستول',min:20,max:350,integer:true,nullable:false})}/${numberField(m[2],{label:'فشار دیاستول',min:10,max:250,integer:true,nullable:false})}`}const hr=numberField(x.heart_rate,{label:'نبض',min:1,max:350,integer:true});if(hr!==null)out.heart_rate=hr;const t=numberField(x.temperature_c,{label:'دما',min:20,max:50});if(t!==null)out.temperature_c=t;const o=numberField(x.oxygen_saturation,{label:'اشباع اکسیژن',min:1,max:100});if(o!==null)out.oxygen_saturation=o;return out}
 async function doctorForUser(userId){const {data}=await supabase.from('doctor_profiles').select('id,user_id,full_name,verification_status').eq('user_id',userId).maybeSingle();return data;}
 
 export default async function handler(req,res){
@@ -40,7 +42,7 @@ export default async function handler(req,res){
         surgical_history:text(b.surgical_history,2500),family_history:text(b.family_history,2500),social_history:text(b.social_history,2500),
         current_medications_note:text(b.current_medications_note,2500),allergies_note:text(b.allergies_note,2500),
         pregnancy_status:['not_applicable','no','possible','yes','unknown'].includes(b.pregnancy_status)?b.pregnancy_status:'unknown',
-        last_menstrual_period:b.last_menstrual_period||null,home_vitals:safeObject(b.home_vitals,20),red_flag_answers:safeObject(b.red_flag_answers,30),
+        last_menstrual_period:b.last_menstrual_period||null,home_vitals:homeVitals(b.home_vitals),red_flag_answers:safeObject(b.red_flag_answers,30),
         questions_for_doctor:text(b.questions_for_doctor,2500),status:submit?'submitted':'draft',submitted_at:submit?new Date().toISOString():null,updated_at:new Date().toISOString()
       };
       const {data,error}=await supabase.from('visit_intakes').upsert(payload,{onConflict:'appointment_id'}).select('*').single();if(error)throw error;
@@ -52,5 +54,5 @@ export default async function handler(req,res){
       return res.status(200).json({success:true,intake:data});
     }
     return res.status(405).json({error:'Method not allowed'});
-  }catch(error){console.error('previsit-intake',error);return res.status(500).json({success:false,error:'ثبت یا دریافت شرح حال انجام نشد'});}
+  }catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('previsit-intake',error);return res.status(500).json({success:false,error:'ثبت یا دریافت شرح حال انجام نشد'});}
 }
