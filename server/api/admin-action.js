@@ -12,6 +12,40 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ success: false, error: 'شناسه الزامی است' });
 
   try {
+    if (action === 'process-deletion') {
+      const { data: request } = await supabase.from('account_deletion_requests')
+        .select('id,user_id,status,users(name,phone,account_type)').eq('id',id).maybeSingle();
+      if(!request) return res.status(404).json({success:false,error:'درخواست حذف پیدا نشد'});
+      if(!['requested','processing'].includes(request.status)) return res.status(409).json({success:false,error:'این درخواست قابل پردازش نیست'});
+      if(request.users?.account_type!=='patient') return res.status(409).json({success:false,error:'حساب حرفه‌ای باید به‌صورت دستی و حقوقی بررسی شود'});
+
+      const { data: ps } = await supabase.from('patients').select('id').eq('owner_user_id',request.user_id);
+      const patientIds=(ps||[]).map(x=>x.id);
+      const [{data:docs},{data:tests}]=await Promise.all([
+        patientIds.length?supabase.from('medical_documents').select('storage_path').in('patient_id',patientIds):Promise.resolve({data:[]}),
+        supabase.from('test_results').select('image_paths').eq('user_id',request.user_id)
+      ]);
+      const docPaths=(docs||[]).map(x=>x.storage_path).filter(Boolean);
+      const labPaths=(tests||[]).flatMap(x=>Array.isArray(x.image_paths)?x.image_paths:[]).filter(Boolean);
+      async function removeChunks(bucket,paths){
+        for(let i=0;i<paths.length;i+=100){
+          const {error}=await supabase.storage.from(bucket).remove(paths.slice(i,i+100));
+          if(error) throw error;
+        }
+      }
+      await removeChunks('medical-documents',docPaths);
+      await removeChunks('lab-images',labPaths);
+      const {data:result,error}=await supabase.rpc('process_patient_account_erasure',{p_request_id:id});
+      if(error) throw error;
+      await audit('account.erasure_processed','account_deletion_request',id,{user_id:request.user_id,documents_removed:docPaths.length,lab_images_removed:labPaths.length});
+      return res.status(200).json({success:true,result});
+    }
+    if (action === 'reject-deletion') {
+      const note=text(req.body?.note||'نیازمند بررسی دستی',1000);
+      const {data,error}=await supabase.from('account_deletion_requests').update({status:'rejected',admin_note:note,processed_at:new Date().toISOString()}).eq('id',id).eq('status','requested').select('id,status').maybeSingle();
+      if(error)throw error;if(!data)return res.status(409).json({success:false,error:'درخواست قابل رد نیست'});
+      await audit('account.erasure_rejected','account_deletion_request',id,{note});return res.status(200).json({success:true,item:data});
+    }
     if (action === 'block-user' || action === 'unblock-user') {
       const status = action === 'block-user' ? 'blocked' : 'active';
       const { error } = await supabase.from('users').update({ status }).eq('id', id); if (error) throw error;
