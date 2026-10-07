@@ -63,7 +63,7 @@ export default async function handler(req, res) {
       await audit(`diagnostic_order.${status}`,'diagnostic_order',id); return res.status(200).json({success:true,item:data});
     }
     if (action === 'article-status') {
-      const status=String(req.body?.status||''); if(!['draft','review','published','archived'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
+      const status=String(req.body?.status||''); if(!['draft','in_review','published','archived'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
       if(status==='published'){
         const {data:a}=await supabase.from('medical_articles').select('id,title,risk_level,review_level,reviewer_doctor_id,doctor_profiles(verification_status)').eq('id',id).maybeSingle();
         if(!a)return res.status(404).json({success:false,error:'مقاله پیدا نشد'});
