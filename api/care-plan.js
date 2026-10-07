@@ -45,7 +45,8 @@ async function relatedArticles(){
   return data||[];
 }
 function addRecommendationIds(plan){return {...plan,follow_up:safeArr(plan.follow_up,12).map(x=>({...x,recommendation_id:crypto.randomUUID()}))}}
-function snapshot(record){return{generated_from:{episodes:record.episodes.length,conditions:record.conditions.length,medications:record.medications.length,allergies:record.allergies.length,vitals:record.vitals.length,tests:record.tests.length,screenings:record.screenings.length,vaccinations:record.vaccinations.length,tasks:record.tasks.length,encounters:record.encounters.length},latest_vital_at:record.vitals[0]?.measured_at||null,latest_test_at:record.tests[0]?.created_at||null}}
+function trendSummary(rows){const m=new Map();for(const x of rows||[]){if(!m.has(x.name_key))m.set(x.name_key,[]);m.get(x.name_key).push(x)}const out=[];for(const [key,a] of m){a.sort((x,y)=>new Date(y.observed_at)-new Date(x.observed_at));const latest=a[0],prev=a.find((x,i)=>i>0&&x.value_numeric!=null);out.push({key,name:latest.name_raw,latest_value:latest.value_text,latest_numeric:latest.value_numeric==null?null:Number(latest.value_numeric),unit:latest.unit,flag:latest.flag,observed_at:latest.observed_at,previous_numeric:prev?.value_numeric==null?null:Number(prev.value_numeric),previous_at:prev?.observed_at||null})}return out.slice(0,40)}
+function snapshot(record){return{generated_from:{biomarker_trends:record.biomarker_trends.length,episodes:record.episodes.length,conditions:record.conditions.length,medications:record.medications.length,allergies:record.allergies.length,vitals:record.vitals.length,tests:record.tests.length,screenings:record.screenings.length,vaccinations:record.vaccinations.length,tasks:record.tasks.length,encounters:record.encounters.length},latest_vital_at:record.vitals[0]?.measured_at||null,latest_test_at:record.tests[0]?.created_at||null}}
 export default async function handler(req,res){
   const session=requireUser(req,res);if(!session)return;
   const patientId=String((req.method==='GET'?req.query?.patient_id:req.body?.patient_id)||'').trim();
@@ -72,9 +73,10 @@ export default async function handler(req,res){
     if(action!=='generate')return res.status(400).json({success:false,error:'عملیات نامعتبر است'});
     if(!(await consent(session.sub,patientId)))return res.status(428).json({success:false,code:'AI_CONSENT_REQUIRED',error:'برای ساخت برنامه شخصی، رضایت پردازش هوش مصنوعی لازم است'});
     const client=avalaiClient();if(!client)return res.status(503).json({success:false,error:'سرویس برنامه شخصی هنوز تنظیم نشده است'});
-    const [{data:user},{count:todayCount},episodes,conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters]=await Promise.all([
+    const [{data:user},{count:todayCount},biomarkers,episodes,conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters]=await Promise.all([
       supabase.from('users').select('plans(navigator_daily_limit,name)').eq('id',session.sub).single(),
       supabase.from('personalized_care_plans').select('id',{count:'exact',head:true}).eq('user_id',session.sub).gte('generated_at',dayStart()),
+      supabase.from('lab_biomarkers').select('name_key,name_raw,value_text,value_numeric,unit,flag,observed_at').eq('patient_id',patientId).order('observed_at',{ascending:false}).limit(120),
       supabase.from('care_episodes').select('title,kind,summary,goal,urgency,status,started_at').eq('patient_id',patientId).in('status',['open','monitoring']).order('updated_at',{ascending:false}).limit(20),
       supabase.from('patient_conditions').select('name,status,diagnosed_at,notes').eq('patient_id',patientId).eq('status','active').limit(30),
       supabase.from('patient_allergies').select('allergen,allergy_type,severity,reaction').eq('patient_id',patientId).limit(30),
@@ -87,7 +89,7 @@ export default async function handler(req,res){
       supabase.from('encounters').select('occurred_at,encounter_type,chief_complaint,summary,assessment,plan,pregnancy_status').eq('patient_id',patientId).order('occurred_at',{ascending:false}).limit(8)
     ]);
     const dailyLimit=Math.max(0,Math.min(3,Number(user?.plans?.navigator_daily_limit??1)));if(Number(todayCount||0)>=dailyLimit)return res.status(429).json({success:false,error:'سقف ساخت برنامه شخصی امروز تمام شده است'});
-    const record={patient,episodes:episodes.data||[],conditions:conditions.data||[],allergies:allergies.data||[],medications:meds.data||[],vitals:vitals.data||[],tests:(tests.data||[]).map(t=>({created_at:t.created_at,status:t.status,status_reason:t.status_reason,reason:t.reason,summary:t.structured_analysis?.summary||null,abnormal_items:safeArr(t.structured_analysis?.abnormal_items,20)})),screenings:screenings.data||[],vaccinations:vaccinations.data||[],tasks:tasks.data||[],encounters:encounters.data||[]};
+    const record={patient,biomarker_trends:trendSummary(biomarkers.data||[]),episodes:episodes.data||[],conditions:conditions.data||[],allergies:allergies.data||[],medications:meds.data||[],vitals:vitals.data||[],tests:(tests.data||[]).map(t=>({created_at:t.created_at,status:t.status,status_reason:t.status_reason,reason:t.reason,summary:t.structured_analysis?.summary||null,abnormal_items:safeArr(t.structured_analysis?.abnormal_items,20)})),screenings:screenings.data||[],vaccinations:vaccinations.data||[],tasks:tasks.data||[],encounters:encounters.data||[]};
     const system=`تو موتور برنامه مراقبت شخصی DrMan هستی. خروجی باید آموزشی، محافظه‌کارانه، عملی و بر اساس پرونده باشد؛ نه تشخیص و نه نسخه.
 قواعد الزامی:
 - هیچ تشخیص جدیدی قطعی اعلام نکن و هیچ داروی نسخه‌ای، شروع/قطع/تغییر دوز پیشنهاد نده.
@@ -97,7 +99,7 @@ export default async function handler(req,res){
 - اگر تداخل را با اطمینان نمی‌دانی، عدم قطعیت را صریح بگو؛ طبیعی بودن را معادل بی‌خطر بودن فرض نکن.
 - follow_up باید کار قابل انجام و موعد تقریبی داشته باشد؛ اگر موعد پزشکی مشخص نیست، محافظه‌کارانه و با عبارت «برای هماهنگی» بنویس.
 - علائم هشدار فوری را کوتاه و روشن در red_flags قرار بده. در وضعیت اورژانسی توصیه کن منتظر AI یا نوبت آنلاین نماند و از خدمات اورژانسی محلی استفاده کند.
-- از اطلاعاتی که در پرونده نیست چیزی اختراع نکن. کمبود اطلاعات را در data_gaps بنویس.
+- روند biomarker فقط برای دیدن جهت تغییر است؛ تفاوت آزمایشگاه، واحد، شرایط نمونه‌گیری و رنج مرجع می‌تواند مقایسه را محدود کند. از trend به‌تنهایی تشخیص یا تصمیم دارویی نساز.\n- از اطلاعاتی که در پرونده نیست چیزی اختراع نکن. کمبود اطلاعات را در data_gaps بنویس.
 - پاسخ فارسی و قابل فهم باشد.`;
     const safetyIdentifier=crypto.createHash('sha256').update(`drman-care-plan:${session.sub}`).digest('hex').slice(0,32);
     const messages=[{role:'system',content:system},{role:'user',content:`زمان سیستم: ${new Date().toISOString()}\nپرونده سلامت:\n${JSON.stringify(record)}\n\nیک برنامه مراقبت شخصی کوتاه، اولویت‌بندی‌شده و قابل پیگیری بساز.`}];
