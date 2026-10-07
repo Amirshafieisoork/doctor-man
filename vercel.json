@@ -131,6 +131,9 @@
     },
     "api/health-navigator.js": {
       "maxDuration": 45
+    },
+    "api/care-plan.js": {
+      "maxDuration": 45
     }
   }
 }
