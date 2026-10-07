@@ -2,36 +2,36 @@
   "version": 2,
   "routes": [
     {
-      "src": "/api/analyze-lab",
-      "dest": "/api/analyze-secure"
-    },
-    {
       "src": "/robots.txt",
-      "dest": "/api/robots"
+      "dest": "/api/router?route=robots"
     },
     {
       "src": "/sitemap.xml",
-      "dest": "/api/sitemap"
+      "dest": "/api/router?route=sitemap"
     },
     {
       "src": "/doctor/([^/]+)",
-      "dest": "/api/doctor-page?slug=$1"
+      "dest": "/api/router?route=doctor-page&slug=$1"
     },
     {
       "src": "/emergency/([^/]+)",
-      "dest": "/api/emergency-page?token=$1"
+      "dest": "/api/router?route=emergency-page&token=$1"
     },
     {
       "src": "/learn/([^/]+)",
-      "dest": "/api/learn-page?slug=$1"
+      "dest": "/api/router?route=learn-page&slug=$1"
     },
     {
       "src": "/learn",
-      "dest": "/api/learn-page"
+      "dest": "/api/router?route=learn-page"
+    },
+    {
+      "src": "/api/router",
+      "dest": "/api/router"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "/api/router?route=$1"
     },
     {
       "src": "/",
@@ -123,16 +123,7 @@
     }
   ],
   "functions": {
-    "api/analyze-secure.js": {
-      "maxDuration": 45
-    },
-    "api/support-chat.js": {
-      "maxDuration": 30
-    },
-    "api/health-navigator.js": {
-      "maxDuration": 45
-    },
-    "api/care-plan.js": {
+    "api/router.js": {
       "maxDuration": 45
     }
   }
