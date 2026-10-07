@@ -41,6 +41,7 @@ const ROUTES = {
   "patients": () => import("../server/api/patients.js"),
   "payment-callback": () => import("../server/api/payment-callback.js"),
   "payment-start": () => import("../server/api/payment-start.js"),
+  "payment-status": () => import("../server/api/payment-status.js"),
   "previsit-intake": () => import("../server/api/previsit-intake.js"),
   "register": () => import("../server/api/register.js"),
   "robots": () => import("../server/api/robots.js"),
@@ -87,6 +88,18 @@ async function prepareBody(req) {
   req.body = raw;
 }
 
+function sameOriginMutationAllowed(req,route){
+  if(!['POST','PUT','PATCH','DELETE'].includes(req.method)||route==='payment-callback')return true;
+  const origin=String(req.headers?.origin||'').trim();
+  const secFetch=String(req.headers?.['sec-fetch-site']||'').toLowerCase();
+  if(secFetch==='cross-site')return false;
+  if(!origin)return true;
+  try{
+    const u=new URL(origin),host=String(req.headers?.host||'').toLowerCase();
+    return u.protocol==='https:'&&u.host.toLowerCase()===host;
+  }catch{return false}
+}
+
 export default async function handler(req, res) {
   const rawRoute = String(req.query?.route || '').replace(/^\/+|\/+$/g, '');
   const route = rawRoute.split('/')[0];
@@ -94,6 +107,8 @@ export default async function handler(req, res) {
   if (!route || !ROUTES[route]) {
     return res.status(404).json({ success: false, error: 'API route پیدا نشد' });
   }
+
+  if(!sameOriginMutationAllowed(req,route))return res.status(403).json({success:false,error:'مبدأ درخواست معتبر نیست'});
 
   try {
     await prepareBody(req);

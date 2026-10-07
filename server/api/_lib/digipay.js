@@ -1,4 +1,14 @@
 const DEFAULT_STAGING = 'https://uat.mydigipay.info/digipay/api';
+function safeGatewayUrl(value){
+  const u=new URL(String(value||''));
+  const h=u.hostname.toLowerCase();
+  if(u.protocol!=='https:'||!(h==='mydigipay.com'||h.endsWith('.mydigipay.com')||h==='mydigipay.info'||h.endsWith('.mydigipay.info')))throw new Error('DIGIPAY_REDIRECT_INVALID');
+  return u.toString();
+}
+async function timedFetch(url,options={},timeoutMs=12000){
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}
+}
 
 function config() {
   const baseUrl = String(process.env.DIGIPAY_BASE_URL || DEFAULT_STAGING).replace(/\/$/, '');
@@ -21,7 +31,7 @@ export async function getDigiPayToken() {
   form.append('password', c.password);
   form.append('grant_type', 'password');
   const basic = Buffer.from(`${c.clientId}:${c.clientSecret}`).toString('base64');
-  const response = await fetch(`${c.baseUrl}/oauth/token`, {
+  const response = await timedFetch(`${c.baseUrl}/oauth/token`, {
     method: 'POST',
     headers: { Authorization: `Basic ${basic}` },
     body: form
@@ -36,7 +46,7 @@ export async function getDigiPayToken() {
 
 export async function createDigiPayTicket({ amountRial, cellNumber, providerId, callbackUrl }) {
   const { accessToken, baseUrl } = await getDigiPayToken();
-  const response = await fetch(`${baseUrl}/tickets/business?type=11`, {
+  const response = await timedFetch(`${baseUrl}/tickets/business?type=11`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -57,13 +67,13 @@ export async function createDigiPayTicket({ amountRial, cellNumber, providerId, 
     console.error('DigiPay ticket error', response.status, data);
     throw new Error('DIGIPAY_TICKET_FAILED');
   }
-  return data;
+  return {...data,redirectUrl:safeGatewayUrl(data.redirectUrl)};
 }
 
 export async function verifyDigiPayPayment({ trackingCode, providerId }) {
   const { accessToken, baseUrl } = await getDigiPayToken();
   const verifyType = Number(process.env.DIGIPAY_VERIFY_TYPE || 0);
-  const response = await fetch(`${baseUrl}/purchases/verify?type=${Number.isFinite(verifyType) ? verifyType : 0}`, {
+  const response = await timedFetch(`${baseUrl}/purchases/verify?type=${Number.isFinite(verifyType) ? verifyType : 0}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
