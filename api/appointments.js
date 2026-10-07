@@ -5,6 +5,7 @@ async function getDoctorForUser(userId) {
   const { data } = await supabase.from('doctor_profiles').select('id,verification_status,timezone').eq('user_id', userId).maybeSingle();
   return data;
 }
+async function publicAppointmentsEnabled(){const {data}=await supabase.from('app_settings').select('value').eq('key','features').maybeSingle();return data?.value?.appointments===true;}
 function localParts(date,timeZone){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone,weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return{weekday:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday),minutes:Number(p.hour)*60+Number(p.minute)};}
 function mins(t){const [h,m]=String(t).slice(0,5).split(':').map(Number);return h*60+m;}
 async function validateSlot(doctor,starts,mode){
@@ -34,6 +35,7 @@ export default async function handler(req, res) {
     if (error) return res.status(500).json({ success: false, error: 'دریافت نوبت‌ها انجام نشد' }); return res.status(200).json({ success: true, appointments: data || [] });
   }
   if (req.method === 'POST') {
+    if(!(await publicAppointmentsEnabled())) return res.status(503).json({success:false,code:'APPOINTMENTS_NOT_LAUNCHED',error:'نوبت‌دهی عمومی هنوز راه‌اندازی نشده است. شبکه پزشکان در حال تکمیل است.'});
     const body = req.body || {}, patientId = String(body.patient_id || ''), doctorId = String(body.doctor_id || '');
     const [{ data: patient }, { data: doctor }] = await Promise.all([
       supabase.from('patients').select('id').eq('id', patientId).eq('owner_user_id', session.sub).maybeSingle(),
