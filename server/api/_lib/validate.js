@@ -3,7 +3,10 @@ export class InputValidationError extends Error {
 }
 export function numberField(value,{label='مقدار',min=-Infinity,max=Infinity,integer=false,nullable=true}={}){
   if(value===undefined||value===null||value===''){if(nullable)return null;throw new InputValidationError(`${label} الزامی است`)}
-  const n=typeof value==='number'?value:Number(String(value).trim());
+  if(!['number','string'].includes(typeof value))throw new InputValidationError(`${label} باید عدد معتبر باشد`);
+  const normalized=String(value).trim().replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632));
+  if(!normalized){if(nullable)return null;throw new InputValidationError(`${label} الزامی است`)}
+  const n=typeof value==='number'?value:Number(normalized);
   if(!Number.isFinite(n))throw new InputValidationError(`${label} باید عدد معتبر باشد`);
   if(integer&&!Number.isInteger(n))throw new InputValidationError(`${label} باید عدد صحیح باشد`);
   if(n<min||n>max)throw new InputValidationError(`${label} باید بین ${min.toLocaleString('fa-IR')} و ${max.toLocaleString('fa-IR')} باشد`);
@@ -20,4 +23,22 @@ export function dateField(value,{label='تاریخ',allowFuture=true,minYear=190
 export function birthDateField(value,{label='تاریخ تولد',maxAge=125}={}){
   const raw=dateField(value,{label,allowFuture:false,minYear:1900});if(!raw)return null;
   const d=new Date(raw+'T00:00:00Z'),now=new Date();let age=now.getUTCFullYear()-d.getUTCFullYear();const m=now.getUTCMonth()-d.getUTCMonth();if(m<0||(m===0&&now.getUTCDate()<d.getUTCDate()))age--;if(age>maxAge)throw new InputValidationError(`${label} خارج از بازه قابل قبول است`);return raw;
+}
+
+export function timestampField(value, {label='زمان', allowFuture=true}={}) {
+  if (value === undefined || value === null || value === '') return null;
+  const raw = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(raw)) {
+    throw new InputValidationError(`${label} باید زمان معتبر با منطقه زمانی باشد`);
+  }
+  dateField(raw.slice(0,10), {label});
+  const clock = raw.slice(11,19).split(':').map(Number);
+  const offset = raw.match(/([+-])(\d{2}):(\d{2})$/);
+  const date = new Date(raw);
+  if (clock[0] > 23 || clock[1] > 59 || (clock[2] || 0) > 59 ||
+      (offset && (+offset[2] > 14 || +offset[3] > 59 || (+offset[2] === 14 && +offset[3] !== 0))) || !Number.isFinite(date.getTime())) {
+    throw new InputValidationError(`${label} معتبر نیست`);
+  }
+  if (!allowFuture && date.getTime() > Date.now() + 60000) throw new InputValidationError(`${label} نمی‌تواند در آینده باشد`);
+  return date.toISOString();
 }

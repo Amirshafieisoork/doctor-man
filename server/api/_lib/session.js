@@ -15,8 +15,32 @@ function b64url(value) { return Buffer.from(value).toString('base64url'); }
 function sign(unsigned) { return crypto.createHmac('sha256', getSecret()).update(unsigned).digest('base64url'); }
 function safeEqual(a, b) { const aa=Buffer.from(a||''),bb=Buffer.from(b||''); return aa.length===bb.length && crypto.timingSafeEqual(aa,bb); }
 export function createToken(payload,maxAge=SESSION_MAX_AGE){const body={...payload,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+maxAge};const encoded=b64url(JSON.stringify(body));return `${encoded}.${sign(encoded)}`;}
-export function verifyToken(token){if(!token||typeof token!=='string')return null;const [encoded,signature]=token.split('.');if(!encoded||!signature||!safeEqual(signature,sign(encoded)))return null;try{const payload=JSON.parse(Buffer.from(encoded,'base64url').toString('utf8'));if(!payload.exp||payload.exp<Math.floor(Date.now()/1000))return null;return payload}catch{return null}}
-export function parseCookies(req){return String(req.headers.cookie||'').split(';').map(v=>v.trim()).filter(Boolean).reduce((acc,part)=>{const idx=part.indexOf('=');if(idx>-1)acc[decodeURIComponent(part.slice(0,idx))]=decodeURIComponent(part.slice(idx+1));return acc},{})}
+export function verifyToken(token) {
+  if (typeof token !== 'string' || token.length > 4096) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2 || parts.some(p => !/^[A-Za-z0-9_-]+$/.test(p))) return null;
+  const [encoded, signature] = parts;
+  try {
+    if (!safeEqual(signature, sign(encoded))) return null;
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    const now = Math.floor(Date.now() / 1000);
+    if (!payload || !Number.isSafeInteger(payload.exp) || !Number.isSafeInteger(payload.iat) ||
+        payload.exp <= now || payload.iat > now + 60 || payload.exp <= payload.iat) return null;
+    return payload;
+  } catch { return null; }
+}
+export function parseCookies(req) {
+  const cookies = Object.create(null);
+  for (const part of String(req.headers?.cookie || '').split(';')) {
+    const index = part.indexOf('=');
+    if (index < 0) continue;
+    try {
+      const name = decodeURIComponent(part.slice(0, index).trim());
+      if (!Object.hasOwn(cookies, name)) cookies[name] = decodeURIComponent(part.slice(index + 1).trim());
+    } catch { /* A malformed cookie must not break authentication. */ }
+  }
+  return cookies;
+}
 function cookieHeader(name,value,maxAge){const secure=process.env.NODE_ENV==='production'?'; Secure':'';return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;}
 function appendCookie(res,cookie){const current=res.getHeader('Set-Cookie');if(!current)return res.setHeader('Set-Cookie',cookie);const values=Array.isArray(current)?current:[String(current)];res.setHeader('Set-Cookie',[...values,cookie]);}
 export function setUserSession(res,user){appendCookie(res,cookieHeader(COOKIE_NAME,createToken({sub:String(user.id),role:'user'}),SESSION_MAX_AGE));}

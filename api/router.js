@@ -98,15 +98,18 @@ function sameOriginMutationAllowed(req,route){
   if(!origin)return true;
   try{
     const u=new URL(origin),host=String(req.headers?.host||'').toLowerCase();
-    return u.protocol==='https:'&&u.host.toLowerCase()===host;
+    const localDevelopment=process.env.NODE_ENV!=='production' && ['localhost','127.0.0.1','[::1]'].includes(u.hostname);
+    return (u.protocol==='https:' || (localDevelopment && u.protocol==='http:')) && u.host.toLowerCase()===host;
   }catch{return false}
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control','no-store, private');
+  res.setHeader('X-Content-Type-Options','nosniff');
   const rawRoute = String(req.query?.route || '').replace(/^\/+|\/+$/g, '');
   const route = rawRoute.split('/')[0];
 
-  if (!route || !ROUTES[route]) {
+  if (!route || !Object.hasOwn(ROUTES,route) || rawRoute!==route) {
     return res.status(404).json({ success: false, error: 'API route پیدا نشد' });
   }
 
@@ -121,6 +124,9 @@ export default async function handler(req, res) {
     return await fn(req, res);
   } catch (error) {
     if (error instanceof BodyError) return res.status(400).json({ success: false, error: error.message });
+    if (/^(Supabase .* (missing|not configured)|Session signing secret is missing)$/.test(error.message || '')) {
+      return res.status(503).json({success:false,code:'SERVICE_NOT_CONFIGURED',error:'تنظیمات سرویس کامل نیست؛ لطفاً با پشتیبانی تماس بگیرید'});
+    }
     console.error('api-router', route, error);
     if (!res.headersSent) return res.status(500).json({ success: false, error: 'خطای داخلی سرویس' });
   }
