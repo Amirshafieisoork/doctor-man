@@ -20,3 +20,9 @@ test('only absolute HTTPS article links remain clickable and receive safe relati
     assert.equal(cleanArticleHtml(`<a href="${href}">منبع</a>`), '<a>منبع</a>', href);
   }
 });
+
+test('solidus textarea closes, SVG URI lists and form action schemes stay inert', () => {
+  assert.equal(cleanArticleHtml('<textarea>untrusted</textarea/><img src=x onerror=alert(1)><p>safe</p>'), '<p>safe</p>');
+  assert.equal(cleanArticleHtml('<svg><animate attributeName="href" values="https://example.com;javascript:alert(1)"></animate></svg><p>safe</p>'), '<p>safe</p>');
+  assert.equal(cleanArticleHtml('<form action="javascript:alert(1)"><button formaction="javascript:alert(1)">action</button></form><p background="javascript:alert(1)">safe</p>'), 'action<p>safe</p>');
+});

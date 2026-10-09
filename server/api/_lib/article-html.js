@@ -1,4 +1,4 @@
-import sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from './vendor/article-sanitizer.mjs';
 
 // Published rich text remains readable while active content and unsafe URLs
 // never become part of an article response, including malformed HTML.
