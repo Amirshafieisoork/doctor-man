@@ -1,8 +1,9 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
 function plusDays(n){return new Date(Date.now()+n*86400000)}
-async function insertOnce(row){if(!row.dedupe_key)return;const {error}=await supabase.from('notifications').insert(row);if(error&&error.code!=='23505')console.error('notification sync',error)}
+async function insertOnce(row){if(!row.dedupe_key)return;const {error}=await supabase.from('notifications').insert(row);if(error&&error.code!=='23505')console.error('notification sync',safeErrorMetadata(error))}
 async function syncReminders(userId){
   const {data:patients}=await supabase.from('patients').select('id').eq('owner_user_id',userId);const ids=(patients||[]).map(x=>x.id);if(!ids.length)return;
   const now=new Date(),today=now.toISOString().slice(0,10);
@@ -19,9 +20,9 @@ async function syncReminders(userId){
 }
 
 export default async function handler(req,res){
-  const session=requireUser(req,res); if(!session)return;
+  const session=await requireUser(req,res); if(!session)return;
   if(req.method==='GET'){
-    await syncReminders(session.sub).catch(e=>console.error('sync reminders',e));
+    await syncReminders(session.sub).catch(e=>console.error('sync reminders',safeErrorMetadata(e)));
     const {data,error}=await supabase.from('notifications').select('id,patient_id,type,title,body,action_url,read_at,scheduled_for,sent_at,created_at').eq('user_id',session.sub).or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`).order('created_at',{ascending:false}).limit(100);
     if(error)return res.status(500).json({success:false,error:'دریافت اعلان‌ها انجام نشد'});
     return res.status(200).json({success:true,notifications:data||[],unread:(data||[]).filter(x=>!x.read_at).length});

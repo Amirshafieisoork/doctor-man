@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
@@ -7,7 +8,10 @@ function sha256(value){return crypto.createHash('sha256').update(String(value)).
 
 export default async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
-  const session=requireUser(req,res);if(!session)return;
+  const session=await requireUser(req,res);if(!session)return;
+  if(!process.env.DIGIPAY_CLIENT_ID||!process.env.DIGIPAY_CLIENT_SECRET||!process.env.DIGIPAY_USERNAME||!process.env.DIGIPAY_PASSWORD){
+    return res.status(503).json({success:false,error:'درگاه دیجی‌پی هنوز توسط مدیر سایت فعال نشده است.',code:'DIGIPAY_NOT_CONFIGURED'});
+  }
 
   try{
     const planId=String(req.body?.plan_id||'').trim();
@@ -74,7 +78,7 @@ export default async function handler(req,res){
       throw gatewayError;
     }
   }catch(error){
-    console.error('payment-start',error);
+    console.error('payment-start',safeErrorMetadata(error));
     return res.status(500).json({success:false,error:'شروع پرداخت انجام نشد. لطفاً دوباره تلاش کنید.'});
   }
 }

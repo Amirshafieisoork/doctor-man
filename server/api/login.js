@@ -25,17 +25,19 @@ export default async function handler(req, res) {
   const phone = String(body.phone || '').trim();
   const password = String(body.password || '');
   const gate=await allowRate(req,{action:'login',subject:phone,limit:8,windowMinutes:15});
+  if(gate.unavailable)return res.status(503).json({error:'ورود موقتاً در دسترس نیست. دوباره تلاش کنید.'});
   if(!gate.allowed){res.setHeader('Retry-After',String(gate.retry_after_seconds));return res.status(429).json({error:'تلاش‌های ورود زیاد بوده است. چند دقیقه بعد دوباره امتحان کنید'})}
   if (!/^09\d{9}$/.test(phone) || password.length < 1 || password.length > 128) {
     return res.status(400).json({ error: 'شماره تماس یا رمز عبور معتبر نیست' });
   }
 
   const { data, error } = await supabase.from('users').select('id,name,phone,password,status').eq('phone', phone).maybeSingle();
-  if (error || !data || !verifyPassword(password, data.password)){await recordRate(gate.keyHash,'login',false);return res.status(401).json({ error: 'شماره یا رمز اشتباه است' });}
+  if (error) return res.status(503).json({error:'ورود موقتاً در دسترس نیست. دوباره تلاش کنید.'});
+  if (!data || !verifyPassword(password, data.password))return res.status(401).json({ error: 'شماره یا رمز اشتباه است' });
   if (data.status === 'blocked') return res.status(403).json({ error: 'حساب کاربری شما غیرفعال شده است' });
 
   const user = { id: data.id, name: data.name, phone: data.phone };
-  await recordRate(gate.keyHash,'login',true);
+  await recordRate(gate.keyHash,'login',true,gate.eventId);
   setUserSession(res, user);
   return res.status(200).json({ success: true, user });
 }

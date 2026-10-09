@@ -132,35 +132,35 @@
     },
     {
       "src": "/robots.txt",
-      "dest": "/api/router?route=robots"
+      "dest": "/api/router.js?route=robots"
     },
     {
       "src": "/sitemap.xml",
-      "dest": "/api/router?route=sitemap"
+      "dest": "/api/router.js?route=sitemap"
     },
     {
       "src": "/doctor/([^/]+)",
-      "dest": "/api/router?route=doctor-page&slug=$1"
+      "dest": "/api/router.js?route=doctor-page&slug=$1"
     },
     {
       "src": "/emergency/([^/]+)",
-      "dest": "/api/router?route=emergency-page&token=$1"
+      "dest": "/api/router.js?route=emergency-page&token=$1"
     },
     {
       "src": "/learn/([^/]+)",
-      "dest": "/api/router?route=learn-page&slug=$1"
+      "dest": "/api/router.js?route=learn-page&slug=$1"
     },
     {
       "src": "/learn",
-      "dest": "/api/router?route=learn-page"
+      "dest": "/api/router.js?route=learn-page"
     },
     {
-      "src": "/api/router",
-      "dest": "/api/router"
+      "src": "/api/router(?:\\.js)?",
+      "dest": "/api/router.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/router?route=$1"
+      "dest": "/api/router.js?route=$1"
     },
     {
       "src": "/",
@@ -257,7 +257,7 @@
       "use": "@vercel/node",
       "config": {
         "includeFiles": "server/**",
-        "maxDuration": 45
+        "maxDuration": 60
       }
     },
     {

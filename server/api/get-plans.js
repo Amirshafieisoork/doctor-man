@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { supabase } from './_lib/db.js';
 
 export default async function handler(req, res) {
@@ -11,7 +12,7 @@ export default async function handler(req, res) {
     if (error) throw error;
     return res.status(200).json({ success: true, plans: data || [] });
   } catch (error) {
-    console.error('get-plans', error);
+    console.error('get-plans', safeErrorMetadata(error));
     return res.status(500).json({ success: false, error: 'بارگذاری پلن‌ها انجام نشد' });
   }
 }

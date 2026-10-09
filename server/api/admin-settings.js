@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
@@ -40,5 +41,5 @@ export default async function handler(req,res){
       return res.status(200).json({success:true,setting:data});
     }
     return res.status(405).json({error:'Method not allowed'});
-  }catch(error){console.error('admin-settings',error);return res.status(500).json({success:false,error:'ذخیره تنظیمات انجام نشد'})}
+  }catch(error){console.error('admin-settings',safeErrorMetadata(error));return res.status(500).json({success:false,error:'ذخیره تنظیمات انجام نشد'})}
 }

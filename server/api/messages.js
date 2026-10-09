@@ -6,7 +6,7 @@ async function doctorForUser(userId){const {data}=await supabase.from('doctor_pr
 async function messageGrant(patientId,doctorId){const {data}=await supabase.from('patient_access_grants').select('id,status,expires_at,scope').eq('patient_id',patientId).eq('doctor_id',doctorId).eq('status','active').maybeSingle();if(!data)return null;if(data.expires_at&&new Date(data.expires_at).getTime()<Date.now())return null;if(!Array.isArray(data.scope)||!data.scope.includes('messages'))return null;return data}
 
 export default async function handler(req,res){
-  const session=requireUser(req,res); if(!session)return;
+  const session=await requireUser(req,res); if(!session)return;
   const body=req.body&&typeof req.body==='object'?req.body:{};
   const role=String(req.query?.role||body.role||'patient');
   if(req.method==='GET'){

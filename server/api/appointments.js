@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { canTransitionAppointment, meetingUrl, overlaps } from './_lib/appointments.js';
@@ -24,7 +25,7 @@ async function validateSlot(doctor,starts,mode){
 }
 
 export default async function handler(req, res) {
-  const session = requireUser(req, res); if (!session) return;
+  const session = await requireUser(req, res); if (!session) return;
   try {
   if (req.method === 'GET') {
     const role = String(req.query?.role || 'patient');
@@ -91,7 +92,7 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
   } catch(error) {
     if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});
-    console.error('appointments',error);
+    console.error('appointments',safeErrorMetadata(error));
     return res.status(500).json({success:false,error:'عملیات نوبت انجام نشد'});
   }
 }

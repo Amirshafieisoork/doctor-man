@@ -8,3 +8,8 @@ tests/
 docs/
 playwright.config.mjs
 *.log
+
+work/
+hero-options.html
+assets/*options*.png
+assets/hero-signature.png

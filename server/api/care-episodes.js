@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
@@ -7,7 +8,7 @@ const URGENCY=new Set(['routine','soon','urgent']);
 function txt(v,max=3000){return v==null?null:String(v).trim().slice(0,max)}
 async function owned(userId,patientId){const {data}=await supabase.from('patients').select('id').eq('id',patientId).eq('owner_user_id',userId).maybeSingle();return data}
 export default async function handler(req,res){
- const session=requireUser(req,res);if(!session)return;
+ const session=await requireUser(req,res);if(!session)return;
  const patientId=String((req.method==='GET'?req.query?.patient_id:req.body?.patient_id)||'').trim();
  if(!patientId||!(await owned(session.sub,patientId)))return res.status(404).json({success:false,error:'پرونده پیدا نشد'});
  try{
@@ -36,5 +37,5 @@ export default async function handler(req,res){
      return res.status(200).json({success:true,episode:data});
    }
    return res.status(405).json({error:'Method not allowed'});
- }catch(error){console.error('care-episodes',error);return res.status(500).json({success:false,error:'مدیریت موضوع سلامت انجام نشد'})}
+ }catch(error){console.error('care-episodes',safeErrorMetadata(error));return res.status(500).json({success:false,error:'مدیریت موضوع سلامت انجام نشد'})}
 }

@@ -10,7 +10,8 @@
     "@supabase/supabase-js": "2.105.4",
     "@vercel/oidc": "4.0.0",
     "busboy": "1.6.0",
-    "openai": "4.104.0"
+    "openai": "4.104.0",
+    "sanitize-html": "2.18.0"
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env scripts/dev.mjs",

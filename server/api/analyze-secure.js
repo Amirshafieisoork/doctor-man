@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import Busboy from 'busboy';
 import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
@@ -5,11 +6,15 @@ import { supabase } from './_lib/db.js';
 import { avalaiClient, LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './_lib/ai-models.js';
 import { validateLabResult } from './_lib/lab-validation.js';
 import { saveBiomarkers } from './_lib/biomarkers.js';
+import { readEntitlement, planLimit } from './_lib/entitlements.js';
+import { reserveLabAnalysisQuota, releaseLabAnalysisQuota } from './_lib/ai-quota.js';
+import { matchesFileType } from './_lib/uploads.js';
 
 export const config = { api: { bodyParser: false } };
 
 const MAX_IMAGES = 4;
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const MAX_TOTAL_SIZE = 4 * 1024 * 1024;
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const AI_VERSION = 'lab-v4-validated-2026-10';
 
@@ -52,6 +57,7 @@ function parseForm(req) {
     const fields = {};
     const images = [];
     let invalidFile = false;
+    let totalSize=0;
     busboy.on('field', (name, value) => { fields[name] = String(value).slice(0, 2000); });
     busboy.on('file', (_name, file, info) => {
       const chunks = [];
@@ -59,20 +65,21 @@ function parseForm(req) {
       let limited = false;
       if (!allowedTypes.has(mimeType)) invalidFile = true;
       file.on('limit', () => { limited = true; invalidFile = true; });
-      file.on('data', chunk => { if (!limited) chunks.push(chunk); });
+      file.on('data', chunk => {totalSize+=chunk.length;if(totalSize>MAX_TOTAL_SIZE)invalidFile=true;if(!limited&&totalSize<=MAX_TOTAL_SIZE)chunks.push(chunk);});
       file.on('end', () => {
-        if (!limited && allowedTypes.has(mimeType) && images.length < MAX_IMAGES) images.push({ buffer: Buffer.concat(chunks), mimeType });
+        const buffer=Buffer.concat(chunks);
+        if(!matchesFileType(buffer,mimeType))invalidFile=true;
+        if (!limited && allowedTypes.has(mimeType) && images.length < MAX_IMAGES) images.push({ buffer, mimeType });
       });
+      file.on('error',reject);
     });
+    busboy.on('filesLimit', () => { invalidFile = true; });
+    busboy.on('fieldsLimit', () => { invalidFile = true; });
     busboy.on('finish', () => invalidFile ? reject(new Error('INVALID_IMAGE')) : resolve({ fields, images }));
     busboy.on('error', reject);
+    req.once('aborted',()=>reject(new Error('INVALID_IMAGE')));
     req.pipe(busboy);
   });
-}
-
-function monthStart() {
-  const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
 }
 
 function ageFromBirthDate(value) {
@@ -97,20 +104,8 @@ async function resolvePatient(userId, requestedId) {
 }
 
 async function getEntitlement(userId) {
-  const { data: user, error } = await supabase.from('users').select('status,plan_expires_at,plans(id,name,slug,test_limit)').eq('id', userId).single();
-  if (error || !user) throw new Error('USER_NOT_FOUND');
-  if (user.status === 'blocked') throw new Error('USER_BLOCKED');
-  let plan = user.plans;
-  if (!plan || (user.plan_expires_at && new Date(user.plan_expires_at) < new Date())) {
-    const { data: freePlan } = await supabase.from('plans').select('id,name,slug,test_limit').eq('slug', 'free').single();
-    plan = freePlan;
-    if (freePlan) await supabase.from('users').update({ plan_id: freePlan.id, plan_started_at: new Date().toISOString(), plan_expires_at: new Date(Date.now() + 30 * 86400000).toISOString() }).eq('id', userId);
-  }
-  const { count } = await supabase.from('test_results').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', monthStart());
-  const used = Number(count || 0);
-  const limit = Number(plan?.test_limit ?? 2);
-  if (limit >= 0 && used >= limit) { const error = new Error('QUOTA_EXCEEDED'); error.plan = plan; throw error; }
-  return { plan, remaining: limit < 0 ? null : Math.max(0, limit - used) };
+  const {plan}=await readEntitlement(supabase,userId);
+  return {plan,limit:planLimit(plan,'test_limit')};
 }
 
 async function uploadPrivateImages(userId, images) {
@@ -181,7 +176,7 @@ async function analyze(client, content, safetyIdentifier) {
       return { parsed: validated, model: response.model || model, requestId: response._request_id || null };
     } catch (error) {
       lastError = error;
-      console.error('lab model attempt failed', model, error?.message || error);
+      console.error('lab model attempt failed', model, safeErrorMetadata(error));
     }
   }
   throw lastError || new Error('AI_ANALYSIS_FAILED');
@@ -189,24 +184,34 @@ async function analyze(client, content, safetyIdentifier) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const session = requireUser(req, res);
+  const session = await requireUser(req, res);
   if (!session) return;
+  if(!String(req.headers?.['content-type']||'').toLowerCase().startsWith('multipart/form-data;'))return res.status(415).json({success:false,error:'تصاویر باید به شکل فایل ارسال شوند'});
   const client = await avalaiClient();
   if (!client) return res.status(503).json({ success: false, error: 'سرویس هوش مصنوعی هنوز تنظیم نشده است' });
 
   let storedPaths = [];
+  let reservation=null;
+  let selectedPlan=null;
   try {
     const entitlement = await getEntitlement(session.sub);
+    selectedPlan=entitlement.plan;
     const { fields, images } = await parseForm(req);
     if (!images.length) return res.status(400).json({ success: false, error: 'حداقل یک تصویر باید ارسال شود' });
+    if(fields.ai_consent!=='true')return res.status(428).json({success:false,code:'AI_CONSENT_REQUIRED',error:'برای تحلیل آزمایش، رضایت پردازش هوش مصنوعی لازم است'});
 
     const patient = await resolvePatient(session.sub, String(fields.patient_id || '').trim());
+    if(!patient)throw new Error('PATIENT_NOT_FOUND');
     const enteredAge = String(fields.age || '').trim();
     if (enteredAge && (!/^\d{1,3}$/.test(enteredAge) || Number(enteredAge) < 0 || Number(enteredAge) > 120)) return res.status(400).json({ success: false, error: 'سن واردشده معتبر نیست' });
     const derivedAge = ageFromBirthDate(patient?.birth_date);
     const age = derivedAge ?? (enteredAge ? Number(enteredAge) : null);
     const gender = String(patient?.sex || fields.gender || 'نامشخص').slice(0, 40);
     const reason = String(fields.reason || '').trim().slice(0, 500);
+
+    const {error:consentError}=await supabase.from('consent_records').insert({patient_id:patient.id,user_id:session.sub,consent_type:'ai_processing',version:'lab-upload-v1',granted:true,metadata:{source:'lab_upload'}});
+    if(consentError)throw consentError;
+    reservation=await reserveLabAnalysisQuota(supabase,session.sub,{limit:entitlement.limit});
 
     const contextText = `پرونده: ${patient?.display_name || 'پرونده اصلی کاربر'}\nسن: ${age ?? 'نامشخص'}\nجنس/sex: ${gender}\nگروه خونی ثبت‌شده: ${patient?.blood_type || 'نامشخص'}\nعلت آزمایش: ${reason || 'ذکر نشده'}\n\nاین تصاویر صفحات یک مجموعه آزمایش هستند. همه صفحات را با هم در نظر بگیر.`;
     const content = [
@@ -232,11 +237,12 @@ export default async function handler(req, res) {
       ai_confidence: parsed.confidence,
       image_url: null,
       images_base64: null,
-      image_paths: storedPaths
+      image_paths: storedPaths,
+      created_at:reservation.reservedAt
     };
     const { data: saved, error: saveError } = await supabase.from('test_results').insert(insert).select('id').single();
     if (saveError) { await supabase.storage.from('lab-images').remove(storedPaths); throw saveError; }
-    await saveBiomarkers(supabase,{testResultId:saved?.id,patientId:patient?.id||null,userId:session.sub,items:parsed.items,confidence:parsed.confidence,observedAt:new Date().toISOString()}).catch(e=>console.error('biomarker save',e));
+    await saveBiomarkers(supabase,{testResultId:saved?.id,patientId:patient?.id||null,userId:session.sub,items:parsed.items,confidence:parsed.confidence,observedAt:new Date().toISOString()}).catch(e=>console.error('biomarker save',safeErrorMetadata(e)));
 
     await supabase.from('audit_logs').insert({
       actor_user_id: session.sub,
@@ -248,7 +254,7 @@ export default async function handler(req, res) {
       metadata: { model, version: AI_VERSION, request_id: requestId, read_quality: parsed.read_quality, confidence: parsed.confidence }
     }).catch(() => null);
 
-    const remainingAfter = entitlement.remaining == null ? null : Math.max(0, entitlement.remaining - 1);
+    const remainingAfter = reservation.remaining;
     return res.status(200).json({
       success: true,
       analysis: parsed.full_text,
@@ -264,11 +270,14 @@ export default async function handler(req, res) {
       remaining: remainingAfter
     });
   } catch (error) {
-    console.error('analyze-secure', error);
-    if (error.message === 'INVALID_IMAGE') return res.status(400).json({ success: false, error: 'فقط JPG، PNG یا WebP تا ۴ مگابایت برای هر تصویر مجاز است' });
+    console.error('analyze-secure',safeErrorMetadata(error));
+    if (error.message === 'INVALID_IMAGE') return res.status(400).json({ success: false, error: 'حداکثر ۴ تصویر معتبر JPG، PNG یا WebP با حجم مجموع تا ۴ مگابایت مجاز است' });
     if (error.message === 'PATIENT_NOT_FOUND') return res.status(404).json({ success: false, error: 'پرونده انتخاب‌شده معتبر نیست' });
-    if (error.message === 'QUOTA_EXCEEDED') return res.status(402).json({ success: false, error: 'سهمیه تحلیل این ماه شما تمام شده است. برای ادامه پلن خود را ارتقا دهید.', code: 'QUOTA_EXCEEDED', plan: error.plan?.name });
+    if (error.message === 'QUOTA_EXCEEDED') return res.status(402).json({ success: false, error: 'سهمیه تحلیل این ماه شما تمام شده است. برای ادامه پلن خود را ارتقا دهید.', code: 'QUOTA_EXCEEDED', plan: selectedPlan?.name });
+    if (error.message === 'QUOTA_UNAVAILABLE') return res.status(503).json({success:false,error:'بررسی سهمیه تحلیل موقتاً در دسترس نیست. دوباره تلاش کنید.'});
     if (error.message === 'USER_BLOCKED') return res.status(403).json({ success: false, error: 'حساب کاربری شما غیرفعال شده است' });
     return res.status(500).json({ success: false, error: 'تحلیل آزمایش انجام نشد. تصویر واضح‌تر ارسال کنید یا دوباره تلاش کنید.' });
+  }finally{
+    if(reservation)await releaseLabAnalysisQuota(supabase,session.sub,reservation.reservationId).catch(error=>console.error('lab quota release',safeErrorMetadata(error)));
   }
 }

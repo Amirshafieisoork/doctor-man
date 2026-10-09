@@ -23,9 +23,10 @@ export function biomarkerKey(name){
   if(!compact)return null;return ALIASES.get(compact)||compact.slice(0,80);
 }
 export function numericLabValue(value){
-  const s=String(value??'').replace(/,/g,'').trim();
-  if(!s||/[a-z]{3,}/i.test(s)&&!/e[+-]?\d+/i.test(s))return null;
-  const m=s.match(/[-+]?\d+(?:\.\d+)?/);if(!m)return null;const n=Number(m[0]);return Number.isFinite(n)?n:null;
+  const raw=String(value??'').trim().replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/٫/g,'.').replace(/٬/g,',');
+  // A bound or range is not an exact measurement; preserve it as text only.
+  if(!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i.test(raw)&&! /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(raw))return null;
+  const n=Number(raw.replace(/,/g,''));return Number.isFinite(n)?n:null;
 }
 export async function saveBiomarkers(supabase,{testResultId,patientId,userId,items,confidence,observedAt}){
   if(!testResultId||!userId||!Array.isArray(items)||!items.length)return;

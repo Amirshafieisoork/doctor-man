@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
@@ -27,5 +28,5 @@ export default async function handler(req,res){
       const {data,error}=await supabase.from('organizations').update(p).eq('id',id).select('*').single(); if(error)throw error; return res.status(200).json({success:true,organization:data});
     }
     return res.status(405).json({error:'Method not allowed'});
-  }catch(error){console.error('admin-organization',error);return res.status(500).json({success:false,error:'مدیریت مرکز انجام نشد'})}
+  }catch(error){console.error('admin-organization',safeErrorMetadata(error));return res.status(500).json({success:false,error:'مدیریت مرکز انجام نشد'})}
 }

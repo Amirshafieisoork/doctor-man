@@ -8,7 +8,7 @@ function slugify(input) {
 }
 
 export default async function handler(req, res) {
-  const session = requireUser(req, res);
+  const session = await requireUser(req, res);
   if (!session) return;
 
   if (req.method === 'GET') {
@@ -17,6 +17,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST' && req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
+  const {data:settings,error:settingsError}=await supabase.from('app_settings').select('value').eq('key','general').maybeSingle();
+  if(settingsError)return res.status(503).json({success:false,error:'ثبت درخواست پزشک موقتاً در دسترس نیست'});
+  if(settings?.value?.doctor_onboarding_enabled===false)return res.status(503).json({success:false,error:'ثبت درخواست پزشک جدید موقتاً غیرفعال است'});
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const fullName = String(body.full_name || '').trim().slice(0, 120);
   const specialty = String(body.specialty || '').trim().slice(0, 120);

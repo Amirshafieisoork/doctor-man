@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { InputValidationError, numberField } from './_lib/validate.js';
@@ -28,5 +29,5 @@ export default async function handler(req,res){
     const {data,error}=await supabase.from('doctor_profiles').update(patch).eq('id',id).select('*').single(); if(error)throw error;
     await supabase.from('audit_logs').insert({actor_type:'admin',action:'doctor.profile_updated',resource_type:'doctor_profile',resource_id:id,metadata:{doctor_name:data.full_name}});
     return res.status(200).json({success:true,doctor:data});
-  }catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('admin-doctor',error);if(error?.code==='23505')return res.status(409).json({success:false,error:'slug یا شماره نظام پزشکی تکراری است'});return res.status(500).json({success:false,error:'ویرایش پزشک انجام نشد'})}
+  }catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('admin-doctor',safeErrorMetadata(error));if(error?.code==='23505')return res.status(409).json({success:false,error:'slug یا شماره نظام پزشکی تکراری است'});return res.status(500).json({success:false,error:'ویرایش پزشک انجام نشد'})}
 }

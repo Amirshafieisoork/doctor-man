@@ -1,9 +1,10 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
 async function rows(query){const {data,error}=await query;if(error)throw error;return data||[]}
 export default async function handler(req,res){
-  const session=requireUser(req,res);if(!session)return;if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
+  const session=await requireUser(req,res);if(!session)return;if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
   try{
     const {data:user,error}=await supabase.from('users').select('id,name,phone,status,account_type,created_at,plan_started_at,plan_expires_at,plans(name,slug)').eq('id',session.sub).single();if(error||!user)return res.status(404).json({success:false,error:'حساب پیدا نشد'});
     const patients=await rows(supabase.from('patients').select('id,relation,display_name,birth_date,sex,blood_type,height_cm,emergency_contact_name,emergency_contact_phone,notes,created_at,updated_at').eq('owner_user_id',session.sub).order('created_at'));
@@ -25,5 +26,5 @@ export default async function handler(req,res){
     res.setHeader('Content-Disposition',`attachment; filename="drman-health-export-${new Date().toISOString().slice(0,10)}.json"`);
     await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',action:'account.data_exported',resource_type:'user',resource_id:session.sub}).catch(()=>null);
     return res.status(200).send(JSON.stringify(payload,null,2));
-  }catch(error){console.error('account-export',error);return res.status(500).json({success:false,error:'آماده‌سازی خروجی اطلاعات انجام نشد'})}
+  }catch(error){console.error('account-export',safeErrorMetadata(error));return res.status(500).json({success:false,error:'آماده‌سازی خروجی اطلاعات انجام نشد'})}
 }

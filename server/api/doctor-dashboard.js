@@ -3,7 +3,7 @@ import { supabase } from './_lib/db.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  const session = requireUser(req, res);
+  const session = await requireUser(req, res);
   if (!session) return;
 
   const { data: doctor } = await supabase.from('doctor_profiles').select('*').eq('user_id', session.sub).maybeSingle();

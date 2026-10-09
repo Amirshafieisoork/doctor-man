@@ -4,7 +4,7 @@ import { supabase } from './_lib/db.js';
 const TYPES = new Set(['privacy','terms','ai_processing','doctor_share','research','marketing']);
 
 export default async function handler(req, res) {
-  const session = requireUser(req, res);
+  const session = await requireUser(req, res);
   if (!session) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const body = req.body || {};

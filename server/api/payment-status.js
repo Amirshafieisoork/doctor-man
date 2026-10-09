@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { verifyDigiPayPayment } from './_lib/digipay.js';
@@ -6,22 +7,23 @@ async function tryFinalize(payment){
   if(!payment?.tracking_code||!['pending','redirected'].includes(payment.status))return payment;
   try{
     const verified=await verifyDigiPayPayment({trackingCode:payment.tracking_code,providerId:payment.id});
-    const amount=Number(verified.amount||0),providerId=String(verified.providerId||payment.id);
+    const amount=Number(verified.amount||0),providerId=String(verified.providerId||'');
     if(amount!==Number(payment.amount_rial)||providerId!==String(payment.id))throw new Error('VERIFY_MISMATCH');
-    const {error}=await supabase.rpc('finalize_digipay_payment',{
+    const {data:finalized,error}=await supabase.rpc('finalize_digipay_payment',{
       p_payment_id:payment.id,p_tracking_code:payment.tracking_code,
       p_verified_amount_rial:amount,p_verified_provider_id:providerId,p_verify_payload:verified
     });
     if(error)throw error;
+    if(finalized?.ok!==true)throw new Error('FINALIZE_FAILED');
     return {...payment,status:'paid'};
   }catch(error){
-    console.error('payment-status verify',error);
+    console.error('payment-status verify',safeErrorMetadata(error));
     return payment;
   }
 }
 
 export default async function handler(req,res){
-  const session=requireUser(req,res);if(!session)return;
+  const session=await requireUser(req,res);if(!session)return;
   if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
   const id=String(req.query?.payment_id||'');
   if(!/^[0-9a-f-]{36}$/i.test(id))return res.status(400).json({success:false,error:'شناسه پرداخت معتبر نیست'});

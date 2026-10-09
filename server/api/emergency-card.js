@@ -6,7 +6,7 @@ function hash(t){return crypto.createHash('sha256').update(t).digest('hex')}
 async function owned(userId,patientId){const {data}=await supabase.from('patients').select('id').eq('id',patientId).eq('owner_user_id',userId).maybeSingle();return !!data;}
 
 export default async function handler(req,res){
- const session=requireUser(req,res);if(!session)return;
+ const session=await requireUser(req,res);if(!session)return;
  if(req.method==='GET'){
   const patientId=String(req.query?.patient_id||'');if(!(await owned(session.sub,patientId)))return res.status(404).json({success:false,error:'پرونده پیدا نشد'});
   const {data}=await supabase.from('emergency_cards').select('id,enabled,show_blood_type,show_allergies,show_conditions,show_medications,show_emergency_contact,updated_at').eq('patient_id',patientId).maybeSingle();

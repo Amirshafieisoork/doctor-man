@@ -1,3 +1,5 @@
+import { safeErrorMetadata } from '../server/api/_lib/errors.js';
+
 export const config = { api: { bodyParser: false } };
 
 const ROUTES = {
@@ -127,7 +129,7 @@ export default async function handler(req, res) {
     if (/^(Supabase .* (missing|not configured)|Session signing secret is missing)$/.test(error.message || '')) {
       return res.status(503).json({success:false,code:'SERVICE_NOT_CONFIGURED',error:'تنظیمات سرویس کامل نیست؛ لطفاً با پشتیبانی تماس بگیرید'});
     }
-    console.error('api-router', route, error);
+    console.error('api-router', route, safeErrorMetadata(error));
     if (!res.headersSent) return res.status(500).json({ success: false, error: 'خطای داخلی سرویس' });
   }
 }

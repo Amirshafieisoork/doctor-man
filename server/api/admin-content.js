@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
@@ -48,5 +49,5 @@ export default async function handler(req,res){
       const {data,error}=await supabase.from('medical_articles').update(payload).eq('id',id).select('*').single(); if(error)throw error; return res.status(200).json({success:true,article:data});
     }
     return res.status(405).json({error:'Method not allowed'});
-  }catch(error){console.error('admin-content',error);return res.status(500).json({success:false,error:'مدیریت محتوا انجام نشد'})}
+  }catch(error){console.error('admin-content',safeErrorMetadata(error));return res.status(500).json({success:false,error:'مدیریت محتوا انجام نشد'})}
 }

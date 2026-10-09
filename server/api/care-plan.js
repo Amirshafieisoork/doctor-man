@@ -1,6 +1,8 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
+import { readEntitlement, planLimit } from './_lib/entitlements.js';
 import { avalaiClient, HEALTH_NAVIGATOR_MODEL, HEALTH_NAVIGATOR_FALLBACK_MODEL } from './_lib/ai-models.js';
 
 const AI_VERSION='care-plan-v1-2026-10';
@@ -35,7 +37,7 @@ async function aiCall(client,model,messages,safetyIdentifier){
 }
 async function generate(client,messages,safetyIdentifier){
   const models=[HEALTH_NAVIGATOR_MODEL,HEALTH_NAVIGATOR_FALLBACK_MODEL].filter((v,i,a)=>v&&a.indexOf(v)===i);let last;
-  for(const model of models){try{const r=await aiCall(client,model,messages,safetyIdentifier);const plan=JSON.parse(r.choices?.[0]?.message?.content||'{}');if(!plan?.summary||!Array.isArray(plan.follow_up))throw new Error('INVALID_CARE_PLAN');return{plan,model:r.model||model,requestId:r._request_id||null}}catch(e){last=e;console.error('care-plan model failed',model,e?.message||e)}}
+  for(const model of models){try{const r=await aiCall(client,model,messages,safetyIdentifier);const plan=JSON.parse(r.choices?.[0]?.message?.content||'{}');if(!plan?.summary||!Array.isArray(plan.follow_up))throw new Error('INVALID_CARE_PLAN');return{plan,model:r.model||model,requestId:r._request_id||null}}catch(e){last=e;console.error('care-plan model failed',model,safeErrorMetadata(e))}}
   throw last||new Error('CARE_PLAN_AI_FAILED');
 }
 async function ownedPatient(userId,patientId){const {data}=await supabase.from('patients').select('id,display_name,birth_date,sex,blood_type,height_cm,relation,updated_at').eq('id',patientId).eq('owner_user_id',userId).maybeSingle();return data}
@@ -57,7 +59,7 @@ function addRecommendationIds(plan){return {...plan,follow_up:safeArr(plan.follo
 function trendSummary(rows){const m=new Map();for(const x of rows||[]){if(!m.has(x.name_key))m.set(x.name_key,[]);m.get(x.name_key).push(x)}const out=[];for(const [key,a] of m){a.sort((x,y)=>new Date(y.observed_at)-new Date(x.observed_at));const latest=a[0],prev=a.find((x,i)=>i>0&&x.value_numeric!=null);out.push({key,name:latest.name_raw,latest_value:latest.value_text,latest_numeric:latest.value_numeric==null?null:Number(latest.value_numeric),unit:latest.unit,flag:latest.flag,observed_at:latest.observed_at,previous_numeric:prev?.value_numeric==null?null:Number(prev.value_numeric),previous_at:prev?.observed_at||null})}return out.slice(0,40)}
 function snapshot(record){return{generated_from:{biomarker_trends:record.biomarker_trends.length,episodes:record.episodes.length,conditions:record.conditions.length,medications:record.medications.length,allergies:record.allergies.length,vitals:record.vitals.length,tests:record.tests.length,screenings:record.screenings.length,vaccinations:record.vaccinations.length,tasks:record.tasks.length,encounters:record.encounters.length},latest_vital_at:record.vitals[0]?.measured_at||null,latest_test_at:record.tests[0]?.created_at||null}}
 export default async function handler(req,res){
-  const session=requireUser(req,res);if(!session)return;
+  const session=await requireUser(req,res);if(!session)return;
   const patientId=String((req.method==='GET'?req.query?.patient_id:req.body?.patient_id)||'').trim();
   if(!patientId)return res.status(400).json({success:false,error:'پرونده سلامت لازم است'});
   const patient=await ownedPatient(session.sub,patientId);if(!patient)return res.status(404).json({success:false,error:'پرونده پیدا نشد'});
@@ -82,8 +84,8 @@ export default async function handler(req,res){
     if(action!=='generate')return res.status(400).json({success:false,error:'عملیات نامعتبر است'});
     if(!(await consent(session.sub,patientId)))return res.status(428).json({success:false,code:'AI_CONSENT_REQUIRED',error:'برای ساخت برنامه شخصی، رضایت پردازش هوش مصنوعی لازم است'});
     const client=await avalaiClient();if(!client)return res.status(503).json({success:false,error:'سرویس برنامه شخصی هنوز تنظیم نشده است'});
-    const [{data:user},{count:todayCount},biomarkers,episodes,conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters]=await Promise.all([
-      supabase.from('users').select('plans(navigator_daily_limit,name)').eq('id',session.sub).single(),
+    const [{plan:entitlementPlan},usage,biomarkers,episodes,conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters]=await Promise.all([
+      readEntitlement(supabase,session.sub),
       supabase.from('personalized_care_plans').select('id',{count:'exact',head:true}).eq('user_id',session.sub).gte('generated_at',dayStart()),
       supabase.from('lab_biomarkers').select('name_key,name_raw,value_text,value_numeric,unit,flag,observed_at').eq('patient_id',patientId).order('observed_at',{ascending:false}).limit(120),
       supabase.from('care_episodes').select('title,kind,summary,goal,urgency,status,started_at').eq('patient_id',patientId).in('status',['open','monitoring']).order('updated_at',{ascending:false}).limit(20),
@@ -97,7 +99,8 @@ export default async function handler(req,res){
       supabase.from('care_tasks').select('title,type,due_at,priority,status').eq('patient_id',patientId).eq('status','open').order('due_at',{ascending:true}).limit(30),
       supabase.from('encounters').select('occurred_at,encounter_type,chief_complaint,summary,assessment,plan,pregnancy_status').eq('patient_id',patientId).order('occurred_at',{ascending:false}).limit(8)
     ]);
-    const dailyLimit=Math.max(0,Math.min(3,Number(user?.plans?.navigator_daily_limit??1)));if(Number(todayCount||0)>=dailyLimit)return res.status(429).json({success:false,error:'سقف ساخت برنامه شخصی امروز تمام شده است'});
+    const failure=[usage,biomarkers,episodes,conditions,allergies,meds,vitals,tests,screenings,vaccinations,tasks,encounters].find(r=>r.error);if(failure)throw failure.error;
+    const todayCount=usage.count,dailyLimit=Math.min(3,planLimit(entitlementPlan,'navigator_daily_limit'));if(Number(todayCount||0)>=dailyLimit)return res.status(429).json({success:false,error:'سقف ساخت برنامه شخصی امروز تمام شده است'});
     const record={patient,biomarker_trends:trendSummary(biomarkers.data||[]),episodes:episodes.data||[],conditions:conditions.data||[],allergies:allergies.data||[],medications:meds.data||[],vitals:vitals.data||[],tests:(tests.data||[]).map(t=>({created_at:t.created_at,status:t.status,status_reason:t.status_reason,reason:t.reason,summary:t.structured_analysis?.summary||null,abnormal_items:safeArr(t.structured_analysis?.abnormal_items,20)})),screenings:screenings.data||[],vaccinations:vaccinations.data||[],tasks:tasks.data||[],encounters:encounters.data||[]};
     const system=`تو موتور برنامه مراقبت شخصی DrMan هستی. خروجی باید آموزشی، محافظه‌کارانه، عملی و بر اساس پرونده باشد؛ نه تشخیص و نه نسخه.
 قواعد الزامی:
@@ -118,5 +121,5 @@ export default async function handler(req,res){
     await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'ai.care_plan_generated',resource_type:'personalized_care_plan',resource_id:saved.id,metadata:{model,request_id:requestId}}).catch(()=>null);
     const articles=await relatedArticles(plan);
     return res.status(201).json({success:true,care_plan:saved,articles,remaining_today:Math.max(0,dailyLimit-Number(todayCount||0)-1),disclaimer:'این برنامه آموزشی است و جای تشخیص، نسخه یا ارزیابی پزشک را نمی‌گیرد.'});
-  }catch(error){console.error('care-plan',error);return res.status(500).json({success:false,error:'ساخت یا ذخیره برنامه مراقبت انجام نشد'})}
+  }catch(error){console.error('care-plan',safeErrorMetadata(error));return res.status(500).json({success:false,error:'ساخت یا ذخیره برنامه مراقبت انجام نشد'})}
 }

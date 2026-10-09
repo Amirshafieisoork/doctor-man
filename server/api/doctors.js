@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { supabase } from './_lib/db.js';
 
 function clean(v, max = 100) { return String(v || '').trim().slice(0, max); }
@@ -39,7 +40,7 @@ export default async function handler(req, res) {
     const enriched=doctors.map(d=>{const own=rr.filter(x=>x.doctor_id===d.id),rating=own.length?Number((own.reduce((s,x)=>s+Number(x.rating||0),0)/own.length).toFixed(2)):null;return {...d,rating,review_count:own.length}});
     return res.status(200).json({ success: true, doctors: enriched });
   } catch (error) {
-    console.error('doctors', error);
+    console.error('doctors', safeErrorMetadata(error));
     return res.status(500).json({ success: false, error: 'دریافت فهرست پزشکان انجام نشد' });
   }
 }

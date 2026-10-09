@@ -10,3 +10,5 @@ yarn-error.log*
 *.log
 test-results/
 playwright-report/
+
+work/

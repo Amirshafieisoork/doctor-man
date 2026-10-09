@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { InputValidationError, numberField } from './_lib/validate.js';
@@ -8,7 +9,7 @@ function homeVitals(v){const x=safeObject(v,20),out={};if(x.blood_pressure){cons
 async function doctorForUser(userId){const {data}=await supabase.from('doctor_profiles').select('id,user_id,full_name,verification_status').eq('user_id',userId).maybeSingle();return data;}
 
 export default async function handler(req,res){
-  const session=requireUser(req,res);if(!session)return;
+  const session=await requireUser(req,res);if(!session)return;
   const appointmentId=String(req.method==='GET'?req.query?.appointment_id:req.body?.appointment_id||'').trim();
   if(!appointmentId)return res.status(400).json({success:false,error:'شناسه نوبت لازم است'});
   try{
@@ -54,5 +55,5 @@ export default async function handler(req,res){
       return res.status(200).json({success:true,intake:data});
     }
     return res.status(405).json({error:'Method not allowed'});
-  }catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('previsit-intake',error);return res.status(500).json({success:false,error:'ثبت یا دریافت شرح حال انجام نشد'});}
+  }catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('previsit-intake',safeErrorMetadata(error));return res.status(500).json({success:false,error:'ثبت یا دریافت شرح حال انجام نشد'});}
 }

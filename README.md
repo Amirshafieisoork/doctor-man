@@ -1,72 +1,75 @@
-# DrMan
+# دکتر من — DrMan
 
-DrMan is a Persian digital-health ecosystem focused on an understandable lab-analysis entry point, a longitudinal personal/family health record, personalized care guidance, reminders, reviewed health education, doctor discovery and consent-based clinical workflows.
+دکتر من یک وب‌سایت فارسی برای تفسیر آموزشی آزمایش، پرونده سلامت فردی و خانوادگی، پیگیری مراقبت، محتوای سلامت و ارتباط با پزشکان تأییدشده است. نتیجه هوش مصنوعی جایگزین تشخیص و درمان پزشک نیست.
 
-## Runtime architecture
-- Static RTL product pages on Vercel
-- One Hobby-compatible Vercel serverless entrypoint: `api/router.js`
-- Internal handlers in `server/api`
-- Supabase PostgreSQL + private Storage
-- Signed HttpOnly sessions and server-side authorization
-- AvalAI/OpenAI-compatible AI providers
-- DigiPay checkout with server verification and database-atomic plan activation
+## ساختار پروژه
 
-## Main surfaces
-- `/` refined lab-analysis landing experience
-- `/health` longitudinal health record, trends and care plan
-- `/doctors` verified doctor discovery
-- `/doctor/:slug` public doctor profile, real availability and verified reviews
-- `/doctor-portal` clinician workspace
-- `/pricing` subscriptions
-- `/learn` reviewed health knowledge hub
-- `/account` personal data export and deletion requests
-- `/admin` ecosystem management and moderation
+- صفحات HTML فارسی و RTL، فونت محلی Vazirmatn و تم روشن/تیره.
+- میزبانی Vercel؛ مسیرهای عمومی و خصوصی در `vercel.json` تعریف شده‌اند.
+- یک تابع Serverless در `api/router.js` و handlerهای داخلی در `server/api`.
+- Supabase PostgreSQL و Storage خصوصی؛ بررسی دسترسی و مالکیت اطلاعات در سرور.
+- نشست امضاشده با cookie از نوع HttpOnly؛ اطلاعات مرورگر مبنای مجوز دسترسی یا اشتراک نیست.
+- سرویس‌های هوش مصنوعی با رضایت کاربر و کنترل سهمیه در سرور.
+- پرداخت DigiPay با تأیید سرور؛ خرید زمانی فعال است که تنظیمات درگاه تکمیل شده باشد.
 
-## Security rules
-Paid plans are activated only by the database finalization function after a verified DigiPay response, or by an explicit audited admin grant. Browser-side state never authorizes plan access. Medical tables are not directly writable from the browser.
+## مسیرهای اصلی
 
-## Deployment
-Only the Vercel project `drman` should be linked to this repository. Preview deployments are created deliberately at milestones to conserve Hobby build quota. See `.env.example` for external credentials that must be supplied by the corresponding providers.
+| مسیر | کاربرد |
+| --- | --- |
+| `/` | معرفی سرویس و بارگذاری تصویر آزمایش |
+| `/auth` | ورود و ساخت حساب |
+| `/health` | پرونده سلامت و اعضای خانواده |
+| `/account` | حساب، اشتراک، تاریخچه و درخواست‌های مربوط به داده |
+| `/doctors` | فهرست پزشکان تأییدشده |
+| `/doctor/:slug` | پروفایل پزشک و درخواست نوبت |
+| `/doctor-onboarding` | درخواست عضویت پزشک |
+| `/doctor-portal` | پنل پزشک |
+| `/visit-intake` | آماده‌سازی شرح حال پیش از ویزیت |
+| `/pricing` | پلن‌ها و وضعیت فعال بودن پرداخت |
+| `/learn` | دانشنامه سلامت |
+| `/support` | راهنمای هوشمند |
+| `/privacy`، `/terms`، `/medical-methodology` | حریم خصوصی، شرایط و روش‌شناسی پزشکی |
+| `/admin` | مدیریت مجاز سرویس |
 
-## توسعه و آزمون محلی
+## اجرای محلی
 
-نسخه Node در `.nvmrc` مشخص شده است. برای شروع:
+نسخه Node در `.nvmrc` و وابستگی‌ها در `package-lock.json` قفل شده‌اند.
 
 ```sh
 nvm use
 npm ci --ignore-scripts --no-audit --no-fund
-# یک فایل .env محلی مطابق نام‌های .env.example تهیه کنید؛ کلیدها را در Git ثبت نکنید.
-npm run dev
 ```
 
-سرور توسعه روی پورت ۳۰۰۰ و آدرس loopback اجرا می‌شود. مقدار `PORT` قابل تغییر است.
-این سرور مسیرهای `vercel.json` و Router واقعی API را اجرا می‌کند؛ شبیه‌ساز کامل Vercel و OIDC نیست.
-صفحات عمومی بدون کلید سرویس قابل مشاهده‌اند. APIهای نیازمند تنظیمات سرور، پاسخ ۵۰۳ می‌دهند.
-برای توسعه محلی `NODE_ENV=development` بگذارید تا cookie روی HTTP محلی قابل استفاده باشد.
-در Vercel مقدار production و HTTPS حفظ شود.
+در صورت نیاز، `.env` را با نام متغیرهای `.env.example` آماده کنید. مقدارهای محرمانه نباید در Git ثبت شوند. صفحات استاتیک بدون کلید سرویس قابل مشاهده‌اند؛ قابلیت‌های آنلاین به تنظیمات واقعی نیاز دارند.
+
+```sh
+NODE_ENV=development npm run dev
+```
+
+سایت روی `http://127.0.0.1:3000` اجرا می‌شود. با `PORT` می‌توان پورت را تغییر داد. سرور محلی مسیرها، headerها و Router واقعی API را اجرا می‌کند و فقط فایل‌های عمومی را سرو می‌کند؛ محیط کامل Vercel و OIDC را شبیه‌سازی نمی‌کند. استفاده از HTTP برای درخواست‌های محلی فقط در محیط غیر production و Origin همسان روی loopback مجاز است.
+
+## بررسی و آزمون
 
 ```sh
 npm run check
 npm test
-npx playwright install chromium
 npm run test:ui
 ```
 
-اگر Chromium سیستم موجود است، مسیر آن را با `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` مشخص کنید.
-آزمون‌های مرورگر روی موبایل و دسکتاپ با داده‌های ساختگیِ جدا از سرویس واقعی اجرا می‌شوند.
-آزمون‌های سرور مالکیت پرونده، لغو نوبت، تغییر هم‌زمان وضعیت، نشست، زمان‌بندی، اعتبارسنجی و کش خصوصی را بررسی می‌کنند.
-این آزمون‌ها هیچ حساب واقعی، پرداخت، تحلیل AI یا migration ایجاد نمی‌کنند.
+- `check`: نحو JavaScript، فایل‌های JSON، لینک‌های محلی HTML/CSS و سازگاری مقصد API با artifact تابع Vercel را بررسی می‌کند.
+- `test`: آزمون‌های سرور و رگرسیون مسیرها، aliasها، headerهای خصوصی، ۴۰۴، جلوگیری از افشای فایل‌های داخلی و اعتبارسنجی درخواست را اجرا می‌کند.
+- `test:ui`: Chromium را روی اندازه‌های موبایل و دسکتاپ اجرا می‌کند؛ جهت RTL، ورود، پیش‌نمایش و محدودیت فایل، بازگشت خطا، سهمیه و وضعیت غیرفعال بودن پرداخت را بررسی می‌کند.
 
-## قابلیت‌های تکمیل‌شده در این تغییر
+اگر `/usr/bin/chromium` موجود باشد، آزمون مرورگر از همان استفاده می‌کند. برای Chromium نصب‌شده در مسیر دیگر، `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` را تنظیم کنید. متغیر `PLAYWRIGHT_BASE_URL` امکان آزمون یک سرور محلی از پیش اجراشده را می‌دهد؛ در حالت پیش‌فرض Playwright یک سرور مستقل روی پورت ۳۱۰۰ ایجاد می‌کند.
 
-- ویرایش و حذف اطلاعات سلامت از صفحه پرونده، با کنترل مالکیت سرور و ثبت رویداد در audit log.
-- لغو نوبت آینده توسط صاحب پرونده و ورود مستقیم به فرم آماده‌سازی ویزیت.
-- کنترل انتقال وضعیت نوبت؛ نوبت لغوشده/تمام‌شده دوباره فعال نمی‌شود و ویزیت آینده قابل تکمیل نیست.
-- بررسی تداخل بازه نوبت، تاریخ و ساعت معتبر، منطقه زمانی پزشک و لینک امن جلسه.
-- پیش‌نمایش بزرگ آزمایش، thumbnail قابل انتخاب و حذف صفحه؛ محدودیت چهار صفحه حفظ شده است.
-- تم روشن پیش‌فرض و حالت تیره با ذخیره ترجیح کاربر؛ دسترسی صفحه‌کلید به فرم‌های پرونده.
-- اعتبارسنجی اعداد فارسی/عربی، فشار خون، بازه تاریخ‌ها و حفظ فیلدهای ارسال‌نشده هنگام ویرایش جزئی.
-- جلوگیری از کش APIها و کارت اضطراری اختصاصی، و رد نشست‌های دستکاری‌شده یا cookie خراب.
-- نصب قفل‌شده، سرور توسعه و آزمون‌های خودکار در CI.
+آزمون‌های UI درخواست‌های API و سرویس‌های خارجی را در مرز مرورگر شبیه‌سازی می‌کنند و service worker را غیرفعال می‌کنند. این آزمون‌ها حساب واقعی، تحلیل AI، پرداخت یا تغییر پایگاه داده ایجاد نمی‌کنند. تأیید اتصال واقعی سرویس‌ها، مهاجرت‌های دیتابیس و پرداخت باید جداگانه روی محیط مجاز انجام شود. گزارش HTML، trace و تصویر خطا در `work/` ذخیره می‌شوند.
 
-محدودیت‌ها و مراحل آزمون آنلاین در [docs/verification.md](docs/verification.md) ثبت شده‌اند.
+## تنظیم محیط و انتشار
+
+فقط پروژه Vercel با نام `drman` باید به این مخزن متصل شود. مقصد تابع در تنظیمات legacy builds، `/api/router.js` است؛ حذف پسوند `.js` می‌تواند APIها و صفحات پویا را به ۴۰۴ بفرستد.
+
+متغیرهای لازم در `.env.example` مستند شده‌اند. در production از HTTPS، `NODE_ENV=production`، کلید نشست قوی، کلیدهای معتبر سرویس و URL عمومی صحیح استفاده کنید. تا وقتی تأیید merchant و آزمون چرخه کامل DigiPay انجام نشده، درگاه باید در حالت آزمایشی یا غیرفعال بماند. پزشک فقط پس از احراز و تأیید حرفه‌ای در فهرست عمومی نمایش داده می‌شود.
+
+پیش از انتشار، بررسی‌های محلی باید موفق باشند و وضعیت اتصال دیتابیس، هوش مصنوعی و پرداخت از طریق `/api/status` بررسی شود. آماده بودن متغیر محیطی به‌تنهایی صحت دسترسی سرویس یا چرخه پرداخت را ثابت نمی‌کند.
+
+مهاجرت `supabase/migrations/20261009034254_lab_analysis_quota_reservations.sql` رزرو اتمیک سهمیه تحلیل آزمایش را فراهم می‌کند. پیش از اجرای این نسخه، این مهاجرت باید روی همان پروژه Supabase اعمال شود. جدول رزرو و تابع‌های آن فقط برای `service_role` قابل استفاده‌اند و داده پزشکی در رزرو ذخیره نمی‌شود.

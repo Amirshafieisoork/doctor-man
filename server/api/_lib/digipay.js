@@ -38,7 +38,7 @@ export async function getDigiPayToken() {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.access_token) {
-    console.error('DigiPay token error', response.status, data);
+    console.error('DigiPay token error', response.status);
     throw new Error('DIGIPAY_AUTH_FAILED');
   }
   return { accessToken: data.access_token, baseUrl: c.baseUrl };
@@ -64,7 +64,7 @@ export async function createDigiPayTicket({ amountRial, cellNumber, providerId, 
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data?.result?.status !== 0 || !data.redirectUrl || !data.ticket) {
-    console.error('DigiPay ticket error', response.status, data);
+    console.error('DigiPay ticket error', response.status);
     throw new Error('DIGIPAY_TICKET_FAILED');
   }
   return {...data,redirectUrl:safeGatewayUrl(data.redirectUrl)};
@@ -83,7 +83,7 @@ export async function verifyDigiPayPayment({ trackingCode, providerId }) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data?.result?.status !== 0) {
-    console.error('DigiPay verify error', response.status, data);
+    console.error('DigiPay verify error', response.status);
     const error = new Error('DIGIPAY_VERIFY_FAILED');
     error.response = data;
     throw error;

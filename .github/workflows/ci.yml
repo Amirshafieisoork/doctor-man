@@ -5,50 +5,25 @@ on:
   push:
     branches: [main, feat/production-ready]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - name: Install pinned dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
-      - name: Check serverless JavaScript syntax
-        run: find api server/api -type f -name '*.js' -print0 | xargs -0 -n1 node --check
-      - name: Check inline page JavaScript syntax
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const files = ['home-v2.html','auth-v2.html','health-v4.html','pricing-v2.html','support.html','doctors.html','doctor-onboarding.html','doctor-portal-v2.html','admin-v7.html','visit-intake.html','payment-result.html'];
-          let failed = false;
-          for (const file of files) {
-            if (!fs.existsSync(file)) continue;
-            const html = fs.readFileSync(file, 'utf8');
-            const re = /<script([^>]*)>([\s\S]*?)<\/script>/gi;
-            let m, i = 0;
-            while ((m = re.exec(html))) {
-              i++;
-              if (/type\s*=\s*["']application\/ld\+json["']/i.test(m[1])) continue;
-              if (/\bsrc\s*=/i.test(m[1])) continue;
-              try { new Function(m[2]); }
-              catch (e) { console.error(`${file} inline script #${i}: ${e.message}`); failed = true; }
-            }
-          }
-          if (failed) process.exit(1);
-          NODE
-      - name: Validate JSON configuration
-        run: |
-          node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"
-          node -e "JSON.parse(require('fs').readFileSync('manifest.webmanifest','utf8'))"
-      - name: Check critical files
-        run: |
-          test -f home-v2.html
-          test -f health-v4.html
-          test -f doctors.html
-          test -f doctor-portal-v2.html
-          test -f admin-v7.html
-          test -f server/api/care-plan.js
-          test -f server/api/care-episodes.js
-          test -f server/api/learn-page.js
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate source, links and deployment routes
+        run: npm run check
+      - name: Test authorization, quotas and payment boundaries
+        run: npm test
+      - name: Install Chromium for user-flow checks
+        run: npx playwright install --with-deps chromium
+      - name: Test mobile and desktop user flows
+        run: npm run test:ui

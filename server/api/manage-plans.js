@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { InputValidationError, numberField } from './_lib/validate.js';
@@ -10,4 +11,4 @@ export default async function handler(req,res){if(!requireAdmin(req,res))return;
  if(req.method==='POST'){const plan=cleanPlan(req.body,false);if(!plan.name||!plan.slug)return res.status(400).json({success:false,error:'نام و slug معتبر الزامی است'});const {data,error}=await supabase.from('plans').insert(plan).select().single();if(error){if(error.code==='23505')return res.status(409).json({success:false,error:'این slug قبلاً استفاده شده است'});throw error}await audit('plan.created',data.id,{name:data.name,slug:data.slug});return res.status(201).json({success:true,plan:data})}
  if(req.method==='DELETE'){const id=String(req.body?.id||'').trim();if(!id)return res.status(400).json({success:false,error:'شناسه پلن الزامی است'});const {data,error}=await supabase.from('plans').update({active:false,is_popular:false}).eq('id',id).select().single();if(error)throw error;await audit('plan.deactivated',id,{name:data.name});return res.status(200).json({success:true,plan:data,deactivated:true})}
  return res.status(405).json({error:'Method not allowed'});
-}catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('manage-plans',error);return res.status(500).json({success:false,error:'خطا در مدیریت پلن'})}}
+}catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('manage-plans',safeErrorMetadata(error));return res.status(500).json({success:false,error:'خطا در مدیریت پلن'})}}

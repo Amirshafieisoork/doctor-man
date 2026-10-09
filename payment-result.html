@@ -1,22 +1,51 @@
-<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DrMan — نتیجه پرداخت</title><style>body{margin:0;background:#050d1a;color:#e8f4ff;font-family:Vazirmatn,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px}.box{max-width:520px;width:100%;background:#0a1628;border:1px solid rgba(0,212,255,.15);border-radius:22px;padding:34px;text-align:center}.icon{font-size:54px}.title{font-size:23px;font-weight:800;margin:14px 0 8px}.text{color:#7aa0c4;line-height:1.9;font-size:13px}.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}.btn{padding:12px;border-radius:12px;text-decoration:none;color:white;background:linear-gradient(135deg,#00d4ff,#0066ff);font-weight:700;font-size:13px}.btn.alt{background:#0f1e36;border:1px solid rgba(0,212,255,.15);color:#7aa0c4}@media(max-width:520px){.btns{grid-template-columns:1fr}}</style><link rel="stylesheet" href="/assets/theme-v1.css"><link rel="stylesheet" href="/assets/product.css"><script src="/assets/theme.js"></script><link rel="stylesheet" href="/assets/site-style.css"></head><body><main class="box"><div class="icon" id="icon">⏳</div><div class="title" id="title">در حال بررسی نتیجه پرداخت</div><div class="text" id="text">نتیجه تراکنش در حال بررسی است.</div><div class="btns"><a class="btn" href="/profile.html">رفتن به پرونده سلامت</a><a class="btn alt" href="/pricing.html">مشاهده پلن‌ها</a></div></main><script>
-const q=new URLSearchParams(location.search),paymentId=q.get('payment_id'),initial=q.get('status');
-const icon=document.getElementById('icon'),title=document.getElementById('title'),text=document.getElementById('text');
-function paint(status){
- if(status==='paid'||status==='success'){icon.textContent='✅';title.textContent='پرداخت با موفقیت تأیید شد';text.textContent='تأیید نهایی مستقیماً از دیجی‌پی انجام شده و پلن شما فعال است.';return}
- if(status==='failed'||status==='cancelled'){icon.textContent='❌';title.textContent='پرداخت تکمیل نشد';text.textContent='پرداخت تأیید نشده است. بدون Verify سرور هیچ پلنی فعال نمی‌شود.';return}
- icon.textContent='⏳';title.textContent='پرداخت در حال بررسی است';text.textContent='تراکنش هنوز از سمت سرور تأیید نهایی نشده است. لطفاً این صفحه را چند لحظه باز نگه دارید.'
+<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DrMan — نتیجه پرداخت</title><style>body{margin:0;background:#050d1a;color:#e8f4ff;font-family:Vazirmatn,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px}.box{max-width:520px;width:100%;background:#0a1628;border:1px solid rgba(0,212,255,.15);border-radius:22px;padding:34px;text-align:center}.icon{font-size:54px}.title{font-size:23px;font-weight:800;margin:14px 0 8px}.text{color:#7aa0c4;line-height:1.9;font-size:13px}.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}.btn{padding:12px;border-radius:12px;text-decoration:none;color:white;background:linear-gradient(135deg,#00d4ff,#0066ff);font-weight:700;font-size:13px}.btn.alt{background:#0f1e36;border:1px solid rgba(0,212,255,.15);color:#7aa0c4}@media(max-width:520px){.btns{grid-template-columns:1fr}}</style><link rel="stylesheet" href="/assets/theme-v1.css"><link rel="stylesheet" href="/assets/product.css"><script src="/assets/theme.js"></script><link rel="stylesheet" href="/assets/site-style.css"></head><body><main class="box" aria-live="polite"><div class="icon" id="icon">⏳</div><div class="title" id="title">در حال بررسی نتیجه پرداخت</div><div class="text" id="text">نتیجه تراکنش در حال بررسی است.</div><div class="btns"><button type="button" class="btn alt" id="retry" hidden>بررسی دوباره</button><a class="btn" id="paymentLogin" hidden>ورود به حساب</a><a class="btn" href="/account">مشاهده حساب و اشتراک</a><a class="btn alt" href="/pricing">مشاهده پلن‌ها</a></div></main><script>
+const paymentId = new URLSearchParams(location.search).get('payment_id');
+const icon = document.getElementById('icon'), title = document.getElementById('title'), text = document.getElementById('text');
+const retry = document.getElementById('retry'), login = document.getElementById('paymentLogin');
+let timer = null, checking = false, attempts = 0;
+function paint(status) {
+  if (status === 'paid') {
+    icon.textContent = '✅'; title.textContent = 'پرداخت با موفقیت تأیید شد';
+    text.textContent = 'پرداخت شما تأیید شده و اشتراک در حساب کاربری فعال است.'; retry.hidden = true; return;
+  }
+  if (['failed','cancelled'].includes(status)) {
+    icon.textContent = '❌'; title.textContent = status === 'cancelled' ? 'پرداخت لغو شد' : 'پرداخت تکمیل نشد';
+    text.textContent = 'پرداخت شما تأیید نشده است. می‌توانید وضعیت حساب را بررسی کنید یا از صفحه پلن‌ها دوباره اقدام کنید.'; retry.hidden = true; return;
+  }
+  icon.textContent = '⏳'; title.textContent = 'پرداخت در حال بررسی است';
+  text.textContent = 'هنوز تأیید نهایی دریافت نشده است. وضعیت پرداخت را تا چند لحظه دیگر بررسی می‌کنیم.';
 }
-async function check(){
- if(!paymentId){paint(initial);return}
- try{
-   const r=await fetch('/api/payment-status?payment_id='+encodeURIComponent(paymentId),{credentials:'include'});
-   const d=await r.json().catch(()=>({}));
-   if(r.status===401){paint('pending');text.textContent='برای مشاهده وضعیت نهایی وارد حسابی شوید که پرداخت را انجام داده است.';return}
-   if(!r.ok||!d.success){paint('pending');return}
-   paint(d.payment?.status||'pending');
-   if(['paid','failed','cancelled'].includes(d.payment?.status))return;
-   setTimeout(check,3000);
- }catch{paint('pending');setTimeout(check,5000)}
+function schedule() {
+  if (attempts < 20) timer = setTimeout(check, 3000);
+  else { text.textContent = 'بررسی خودکار به پایان رسید. وضعیت نهایی را از حساب کاربری یا با دکمه بررسی دوباره دنبال کنید.'; retry.hidden = false; }
 }
-paint(initial);check();
+async function check() {
+  if (checking) return;
+  clearTimeout(timer); timer = null;
+  if (!paymentId || !/^[0-9a-f-]{36}$/i.test(paymentId)) {
+    icon.textContent = 'ℹ️'; title.textContent = 'شناسه پرداخت در دسترس نیست';
+    text.textContent = 'برای مشاهده نتیجه معتبر پرداخت، به حساب کاربری خود بروید.'; retry.hidden = true; return;
+  }
+  checking = true; retry.disabled = true; attempts++;
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch('/api/payment-status?payment_id=' + encodeURIComponent(paymentId), {credentials:'include', signal:controller.signal});
+    const data = await response.json().catch(() => null);
+    if (response.status === 401) {
+      icon.textContent = '🔐'; title.textContent = 'برای بررسی پرداخت وارد شوید';
+      text.textContent = 'با همان حسابی وارد شوید که پرداخت را انجام داده است.';
+      login.href = '/auth?next=' + encodeURIComponent(location.pathname + location.search); login.hidden = false; retry.hidden = true; return;
+    }
+    if (!response.ok || data?.success !== true || !data.payment?.status) {
+      title.textContent = 'وضعیت پرداخت دریافت نشد'; text.textContent = data?.error || 'ارتباط با سرور برقرار نشد. دوباره بررسی کنید.'; retry.hidden = false; return;
+    }
+    login.hidden = true; paint(data.payment.status);
+    if (!['paid','failed','cancelled'].includes(data.payment.status)) schedule();
+  } catch {
+    title.textContent = 'وضعیت پرداخت دریافت نشد'; text.textContent = 'ارتباط با سرور برقرار نشد. دوباره بررسی کنید.'; retry.hidden = false;
+  } finally { clearTimeout(timeout); checking = false; retry.disabled = false; }
+}
+retry.addEventListener('click', () => { attempts = 0; paint('pending'); retry.hidden = true; check(); });
+window.addEventListener('pagehide', () => clearTimeout(timer));
+paint('pending'); check();
 </script></body></html>

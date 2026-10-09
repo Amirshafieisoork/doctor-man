@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { validateSchedule, zonedDate, localDate } from './_lib/availability.js';
@@ -28,7 +29,7 @@ export default async function handler(req,res){
  try{
   if(req.method==='GET'){
     if(String(req.query?.mine||'')==='1'){
-      const session=requireUser(req,res);if(!session)return;const doctor=await doctorForUser(session.sub);if(!doctor)return res.status(403).json({success:false,error:'پروفایل پزشک پیدا نشد'});
+      const session=await requireUser(req,res);if(!session)return;const doctor=await doctorForUser(session.sub);if(!doctor)return res.status(403).json({success:false,error:'پروفایل پزشک پیدا نشد'});
       const {data,error}=await supabase.from('doctor_availability').select('*').eq('doctor_id',doctor.id).order('weekday').order('start_time');if(error)return res.status(500).json({success:false,error:'برنامه دریافت نشد'});return res.status(200).json({success:true,doctor,schedule:data||[]});
     }
     const doctorId=text(req.query?.doctor_id,64),slug=text(req.query?.slug,120),date=text(req.query?.date,10);if(!doctorId&&!slug)return res.status(400).json({success:false,error:'پزشک مشخص نشده است'});
@@ -40,7 +41,7 @@ export default async function handler(req,res){
     const slots=await slotsForDate(doctor,schedule||[],date);
     return res.status(200).json({success:true,doctor,date,slots});
   }
-  const session=requireUser(req,res);if(!session)return;const doctor=await doctorForUser(session.sub);if(!doctor)return res.status(403).json({success:false,error:'حساب پزشک پیدا نشد'});const body=req.body&&typeof req.body==='object'?req.body:{};
+  const session=await requireUser(req,res);if(!session)return;const doctor=await doctorForUser(session.sub);if(!doctor)return res.status(403).json({success:false,error:'حساب پزشک پیدا نشد'});const body=req.body&&typeof req.body==='object'?req.body:{};
   if(req.method==='POST'){
     const schedule=validateSchedule(body);
     const {data,error}=await supabase.from('doctor_availability').insert({doctor_id:doctor.id,organization_id:body.organization_id||null,...schedule}).select('*').single();
@@ -59,6 +60,6 @@ export default async function handler(req,res){
   return res.status(405).json({error:'Method not allowed'});
  }catch(error){
   if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});
-  console.error('availability',error);return res.status(503).json({success:false,error:'دریافت یا ذخیره برنامه پزشک انجام نشد'});
+  console.error('availability',safeErrorMetadata(error));return res.status(503).json({success:false,error:'دریافت یا ذخیره برنامه پزشک انجام نشد'});
  }
 }

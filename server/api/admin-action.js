@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 
@@ -124,6 +125,6 @@ export default async function handler(req, res) {
     }
     return res.status(400).json({ success: false, error: 'عملیات پشتیبانی نمی‌شود' });
   } catch (error) {
-    console.error('admin-action', error); return res.status(500).json({ success: false, error: 'عملیات مدیریت انجام نشد' });
+    console.error('admin-action', safeErrorMetadata(error)); return res.status(500).json({ success: false, error: 'عملیات مدیریت انجام نشد' });
   }
 }

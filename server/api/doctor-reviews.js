@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { InputValidationError, numberField } from './_lib/validate.js';
@@ -18,7 +19,7 @@ export default async function handler(req,res){
       return res.status(200).json({success:true,reviews:rows,rating:avg?Number(avg.toFixed(2)):null,count:rows.length});
     }
 
-    const session=requireUser(req,res);if(!session)return;
+    const session=await requireUser(req,res);if(!session)return;
     if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
     const appointmentId=text(req.body?.appointment_id,64);
     if(!appointmentId)return res.status(400).json({success:false,error:'ویزیت مشخص نشده است'});
@@ -57,7 +58,7 @@ export default async function handler(req,res){
     return res.status(201).json({success:true,review:data,message:'نظر شما پس از بررسی منتشر می‌شود'});
   }catch(error){
     if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});
-    console.error('doctor-reviews',error);
+    console.error('doctor-reviews',safeErrorMetadata(error));
     return res.status(500).json({success:false,error:'ثبت یا دریافت نظر انجام نشد'});
   }
 }

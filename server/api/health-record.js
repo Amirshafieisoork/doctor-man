@@ -1,8 +1,9 @@
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
+import { safeErrorMetadata } from './_lib/errors.js';
 async function getOwnedPatient(userId,patientId){let q=supabase.from('patients').select('*').eq('owner_user_id',userId);q=patientId?q.eq('id',patientId):q.eq('relation','self');const {data}=await q.maybeSingle();return data}
 export default async function handler(req,res){
-  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});const session=requireUser(req,res);if(!session)return;
+  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});const session=await requireUser(req,res);if(!session)return;
   const patient=await getOwnedPatient(session.sub,String(req.query?.patient_id||''));if(!patient)return res.status(404).json({success:false,error:'پرونده سلامت پیدا نشد'});const pid=patient.id;
   const [conditions,allergies,medications,vaccinations,vitals,tasks,documents,appointments,encounters,insurances,tests,access,procedures,familyHistory,screenings,prescriptions,orders,reports,messages]=await Promise.all([
     supabase.from('patient_conditions').select('*').eq('patient_id',pid).order('created_at',{ascending:false}),
@@ -25,7 +26,7 @@ export default async function handler(req,res){
     supabase.from('diagnostic_reports').select('id,order_id,report_type,title,structured_data,report_text,reported_at,verified_by,organizations(name,type)').eq('patient_id',pid).order('reported_at',{ascending:false}).limit(100),
     supabase.from('patient_messages').select('id,doctor_id,sender_type,body,created_at,read_at,doctor_profiles(full_name,specialty,slug)').eq('patient_id',pid).order('created_at',{ascending:false}).limit(100)
   ]);
-  const bad=[conditions,allergies,medications,vaccinations,vitals,tasks,documents,appointments,encounters,insurances,tests,access,procedures,familyHistory,screenings,prescriptions,orders,reports,messages].find(x=>x.error);if(bad?.error){console.error('health-record query',bad.error);return res.status(500).json({success:false,error:'دریافت بخشی از پرونده سلامت انجام نشد'})}
+  const bad=[conditions,allergies,medications,vaccinations,vitals,tasks,documents,appointments,encounters,insurances,tests,access,procedures,familyHistory,screenings,prescriptions,orders,reports,messages].find(x=>x.error);if(bad?.error){console.error('health-record query',safeErrorMetadata(bad.error));return res.status(500).json({success:false,error:'دریافت بخشی از پرونده سلامت انجام نشد'})}
   await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:pid,action:'record.viewed',resource_type:'patient',resource_id:pid});
   return res.status(200).json({success:true,patient,record:{conditions:conditions.data||[],allergies:allergies.data||[],medications:medications.data||[],vaccinations:vaccinations.data||[],vitals:vitals.data||[],tasks:tasks.data||[],documents:documents.data||[],appointments:appointments.data||[],encounters:encounters.data||[],insurances:insurances.data||[],tests:tests.data||[],doctor_access:access.data||[],procedures:procedures.data||[],family_history:familyHistory.data||[],screenings:screenings.data||[],prescriptions:prescriptions.data||[],diagnostic_orders:orders.data||[],diagnostic_reports:reports.data||[],messages:messages.data||[]}})
 }

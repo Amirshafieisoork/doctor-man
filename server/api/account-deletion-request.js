@@ -1,7 +1,8 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 export default async function handler(req,res){
-  const session=requireUser(req,res);if(!session)return;
+  const session=await requireUser(req,res);if(!session)return;
   try{
     if(req.method==='GET'){const {data}=await supabase.from('account_deletion_requests').select('id,status,reason,requested_at,cancelled_at,processed_at').eq('user_id',session.sub).order('requested_at',{ascending:false}).limit(1).maybeSingle();return res.status(200).json({success:true,request:data||null})}
     if(req.method==='POST'){
@@ -18,5 +19,5 @@ export default async function handler(req,res){
       return res.status(200).json({success:true,request:data});
     }
     return res.status(405).json({error:'Method not allowed'});
-  }catch(error){console.error('account-deletion-request',error);return res.status(500).json({success:false,error:'مدیریت درخواست حذف حساب انجام نشد'})}
+  }catch(error){console.error('account-deletion-request',safeErrorMetadata(error));return res.status(500).json({success:false,error:'مدیریت درخواست حذف حساب انجام نشد'})}
 }

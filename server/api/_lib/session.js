@@ -49,5 +49,23 @@ export function clearUserSession(res){appendCookie(res,cookieHeader(COOKIE_NAME,
 export function clearAdminSession(res){appendCookie(res,cookieHeader(ADMIN_COOKIE_NAME,'',0));}
 export function getUserSession(req){const payload=verifyToken(parseCookies(req)[COOKIE_NAME]);return payload?.role==='user'&&payload?.sub?payload:null;}
 export function getAdminSession(req){const payload=verifyToken(parseCookies(req)[ADMIN_COOKIE_NAME]);return payload?.role==='admin'?payload:null;}
-export function requireUser(req,res){const session=getUserSession(req);if(!session){res.status(401).json({success:false,error:'ابتدا وارد حساب کاربری شوید'});return null}return session;}
+export async function requireUser(req,res,database){
+  const session=getUserSession(req);
+  if(!session){res.status(401).json({success:false,error:'ابتدا وارد حساب کاربری شوید'});return null}
+  try{
+    const db=database||(await import('./db.js')).supabase;
+    const {data:user,error}=await db.from('users').select('id,status').eq('id',session.sub).maybeSingle();
+    if(error)throw error;
+    if(!user||user.status!=='active'){
+      clearUserSession(res);
+      res.status(user?403:401).json({success:false,error:user?'حساب کاربری شما غیرفعال شده است':'نشست حساب کاربری معتبر نیست'});
+      return null;
+    }
+    return session;
+  }catch(error){
+    console.error('session account verification failed',error?.code||error?.name||'DATABASE_ERROR');
+    res.status(503).json({success:false,error:'بررسی حساب کاربری موقتاً در دسترس نیست. دوباره تلاش کنید.'});
+    return null;
+  }
+}
 export function requireAdmin(req,res){const session=getAdminSession(req);if(!session){res.status(401).json({success:false,error:'دسترسی مدیر معتبر نیست'});return null}return session;}

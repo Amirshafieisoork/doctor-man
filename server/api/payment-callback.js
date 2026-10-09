@@ -1,3 +1,4 @@
+import { safeErrorMetadata } from './_lib/errors.js';
 import crypto from 'node:crypto';
 import { supabase } from './_lib/db.js';
 import { verifyDigiPayPayment } from './_lib/digipay.js';
@@ -51,7 +52,7 @@ export default async function handler(req,res){
   try{
     const verified=await verifyDigiPayPayment({trackingCode,providerId:payment.id});
     const verifiedAmount=Number(verified.amount||0);
-    const verifiedProviderId=String(verified.providerId||payment.id);
+    const verifiedProviderId=String(verified.providerId||'');
 
     if(!verifiedAmount||verifiedAmount!==Number(payment.amount_rial))throw new Error('AMOUNT_MISMATCH');
     if(verifiedProviderId!==String(payment.id))throw new Error('PROVIDER_MISMATCH');
@@ -68,7 +69,7 @@ export default async function handler(req,res){
 
     return redirect(res,'success',payment.id);
   }catch(error){
-    console.error('payment verify/finalize failed',error);
+    console.error('payment verify/finalize failed',safeErrorMetadata(error));
     await supabase.from('payments').update({status:'pending'}).eq('id',payment.id).neq('status','paid');
     return redirect(res,'pending',payment.id);
   }
