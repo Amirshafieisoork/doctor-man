@@ -1,0 +1,23 @@
+{
+  "name": "دکتر من - DrMan",
+  "short_name": "دکتر من",
+  "description": "تفسیر آموزشی آزمایش، پرونده سلامت، پیگیری روندها و راهنمای هوشمند سلامت",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050d1a",
+  "theme_color": "#050d1a",
+  "icons": [
+    {"src":"/assets/drman-logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any"},
+    {"src":"/assets/drman-logo.png","sizes":"256x256","type":"image/png","purpose":"any maskable"}
+  ],
+  "categories": ["medical","health","productivity"],
+  "shortcuts": [
+    {"name":"تفسیر آزمایش","url":"/"},
+    {"name":"پرونده سلامت","url":"/health"},
+    {"name":"پزشکان","url":"/doctors"},
+    {"name":"مرکز دانش","url":"/learn"}
+  ]
+}

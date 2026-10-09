@@ -1,0 +1,232 @@
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>پنل پزشک | DrMan</title><link rel="icon" type="image/png" href="/assets/drman-logo.svg"><link rel="apple-touch-icon" href="/assets/drman-logo.svg"><style>:root{--bg:#050d1a;--s:#0a1628;--s2:#0f1e36;--a:#00d4ff;--g:#00ff9d;--y:#ffd060;--r:#ff4466;--t:#e8f4ff;--d:#7aa0c4;--b:rgba(0,212,255,.15)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font-family:Vazirmatn,sans-serif}a{text-decoration:none;color:inherit}header{position:sticky;top:0;z-index:20;padding:13px 22px;display:flex;justify-content:space-between;align-items:center;background:rgba(5,13,26,.94);border-bottom:1px solid var(--b);backdrop-filter:blur(14px)}.logo{font-size:19px;font-weight:900;color:var(--a);display:flex;align-items:center;gap:9px}.logo img{width:40px;height:40px;border-radius:11px;object-fit:cover}button,.btn,input,select,textarea{font:inherit}.btn,button{border:1px solid var(--b);background:var(--s2);color:var(--t);padding:9px 12px;border-radius:10px;cursor:pointer}.primary{border:0;background:linear-gradient(135deg,var(--a),#0870ff);font-weight:700}.danger{color:#ff8197}.success{color:var(--g)}.wrap{max-width:1300px;margin:auto;padding:25px 16px 70px}.hero,.card{background:var(--s);border:1px solid var(--b);border-radius:18px}.hero{padding:20px;display:flex;justify-content:space-between;gap:14px;align-items:center}.hero h1{margin:0}.muted,.tiny{color:var(--d)}.tiny{font-size:12px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.stat{background:var(--s);border:1px solid var(--b);border-radius:13px;padding:13px}.stat b{font-size:22px;color:var(--a);display:block}.tabs{display:flex;gap:7px;flex-wrap:wrap;margin:15px 0}.tab.on{border-color:var(--a);color:var(--a)}.page{display:none}.page.on{display:block}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{padding:17px}.card h2{font-size:17px;margin:0 0 12px}.list{display:flex;flex-direction:column;gap:8px}.item{background:var(--s2);border:1px solid #ffffff08;padding:11px;border-radius:11px}.item strong{display:block}.patient{cursor:pointer;width:100%;text-align:right}button:disabled{opacity:.55;cursor:wait}.patient:hover{border-color:var(--a)}input,select,textarea{background:var(--s2);border:1px solid var(--b);color:var(--t);border-radius:9px;padding:9px 10px;width:100%}textarea{min-height:90px;resize:vertical}.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.form label{font-size:11px;color:var(--d);display:flex;flex-direction:column;gap:4px}.schedule{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.drawer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:60;padding:18px;overflow:auto}.drawer.open{display:block}.panel{max-width:1100px;margin:10px auto;background:var(--s);border:1px solid var(--b);border-radius:20px;padding:20px}.sections{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.section{background:var(--s2);border-radius:12px;padding:12px}.section h3{margin:0 0 9px;font-size:14px}.row{padding:6px 0;border-bottom:1px solid #ffffff0a}.chat{height:280px;overflow:auto;background:var(--s2);border-radius:12px;padding:10px}.bubble{max-width:80%;padding:8px 10px;border-radius:11px;margin:7px 0;background:#152842}.bubble.me{margin-right:auto;background:#073b50}.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.tool.on{border-color:var(--g);color:var(--g)}.toolPane{display:none}.toolPane.on{display:block}@media(max-width:850px){.grid,.sections{grid-template-columns:1fr}.schedule{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.hero{align-items:flex-start;flex-direction:column}.tools{grid-template-columns:1fr 1fr}}@media(max-width:520px){.schedule,.form{grid-template-columns:1fr}.full{grid-column:auto}}</style><link rel="stylesheet" href="/assets/theme-v1.css"><link rel="stylesheet" href="/assets/product.css"><script src="/assets/theme.js"></script><link rel="stylesheet" href="/assets/site-style.css"></head><body><header><a href="/" class="logo"><img src="/assets/drman-logo.svg" alt="لوگوی دکتر من">DrMan پزشک</a><div><a class="btn" href="/doctor-onboarding">پروفایل</a> <a class="btn" href="/doctors">دایرکتوری</a> <button onclick="logout()">خروج</button></div></header><main class="wrap"><section class="hero"><div><h1 id="doctorName">پنل پزشک</h1><div id="doctorMeta" class="muted"></div></div><div class="tiny">دسترسی به اطلاعات و ثبت داده بالینی فقط در محدوده رضایت بیمار انجام می‌شود.</div></section><section id="stats" class="stats"></section><p id="portalStatus" class="muted" role="status" aria-live="polite"></p><nav class="tabs" role="tablist" aria-label="بخش‌های پنل پزشک"><button class="tab on" data-page="patientsPage">بیماران</button><button class="tab" data-page="appointmentsPage">نوبت‌ها</button><button class="tab" data-page="schedulePage">برنامه کاری</button><button class="tab" data-page="messagesPage">پیام‌ها</button></nav><section id="patientsPage" class="page on"><div class="card"><h2>بیماران متصل</h2><div id="patients" class="list"><div class="muted">در حال بارگذاری...</div></div></div></section><section id="appointmentsPage" class="page"><div class="card"><h2>مدیریت نوبت‌ها</h2><div id="appointments" class="list"><div class="muted">در حال دریافت نوبت‌ها…</div></div></div></section><section id="schedulePage" class="page"><div class="card"><h2>افزودن بازه کاری</h2><form onsubmit="addSchedule(event)"><div class="schedule"><label>روز<select id="schDay"><option value="6">شنبه</option><option value="0">یکشنبه</option><option value="1">دوشنبه</option><option value="2">سه‌شنبه</option><option value="3">چهارشنبه</option><option value="4">پنجشنبه</option><option value="5">جمعه</option></select></label><label>شروع<input id="schStart" required type="time" value="09:00"></label><label>پایان<input id="schEnd" required type="time" value="13:00"></label><label>هر نوبت<select id="schSlot"><option value="15">۱۵ دقیقه</option><option value="20">۲۰ دقیقه</option><option value="30" selected>۳۰ دقیقه</option><option value="45">۴۵ دقیقه</option><option value="60">۶۰ دقیقه</option></select></label><label>نوع<select id="schMode"><option value="in_person">حضوری</option><option value="video">آنلاین</option><option value="phone">تلفنی</option></select></label></div><button class="primary" type="submit" style="margin-top:10px">افزودن بازه</button></form></div><div class="card" style="margin-top:14px"><h2>برنامه ثبت‌شده</h2><div id="schedule" class="list"><div class="muted">در حال دریافت برنامه کاری…</div></div></div></section><section id="messagesPage" class="page"><div class="card"><h2>آخرین پیام‌ها</h2><div id="recentMessages" class="list"><div class="muted">در حال دریافت پیام‌ها…</div></div></div></section></main><div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pName" tabindex="-1"><div class="panel"><div style="display:flex;justify-content:space-between;gap:10px"><div><h2 id="pName">پرونده بیمار</h2><div id="pScope" class="tiny"></div></div><button id="closeDrawerButton" type="button" onclick="closeDrawer()">بستن</button></div><p id="drawerStatus" class="muted" role="status" aria-live="polite"></p><div id="record" class="sections" style="margin-top:14px"></div><div id="messageArea" class="card" style="margin-top:14px;display:none"><h2>پیام امن</h2><div id="chat" class="chat"></div><form style="display:flex;gap:7px;margin-top:8px" onsubmit="sendMessage(event)"><input id="chatInput" aria-label="متن پیام برای بیمار" maxlength="4000" placeholder="پیام برای بیمار" required><button type="submit" class="primary">ارسال</button></form></div><div id="clinicalArea" class="card" style="margin-top:14px;display:none"><h2>ثبت بالینی</h2><div class="tools" role="tablist" aria-label="ابزار ثبت بالینی"><button class="tool on" data-tool="encounterTool">خلاصه ویزیت</button><button class="tool" data-tool="rxTool">نسخه</button><button class="tool" data-tool="orderTool">درخواست بررسی</button><button class="tool" data-tool="followTool">پیگیری</button></div><div id="encounterTool" class="toolPane on"><p class="tiny">آزمایش به‌تنهایی مبنای نسخه نیست. شرح حال، بررسی دارو/حساسیت، علائم هشدار و معاینه یا ارزیابی راه‌دور باید تکمیل و توسط پزشک تأیید شود.</p><div class="form"><label>نوع<select id="encType"><option value="in_person">حضوری</option><option value="video">آنلاین</option><option value="phone">تلفنی</option><option value="follow_up">پیگیری</option><option value="other">سایر</option></select></label><label>شکایت اصلی<input id="encChief"></label><label class="full">شرح حال بیماری فعلی<textarea id="encHpi"></textarea></label><label class="full">تطبیق داروهای فعلی<textarea id="encMedRec"></textarea></label><label class="full">بررسی حساسیت‌ها<textarea id="encAllergy"></textarea></label><label class="full">معاینه حضوری / یافته‌های بالینی<textarea id="encExam"></textarea></label><label class="full">ارزیابی راه‌دور (برای ویزیت آنلاین/تلفنی)<textarea id="encRemote"></textarea></label><label class="full">خلاصه ویزیت<textarea id="encSummary"></textarea></label><label class="full">ارزیابی<textarea id="encAssessment"></textarea></label><label class="full">برنامه درمانی<textarea id="encPlan"></textarea></label><label><input type="checkbox" id="encIdentity"> هویت بیمار تأیید شد</label><label><input type="checkbox" id="encMedsReviewed"> داروها بررسی شد</label><label><input type="checkbox" id="encAllergyReviewed"> حساسیت‌ها بررسی شد</label><label><input type="checkbox" id="encRedFlags"> علائم هشدار بررسی شد</label><label><input type="checkbox" id="encVitals"> علائم حیاتی مرور شد</label><label><input type="checkbox" id="encExamDone"> معاینه حضوری انجام شد</label><label><input type="checkbox" id="encTeleOk"> ویزیت راه‌دور برای این مورد مناسب است</label><label><input type="checkbox" id="encTeleConsent"> رضایت ویزیت راه‌دور تأیید شد</label><label class="full"><input type="checkbox" id="encAttest"> به‌عنوان پزشک تأیید می‌کنم ارزیابی بالینی لازم انجام و مستند شده است</label><button class="primary full" onclick="saveEncounter()">ثبت و نهایی‌کردن ویزیت</button></div></div><div id="rxTool" class="toolPane"><div class="form"><label class="full">ویزیت مبنای نسخه<select id="rxEncounter"></select></label><label>دارو<input id="rxName"></label><label>دوز<input id="rxDose"></label><label>دفعات<input id="rxFreq"></label><label>مدت<input id="rxDuration"></label><label class="full">دستور مصرف<textarea id="rxInstructions"></textarea></label><label class="full">مبنای بالینی نسخه<textarea id="rxBasis" placeholder="خلاصه علت انتخاب درمان"></textarea></label><label class="full">یادداشت نسخه<textarea id="rxNotes"></textarea></label><button class="primary full" onclick="saveRx()">ثبت نسخه</button></div></div><div id="orderTool" class="toolPane"><div class="form"><label>نوع<select id="ordType"><option value="lab">آزمایش</option><option value="imaging">تصویربرداری</option><option value="pathology">پاتولوژی</option><option value="other">سایر</option></select></label><label>اولویت<select id="ordPriority"><option value="routine">عادی</option><option value="urgent">فوری</option></select></label><label class="full">موارد، هر خط یک مورد<textarea id="ordItems"></textarea></label><label class="full">یادداشت بالینی<textarea id="ordNote"></textarea></label><button class="primary full" onclick="saveOrder()">ثبت درخواست</button></div></div><div id="followTool" class="toolPane"><div class="form"><label>عنوان<input id="fuTitle"></label><label>نوع<select id="fuType"><option value="follow_up">پیگیری</option><option value="lab">آزمایش</option><option value="appointment">نوبت</option><option value="measurement">اندازه‌گیری</option><option value="medication">دارو</option></select></label><label>موعد<input id="fuDue" type="datetime-local"></label><label class="full">توضیح<textarea id="fuDetails"></textarea></label><button class="primary full" onclick="saveFollow()">ثبت پیگیری</button></div></div></div></div></div><script>
+const $ = id => document.getElementById(id);
+let DASH = null, currentPatient = null, currentRecord = null, actionBusy = false, recordVersion = 0, focusBeforeDrawer = null;
+const documentRequests = new Set(), documentTabs = new Set();
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = value => { const date = new Date(value); return value && !Number.isNaN(date.getTime()) ? date.toLocaleString('fa-IR') : '—'; };
+const days = {0:'یکشنبه',1:'دوشنبه',2:'سه‌شنبه',3:'چهارشنبه',4:'پنجشنبه',5:'جمعه',6:'شنبه'};
+const modes = {in_person:'حضوری',video:'آنلاین',phone:'تلفنی'};
+const statuses = {requested:'درخواست‌شده',confirmed:'تأییدشده',completed:'تکمیل‌شده',cancelled:'لغوشده'};
+function notify(message, error = false) {
+  for (const id of ['portalStatus','drawerStatus']) { $(id).textContent = message; $(id).style.color = error ? 'var(--r)' : 'var(--d)'; }
+}
+async function api(url, options = {}) {
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(url, {...options, credentials:'include', signal:controller.signal, headers:{'Content-Type':'application/json', ...options.headers}});
+    if (response.status === 401) {
+      location.assign('/auth?next=' + encodeURIComponent(location.pathname + location.search));
+      const error = new Error('برای ادامه دوباره وارد حساب شوید.'); error.auth = true; throw error;
+    }
+    const data = await response.json().catch(() => null);
+    if (!response.ok || data?.success !== true) throw new Error(data?.error || 'دریافت اطلاعات انجام نشد. دوباره تلاش کنید.');
+    return data;
+  } catch (error) { if (error.name === 'AbortError') throw new Error('پاسخ سرور طول کشید. دوباره تلاش کنید.'); if (error instanceof TypeError) throw new Error('ارتباط با سرور برقرار نشد. دوباره تلاش کنید.'); throw error; }
+  finally { clearTimeout(timer); }
+}
+async function action(callback) {
+  if (actionBusy) return;
+  actionBusy = true;
+  const buttons = [...document.querySelectorAll('button')].map(button => [button, button.disabled]);
+  buttons.forEach(([button]) => button.disabled = true);
+  notify('در حال ثبت تغییرات…');
+  try { await callback(); }
+  catch (error) { if (!error.auth) notify(error.message || 'ثبت تغییرات انجام نشد.', true); }
+  finally { actionBusy = false; buttons.forEach(([button, disabled]) => { if (button.isConnected) button.disabled = button.hasAttribute('data-open-document') ? documentRequests.has(button.dataset.openDocument) : disabled; }); }
+}
+async function logout() { await action(async () => { await api('/api/logout', {method:'POST'}); try { localStorage.removeItem('user'); } catch {} location.assign('/'); }); }
+async function load() {
+  $('patients').setAttribute('aria-busy','true');
+  try {
+    const data = await api('/api/doctor-dashboard');
+    if (!data.doctor) throw new Error('پروفایل پزشک دریافت نشد.');
+    DASH = data;
+    $('doctorName').textContent = DASH.doctor.full_name || 'پنل پزشک';
+    const verification = {verified:'تأییدشده',pending:'در انتظار بررسی',rejected:'نیازمند اصلاح'};
+    $('doctorMeta').textContent = (DASH.doctor.specialty || '') + ' · وضعیت: ' + (verification[DASH.doctor.verification_status] || 'در حال بررسی');
+    renderDash(); await loadSchedule();
+  } catch (error) {
+    if (!error.auth) {
+      $('patients').innerHTML = '<div class="muted">' + esc(error.message || 'ارتباط با سرور برقرار نشد.') + '</div><div><button type="button" onclick="load()">تلاش دوباره</button> <a class="btn" href="/doctor-onboarding">درخواست عضویت یا اصلاح پروفایل</a></div>';
+      for (const id of ['appointments','recentMessages']) $(id).innerHTML = '<div class="muted">اطلاعات دریافت نشد؛ ابتدا حساب و پروفایل پزشک را بررسی کنید.</div>';
+    }
+  } finally { $('patients').setAttribute('aria-busy','false'); }
+}
+function renderDash() {
+  const patients = (Array.isArray(DASH.patients) ? DASH.patients : []).filter(grant => grant.patients?.id);
+  const appointments = Array.isArray(DASH.appointments) ? DASH.appointments : [];
+  const messages = Array.isArray(DASH.messages) ? DASH.messages : [];
+  $('stats').innerHTML = [['بیمار متصل',patients.length],['نوبت آینده',appointments.filter(item => new Date(item.starts_at) > new Date() && !['cancelled','completed'].includes(item.status)).length],['درخواست نوبت',appointments.filter(item => item.status === 'requested').length],['پیام خوانده‌نشده',messages.filter(item => item.sender_type === 'patient' && !item.read_at).length]].map(item => `<div class="stat"><b>${Number(item[1]).toLocaleString('fa-IR')}</b><span class="tiny">${item[0]}</span></div>`).join('');
+  $('patients').innerHTML = patients.length ? patients.map(grant => `<button type="button" class="item patient" data-patient="${esc(grant.patients.id)}"><strong>${esc(grant.patients.display_name)}</strong><span class="tiny">${grant.patients.birth_date ? 'تولد ' + esc(grant.patients.birth_date) + ' · ' : ''}${esc((grant.scope || []).join('، '))}${grant.expires_at ? ' · تا ' + fmt(grant.expires_at) : ''}</span></button>`).join('') : '<div class="muted">هنوز بیماری پرونده‌اش را با شما به اشتراک نگذاشته است.</div>';
+  $('appointments').innerHTML = appointments.length ? appointments.map(item => `<div class="item"><strong>${esc(item.patients?.display_name || 'بیمار')}</strong><div class="tiny">${fmt(item.starts_at)} · ${esc(modes[item.mode] || item.mode)} · ${esc(statuses[item.status] || item.status)}</div>${item.reason ? `<div>${esc(item.reason)}</div>` : ''}<div style="margin-top:8px">${item.status === 'requested' ? `<button type="button" class="primary" data-appointment="${esc(item.id)}" data-status="confirmed">تأیید</button> <button type="button" data-appointment="${esc(item.id)}" data-status="cancelled">رد</button>` : item.status === 'confirmed' ? `<button type="button" class="primary" data-appointment="${esc(item.id)}" data-status="completed">اتمام</button> <button type="button" data-appointment-note="${esc(item.id)}">یادداشت / لینک</button>` : ''}</div></div>`).join('') : '<div class="muted">هنوز نوبتی ثبت نشده است.</div>';
+  $('recentMessages').innerHTML = messages.length ? messages.slice(0,40).map(item => `<button type="button" class="item patient" data-patient="${esc(item.patient_id)}"><strong>${esc(item.patients?.display_name || 'بیمار')}</strong><span>${esc(item.body)}</span><span class="tiny" style="display:block">${fmt(item.created_at)} ${item.read_at ? '' : '· خوانده‌نشده'}</span></button>`).join('') : '<div class="muted">هنوز پیامی ثبت نشده است.</div>';
+}
+async function setStatus(id, status) {
+  if (status === 'cancelled' && !confirm('این درخواست نوبت رد شود؟')) return;
+  await action(async () => { await api('/api/appointments', {method:'PATCH',body:JSON.stringify({id,status})}); await load(); notify('وضعیت نوبت به‌روزرسانی شد.'); });
+}
+async function appointmentNote(id) {
+  if (actionBusy) return;
+  const note = prompt('یادداشت پزشک (اختیاری):'); if (note === null) return;
+  const meeting = prompt('لینک جلسه آنلاین (اختیاری):'); if (meeting === null) return;
+  const url = meeting.trim();
+  if (url) {
+    try { const parsed = new URL(url); if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error(); }
+    catch { notify('لینک جلسه باید یک آدرس کامل و معتبر با https باشد.', true); return; }
+  }
+  await action(async () => { await api('/api/appointments', {method:'PATCH',body:JSON.stringify({id,status:'confirmed',doctor_note:note,meeting_url:url})}); await load(); notify('یادداشت نوبت ثبت شد.'); });
+}
+async function loadSchedule() {
+  $('schedule').setAttribute('aria-busy','true');
+  try {
+    const data = await api('/api/availability?mine=1');
+    const rows = Array.isArray(data.schedule) ? data.schedule : [];
+    $('schedule').innerHTML = rows.length ? rows.map(item => `<div class="item"><strong>${days[item.weekday] || esc(item.weekday)} · ${esc(String(item.start_time || '').slice(0,5))} تا ${esc(String(item.end_time || '').slice(0,5))}</strong><div class="tiny">${esc(modes[item.mode] || item.mode)} · هر ${esc(item.slot_minutes)} دقیقه · ${item.active ? 'فعال' : 'غیرفعال'}</div><div style="margin-top:6px"><button type="button" data-schedule="${esc(item.id)}" data-active="${item.active ? 'false' : 'true'}">${item.active ? 'غیرفعال' : 'فعال'}</button> <button type="button" class="danger" data-delete-schedule="${esc(item.id)}">حذف</button></div></div>`).join('') : '<div class="muted">هنوز برنامه کاری ثبت نشده است.</div>';
+  } catch (error) { if (!error.auth) $('schedule').innerHTML = '<div class="muted">' + esc(error.message || 'برنامه کاری دریافت نشد.') + '</div><button type="button" onclick="loadSchedule()">تلاش دوباره</button>'; }
+  finally { $('schedule').setAttribute('aria-busy','false'); }
+}
+async function addSchedule(event) {
+  event?.preventDefault();
+  if (!$('schStart').value || !$('schEnd').value || $('schStart').value >= $('schEnd').value) { notify('ساعت پایان باید بعد از ساعت شروع باشد.', true); return; }
+  await action(async () => {
+    await api('/api/availability', {method:'POST', body:JSON.stringify({weekday:Number($('schDay').value),start_time:$('schStart').value,end_time:$('schEnd').value,slot_minutes:Number($('schSlot').value),mode:$('schMode').value})});
+    await loadSchedule(); notify('بازه کاری ثبت شد.');
+  });
+}
+async function toggleSchedule(id, active) { await action(async () => { await api('/api/availability', {method:'PATCH',body:JSON.stringify({id,active})}); await loadSchedule(); notify('برنامه کاری به‌روزرسانی شد.'); }); }
+async function deleteSchedule(id) { if (!confirm('این بازه کاری حذف شود؟')) return; await action(async () => { await api('/api/availability', {method:'DELETE',body:JSON.stringify({id})}); await loadSchedule(); notify('بازه کاری حذف شد.'); }); }
+function sharedDocumentsSection(record) {
+  if (!Array.isArray(record.scope) || !record.scope.includes('documents') || !Array.isArray(record.documents)) return '';
+  const types = {lab:'آزمایش',prescription:'نسخه',imaging:'تصویربرداری',discharge:'خلاصه ترخیص',visit_note:'یادداشت ویزیت',insurance:'بیمه',vaccine:'واکسیناسیون',other:'سایر'};
+  const documents = record.documents.filter(document => document && typeof document.id === 'string' && document.id);
+  const rows = documents.map(document => `<div class="row" data-document-row><b>${esc(document.title || 'سند پزشکی')}</b><div class="tiny">${esc(types[document.document_type] || 'سند پزشکی')} · ${document.document_date ? 'تاریخ سند: ' + fmt(document.document_date) : 'ثبت‌شده: ' + fmt(document.created_at)}</div>${typeof document.ai_summary === 'string' && document.ai_summary.trim() ? `<div class="tiny" style="margin-top:6px">${esc(document.ai_summary)}</div>` : ''}<button type="button" style="margin-top:8px" data-open-document="${esc(document.id)}" aria-label="${esc('مشاهده سند ' + (document.title || 'پزشکی'))}">مشاهده سند</button><div class="tiny" data-document-status role="status" aria-live="polite" style="margin-top:6px"></div></div>`).join('');
+  return '<div class="section"><h3>اسناد پزشکی به‌اشتراک‌گذاشته‌شده</h3>' + (rows || '<div class="tiny">هنوز سندی برای این پرونده ثبت نشده است.</div>') + '</div>';
+}
+function closePendingDocumentTabs() {
+  documentTabs.forEach(tab => { try { tab.close(); } catch {} }); documentTabs.clear();
+}
+async function openSharedDocument(id, button) {
+  const patientId = currentPatient, version = recordVersion;
+  if (actionBusy || !patientId || !currentRecord?.scope?.includes('documents') || !currentRecord.documents?.some(document => document.id === id) || documentRequests.has(id)) return;
+  const state = button.closest('[data-document-row]')?.querySelector('[data-document-status]');
+  if (!state) return;
+  documentRequests.add(id); button.disabled = true; state.textContent = 'در حال دریافت لینک امن سند…';
+  let tab = null;
+  try { tab = window.open('about:blank', '_blank'); if (tab) { tab.opener = null; documentTabs.add(tab); } } catch { if (tab) { try { tab.close(); } catch {} } tab = null; }
+  try {
+    const result = await api('/api/documents?id=' + encodeURIComponent(id));
+    if (currentPatient !== patientId || recordVersion !== version || !$('drawer').classList.contains('open') || !currentRecord?.scope?.includes('documents')) { if (tab) { try { tab.close(); } catch {} } return; }
+    let url;
+    try { url = new URL(result.url); if (url.protocol !== 'https:' || url.username || url.password) throw new Error(); }
+    catch { throw new Error('لینک معتبر سند دریافت نشد. دوباره تلاش کنید.'); }
+    if (tab && !tab.closed) { tab.location.replace(url.href); documentTabs.delete(tab); }
+    state.textContent = 'لینک سند آماده است؛ اگر منقضی شد، دوباره «مشاهده سند» را بزنید. ';
+    const link = document.createElement('a'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.textContent = 'بازکردن سند در تب جدید'; link.style.color = 'var(--a)'; state.appendChild(link);
+  } catch (error) {
+    if (tab) { try { tab.close(); } catch {} }
+    if (currentPatient === patientId && recordVersion === version && state.isConnected && !error.auth) state.textContent = error.message || 'بازکردن سند انجام نشد. دوباره تلاش کنید.';
+  } finally { if (tab) documentTabs.delete(tab); documentRequests.delete(id); if (button.isConnected) button.disabled = false; }
+}
+function sec(title,items,fn){return `<div class="section"><h3>${title}</h3>${items?.length?items.map(fn).join(''):'<div class="tiny">داده‌ای در این سطح دسترسی نیست.</div>'}</div>`}async function openPatient(id) {
+  const version = ++recordVersion;
+  closePendingDocumentTabs();
+  if (currentPatient !== id) resetClinical();
+  currentPatient = id; currentRecord = null;
+  if (!$('drawer').classList.contains('open')) focusBeforeDrawer = document.activeElement;
+  $('drawer').classList.add('open'); $('drawer').setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden'; $('closeDrawerButton').focus();
+  $('pName').textContent = 'پرونده بیمار'; $('pScope').textContent = '';
+  $('record').innerHTML = '<div class="muted">در حال دریافت پرونده…</div>';
+  $('messageArea').style.display = 'none'; $('clinicalArea').style.display = 'none';
+  $('drawerStatus').textContent = '';
+  try {
+    const data = await api('/api/doctor-patient-record?patient_id=' + encodeURIComponent(id));
+    if (version !== recordVersion || currentPatient !== id) return;
+    if (!data.record?.patient) throw new Error('پرونده بیمار دریافت نشد.');
+    currentRecord = data.record; const r = currentRecord;$('pName').textContent=r.patient.display_name;$('pScope').textContent='مجوزها: '+(r.scope||[]).join('، ');let h='';if(r.summary)h+=sec('خلاصه',[r.summary],x=>`<div class="row">بیماری فعال: ${x.active_conditions} · حساسیت: ${x.allergies} · دارو: ${x.active_medications} · پیگیری: ${x.open_tasks}</div>`);if(r.conditions)h+=sec('بیماری‌ها',r.conditions,x=>`<div class="row">${esc(x.name)} <span class="tiny">${esc(x.status)}</span></div>`);if(r.allergies)h+=sec('حساسیت‌ها',r.allergies,x=>`<div class="row">${esc(x.allergen)} <span class="tiny">${esc(x.severity)}</span></div>`);if(r.medications)h+=sec('داروها',r.medications,x=>`<div class="row">${esc(x.name)} <span class="tiny">${esc(x.dose||'')} ${esc(x.frequency||'')}</span></div>`);if(r.tests)h+=sec('آزمایش‌ها',r.tests,x=>`<div class="row">${fmt(x.created_at)} · ${esc(x.status||'')}<div class="tiny">${esc((x.analysis||'').slice(0,450))}</div></div>`);if(r.vitals)h+=sec('علائم حیاتی',r.vitals.slice(0,10),x=>`<div class="row">${fmt(x.measured_at)} <span class="tiny">${x.systolic?`فشار ${esc(x.systolic)}/${esc(x.diastolic)}`:''} ${x.weight_kg?`وزن ${esc(x.weight_kg)}kg`:''}</span></div>`);if(r.intakes)h+=sec('شرح‌حال قبل از ویزیت',r.intakes,x=>`<div class="row"><b>${fmt(x.submitted_at||x.created_at)} · ${esc(x.status)}</b><div>${esc(x.chief_complaint||'')}</div><div class="tiny">${esc((x.history_of_present_illness||'').slice(0,450))}</div></div>`);if(r.encounters)h+=sec('ویزیت‌ها',r.encounters,x=>`<div class="row"><b>${fmt(x.occurred_at)}</b> <span class="tiny">${x.prescribing_ready?'· آماده نسخه':'· ارزیابی نسخه ناقص'}</span><div class="tiny">${esc(x.summary||'')}</div></div>`);if(r.prescriptions)h+=sec('نسخه‌ها',r.prescriptions,x=>`<div class="row"><b>${fmt(x.issued_at)}</b><div class="tiny">${(x.prescription_items||[]).map(i=>esc(i.medication_name)).join('، ')}</div></div>`);if(r.diagnostic_orders)h+=sec('درخواست‌های تشخیصی',r.diagnostic_orders,x=>`<div class="row">${esc(x.order_type)} · ${esc((x.items||[]).join('، '))}<div class="tiny">${esc(x.status)}</div></div>`);h+=sharedDocumentsSection(r);$('record').innerHTML=h||'<div class="muted">اطلاعات بیشتری در این سطح دسترسی مجاز نیست.</div>';populateRxEncounters();$('messageArea').style.display=r.permissions?.messages?'block':'none';$('clinicalArea').style.display=r.permissions?.clinical_write?'block':'none';if (r.permissions?.messages) { try { await loadChat(id); } catch (error) { if (version === recordVersion && !error.auth) { $('chat').innerHTML = '<div class="tiny" style="padding:12px">' + esc(error.message || 'پیام‌ها دریافت نشدند.') + '</div>'; notify('پرونده دریافت شد، اما پیام‌ها در دسترس نیستند.', true); } } }
+  } catch (error) {
+    if (version === recordVersion && !error.auth) { $('record').innerHTML = '<div class="muted">' + esc(error.message || 'پرونده دریافت نشد.') + '</div>'; notify(error.message || 'پرونده دریافت نشد.', true); }
+  }
+}
+function resetClinical() {
+  document.querySelectorAll('#clinicalArea input,#clinicalArea textarea').forEach(input => { if (input.type === 'checkbox') input.checked = false; else input.value = ''; });
+  $('chatInput').value = ''; $('chat').innerHTML = '';
+}
+function closeDrawer() {
+  recordVersion++; $('drawer').classList.remove('open'); $('drawer').setAttribute('aria-hidden','true');
+  closePendingDocumentTabs();
+  currentPatient = null; currentRecord = null; resetClinical(); document.body.style.overflow = '';
+  if (focusBeforeDrawer?.isConnected) focusBeforeDrawer.focus();
+}
+
+async function loadChat(patientId = currentPatient) {
+  const data = await api('/api/messages?role=doctor&patient_id=' + encodeURIComponent(patientId));
+  if (currentPatient !== patientId) return;
+  const messages = Array.isArray(data.messages) ? data.messages : [];
+  $('chat').innerHTML = messages.length ? messages.map(item => `<div class="bubble ${item.sender_type === 'doctor' ? 'me' : ''}">${esc(item.body)}<div class="tiny">${fmt(item.created_at)}</div></div>`).join('') : '<div class="tiny" style="padding:12px">هنوز پیامی ثبت نشده است.</div>';
+  $('chat').scrollTop = $('chat').scrollHeight;
+}
+async function sendMessage(event) {
+  event?.preventDefault();
+  const message = $('chatInput').value.trim(), patientId = currentPatient;
+  if (!message || !patientId) return;
+  await action(async () => {
+    await api('/api/messages', {method:'POST',body:JSON.stringify({role:'doctor',patient_id:patientId,message})});
+    if (currentPatient === patientId) { $('chatInput').value = ''; await loadChat(patientId); }
+    notify('پیام ارسال شد.');
+  });
+}
+async function clinical(kind, payload) {
+  const patientId = currentPatient;
+  if (!patientId || !currentRecord?.permissions?.clinical_write) { notify('دسترسی ثبت بالینی برای این بیمار فعال نیست.', true); return; }
+  await action(async () => {
+    await api('/api/clinical-workspace', {method:'POST',body:JSON.stringify({action:kind,patient_id:patientId,...payload})});
+    if (currentPatient === patientId) {
+      const panes = {encounter:'encounterTool',prescription:'rxTool',diagnostic_order:'orderTool',follow_up:'followTool'};
+      document.querySelectorAll('#' + panes[kind] + ' input,#' + panes[kind] + ' textarea').forEach(input => { if (input.type === 'checkbox') input.checked = false; else input.value = ''; });
+      await openPatient(patientId);
+    }
+    notify('اطلاعات با موفقیت ثبت شد.');
+  });
+}
+function populateRxEncounters(){if(!$('rxEncounter'))return;const rows=(currentRecord?.encounters||[]).filter(x=>x.prescribing_ready);$('rxEncounter').innerHTML=rows.length?rows.map(x=>`<option value="${esc(x.id)}">${fmt(x.occurred_at)} · ${esc(x.chief_complaint||'ویزیت')}</option>`).join(''):'<option value="">ابتدا ارزیابی بالینی کامل ثبت کنید</option>'}function saveEncounter(){clinical('encounter',{encounter_type:$('encType').value,chief_complaint:$('encChief').value,history_of_present_illness:$('encHpi').value,medication_reconciliation:$('encMedRec').value,allergy_review:$('encAllergy').value,exam_findings:$('encExam').value,remote_assessment_notes:$('encRemote').value,summary:$('encSummary').value,assessment:$('encAssessment').value,plan:$('encPlan').value,patient_identity_verified:$('encIdentity').checked,medications_reviewed:$('encMedsReviewed').checked,allergies_reviewed:$('encAllergyReviewed').checked,red_flags_reviewed:$('encRedFlags').checked,vitals_reviewed:$('encVitals').checked,clinical_exam_completed:$('encExamDone').checked,telehealth_appropriate:$('encTeleOk').checked,telehealth_consent_confirmed:$('encTeleConsent').checked,clinician_attested:$('encAttest').checked})}function saveRx(){const encounter_id=$('rxEncounter').value;if(!encounter_id)return notify('ابتدا یک ویزیت کامل و تأییدشده ثبت کنید.',true);if(!$('rxName').value.trim())return notify('نام دارو را وارد کنید.',true);clinical('prescription',{encounter_id,clinical_basis:$('rxBasis').value,notes:$('rxNotes').value,items:[{medication_name:$('rxName').value,dose:$('rxDose').value,frequency:$('rxFreq').value,duration:$('rxDuration').value,instructions:$('rxInstructions').value}]})}function saveOrder(){if(!$('ordItems').value.trim())return notify('موارد درخواست بررسی را وارد کنید.',true);clinical('diagnostic_order',{order_type:$('ordType').value,priority:$('ordPriority').value,items:$('ordItems').value.split('\n').map(x=>x.trim()).filter(Boolean),clinical_note:$('ordNote').value})}function saveFollow(){if(!$('fuTitle').value.trim())return notify('عنوان پیگیری را وارد کنید.',true);clinical('follow_up',{title:$('fuTitle').value,task_type:$('fuType').value,due_at:$('fuDue').value||null,details:$('fuDetails').value})}
+function selectTab(button, selector, paneSelector, attribute) {
+  document.querySelectorAll(selector).forEach(tab => { const selected = tab === button; tab.classList.toggle('on', selected); tab.setAttribute('aria-selected',String(selected)); tab.tabIndex = selected ? 0 : -1; });
+  document.querySelectorAll(paneSelector).forEach(pane => pane.classList.toggle('on',pane.id === button.dataset[attribute]));
+}
+document.addEventListener('click', event => {
+  const page = event.target.closest('[data-page]'); if (page) selectTab(page,'.tab','.page','page');
+  const tool = event.target.closest('[data-tool]'); if (tool) selectTab(tool,'.tool','.toolPane','tool');
+  const patient = event.target.closest('[data-patient]'); if (patient && !actionBusy) openPatient(patient.dataset.patient);
+  const documentButton = event.target.closest('[data-open-document]'); if (documentButton && !documentButton.disabled) openSharedDocument(documentButton.dataset.openDocument, documentButton);
+  const appointment = event.target.closest('[data-appointment]'); if (appointment) setStatus(appointment.dataset.appointment,appointment.dataset.status);
+  const note = event.target.closest('[data-appointment-note]'); if (note) appointmentNote(note.dataset.appointmentNote);
+  const schedule = event.target.closest('[data-schedule]'); if (schedule) toggleSchedule(schedule.dataset.schedule,schedule.dataset.active === 'true');
+  const remove = event.target.closest('[data-delete-schedule]'); if (remove) deleteSchedule(remove.dataset.deleteSchedule);
+});
+document.addEventListener('keydown', event => {
+  const tab = event.target.closest('[data-page],[data-tool]');
+  if (tab && ['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) {
+    event.preventDefault(); const tabs = [...tab.parentElement.querySelectorAll('button')], index = tabs.indexOf(tab);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowLeft' ? 1 : -1) + tabs.length) % tabs.length;
+    if (!tabs[next].disabled) { tabs[next].click(); tabs[next].focus(); } return;
+  }
+  if (!$('drawer').classList.contains('open')) return;
+  if (event.key === 'Escape' && !actionBusy) { event.preventDefault(); closeDrawer(); return; }
+  if (event.key === 'Tab') {
+    const controls = [...$('drawer').querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')].filter(element => element.getClientRects().length);
+    if (!controls.length) { event.preventDefault(); $('drawer').focus(); return; }
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
+document.querySelectorAll('[data-page],[data-tool]').forEach(button => {
+  button.type = 'button'; button.setAttribute('role','tab'); button.setAttribute('aria-selected',String(button.classList.contains('on')));
+  const paneId = button.dataset.page || button.dataset.tool;
+  button.id = paneId + '-tab'; button.setAttribute('aria-controls',paneId); button.tabIndex = button.classList.contains('on') ? 0 : -1;
+  $(paneId).setAttribute('role','tabpanel'); $(paneId).setAttribute('aria-labelledby',button.id);
+});
+load();
+</script></body></html>

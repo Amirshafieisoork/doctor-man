@@ -1,139 +1,75 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DrMan</title>
+# دکتر من — DrMan
 
-<style>
+دکتر من یک وب‌سایت فارسی برای تفسیر آموزشی آزمایش، پرونده سلامت فردی و خانوادگی، پیگیری مراقبت، محتوای سلامت و ارتباط با پزشکان تأییدشده است. نتیجه هوش مصنوعی جایگزین تشخیص و درمان پزشک نیست.
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:tahoma;
-}
+## ساختار پروژه
 
-body{
-background:#f5f7fb;
-}
+- صفحات HTML فارسی و RTL، فونت محلی Vazirmatn و تم روشن/تیره.
+- میزبانی Vercel؛ مسیرهای عمومی و خصوصی در `vercel.json` تعریف شده‌اند.
+- یک تابع Serverless در `api/router.js` و handlerهای داخلی در `server/api`.
+- Supabase PostgreSQL و Storage خصوصی؛ بررسی دسترسی و مالکیت اطلاعات در سرور.
+- نشست امضاشده با cookie از نوع HttpOnly؛ اطلاعات مرورگر مبنای مجوز دسترسی یا اشتراک نیست.
+- سرویس‌های هوش مصنوعی با رضایت کاربر و کنترل سهمیه در سرور.
+- پرداخت DigiPay با تأیید سرور؛ خرید زمانی فعال است که تنظیمات درگاه تکمیل شده باشد.
 
-.hero{
-text-align:center;
-padding:80px 20px;
-}
+## مسیرهای اصلی
 
-.logo{
-font-size:48px;
-font-weight:bold;
-color:#2563eb;
-}
+| مسیر | کاربرد |
+| --- | --- |
+| `/` | معرفی سرویس و بارگذاری تصویر آزمایش |
+| `/auth` | ورود و ساخت حساب |
+| `/health` | پرونده سلامت و اعضای خانواده |
+| `/account` | حساب، اشتراک، تاریخچه و درخواست‌های مربوط به داده |
+| `/doctors` | فهرست پزشکان تأییدشده |
+| `/doctor/:slug` | پروفایل پزشک و درخواست نوبت |
+| `/doctor-onboarding` | درخواست عضویت پزشک |
+| `/doctor-portal` | پنل پزشک |
+| `/visit-intake` | آماده‌سازی شرح حال پیش از ویزیت |
+| `/pricing` | پلن‌ها و وضعیت فعال بودن پرداخت |
+| `/learn` | دانشنامه سلامت |
+| `/support` | راهنمای هوشمند |
+| `/privacy`، `/terms`، `/medical-methodology` | حریم خصوصی، شرایط و روش‌شناسی پزشکی |
+| `/admin` | مدیریت مجاز سرویس |
 
-.subtitle{
-font-size:22px;
-margin-top:15px;
-color:#444;
-}
+## اجرای محلی
 
-.desc{
-max-width:700px;
-margin:25px auto;
-line-height:2;
-color:#666;
-}
+نسخه Node در `.nvmrc` و وابستگی‌ها در `package-lock.json` قفل شده‌اند.
 
-.btn{
-display:inline-block;
-background:#2563eb;
-color:white;
-padding:14px 30px;
-border-radius:10px;
-text-decoration:none;
-margin-top:20px;
-}
+```sh
+nvm use
+npm ci --ignore-scripts --no-audit --no-fund
+```
 
-.features{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-gap:20px;
-padding:50px 20px;
-}
+در صورت نیاز، `.env` را با نام متغیرهای `.env.example` آماده کنید. مقدارهای محرمانه نباید در Git ثبت شوند. صفحات استاتیک بدون کلید سرویس قابل مشاهده‌اند؛ قابلیت‌های آنلاین به تنظیمات واقعی نیاز دارند.
 
-.card{
-background:white;
-width:280px;
-padding:25px;
-border-radius:15px;
-box-shadow:0 0 15px rgba(0,0,0,.08);
-}
+```sh
+NODE_ENV=development npm run dev
+```
 
-.card h3{
-margin-bottom:10px;
-color:#2563eb;
-}
+سایت روی `http://127.0.0.1:3000` اجرا می‌شود. با `PORT` می‌توان پورت را تغییر داد. سرور محلی مسیرها، headerها و Router واقعی API را اجرا می‌کند و فقط فایل‌های عمومی را سرو می‌کند؛ محیط کامل Vercel و OIDC را شبیه‌سازی نمی‌کند. استفاده از HTTP برای درخواست‌های محلی فقط در محیط غیر production و Origin همسان روی loopback مجاز است.
 
-.footer{
-text-align:center;
-padding:30px;
-color:#777;
-}
+## بررسی و آزمون
 
-</style>
+```sh
+npm run check
+npm test
+npm run test:ui
+```
 
-</head>
+- `check`: نحو JavaScript، فایل‌های JSON، لینک‌های محلی HTML/CSS و سازگاری مقصد API با artifact تابع Vercel را بررسی می‌کند.
+- `test`: آزمون‌های سرور و رگرسیون مسیرها، aliasها، headerهای خصوصی، ۴۰۴، جلوگیری از افشای فایل‌های داخلی و اعتبارسنجی درخواست را اجرا می‌کند.
+- `test:ui`: Chromium را روی اندازه‌های موبایل و دسکتاپ اجرا می‌کند؛ جهت RTL، ورود، پیش‌نمایش و محدودیت فایل، بازگشت خطا، سهمیه و وضعیت غیرفعال بودن پرداخت را بررسی می‌کند.
 
-<body>
+اگر `/usr/bin/chromium` موجود باشد، آزمون مرورگر از همان استفاده می‌کند. برای Chromium نصب‌شده در مسیر دیگر، `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` را تنظیم کنید. متغیر `PLAYWRIGHT_BASE_URL` امکان آزمون یک سرور محلی از پیش اجراشده را می‌دهد؛ در حالت پیش‌فرض Playwright یک سرور مستقل روی پورت ۳۱۰۰ ایجاد می‌کند.
 
-<section class="hero">
+آزمون‌های UI درخواست‌های API و سرویس‌های خارجی را در مرز مرورگر شبیه‌سازی می‌کنند و service worker را غیرفعال می‌کنند. این آزمون‌ها حساب واقعی، تحلیل AI، پرداخت یا تغییر پایگاه داده ایجاد نمی‌کنند. تأیید اتصال واقعی سرویس‌ها، مهاجرت‌های دیتابیس و پرداخت باید جداگانه روی محیط مجاز انجام شود. گزارش HTML، trace و تصویر خطا در `work/` ذخیره می‌شوند.
 
-<div class="logo">
-DrMan
-</div>
+## تنظیم محیط و انتشار
 
-<div class="subtitle">
-دستیار هوشمند سلامت شما
-</div>
+فقط پروژه Vercel با نام `drman` باید به این مخزن متصل شود. مقصد تابع در تنظیمات legacy builds، `/api/router.js` است؛ حذف پسوند `.js` می‌تواند APIها و صفحات پویا را به ۴۰۴ بفرستد.
 
-<div class="desc">
-آپلود عکس آزمایش، دریافت تفسیر ساده،
-مدیریت سوابق پزشکی و همراهی هوشمند در مسیر سلامت.
-</div>
+متغیرهای لازم در `.env.example` مستند شده‌اند. در production از HTTPS، `NODE_ENV=production`، کلید نشست قوی، کلیدهای معتبر سرویس و URL عمومی صحیح استفاده کنید. تا وقتی تأیید merchant و آزمون چرخه کامل DigiPay انجام نشده، درگاه باید در حالت آزمایشی یا غیرفعال بماند. پزشک فقط پس از احراز و تأیید حرفه‌ای در فهرست عمومی نمایش داده می‌شود.
 
-<a href="#" class="btn">
-به زودی شروع کنید
-</a>
+پیش از انتشار، بررسی‌های محلی باید موفق باشند و وضعیت اتصال دیتابیس، هوش مصنوعی و پرداخت از طریق `/api/status` بررسی شود. آماده بودن متغیر محیطی به‌تنهایی صحت دسترسی سرویس یا چرخه پرداخت را ثابت نمی‌کند.
 
-</section>
-
-<section class="features">
-
-<div class="card">
-<h3>تفسیر آزمایش</h3>
-<p>
-آپلود عکس آزمایش و دریافت توضیح قابل فهم.
-</p>
-</div>
-
-<div class="card">
-<h3>پرونده سلامت</h3>
-<p>
-نگهداری سوابق و نتایج آزمایش‌ها.
-</p>
-</div>
-
-<div class="card">
-<h3>یادآوری پزشکی</h3>
-<p>
-یادآوری دارو، آزمایش و مراجعه بعدی.
-</p>
-</div>
-
-</section>
-
-<div class="footer">
-© DrMan 2025
-</div>
-
-</body>
-</html>
+مهاجرت `supabase/migrations/20261009034254_lab_analysis_quota_reservations.sql` رزرو اتمیک سهمیه تحلیل آزمایش را فراهم می‌کند. پیش از اجرای این نسخه، این مهاجرت باید روی همان پروژه Supabase اعمال شود. جدول رزرو و تابع‌های آن فقط برای `service_role` قابل استفاده‌اند و داده پزشکی در رزرو ذخیره نمی‌شود.

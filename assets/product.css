@@ -1,0 +1,31 @@
+.lab-preview{position:relative;height:300px;border:1px solid var(--border,#dce8f3);border-radius:14px;overflow:hidden;background:var(--surface2,#f2f7fc)}
+.lab-preview img{width:100%;height:100%;object-fit:contain}.lab-preview .remove{width:34px;height:34px;font-size:22px}
+.lab-thumbnails{display:flex;gap:10px;overflow-x:auto;padding:12px 2px;align-items:stretch}
+.lab-thumbnail{flex:0 0 78px;padding:4px;border-radius:10px;border:1px solid #bcd0e1;background:transparent;color:inherit;cursor:pointer}
+.lab-thumbnail img{width:68px;height:60px;object-fit:cover;border-radius:6px}.lab-thumbnail span{display:block;font-size:11px}
+.lab-thumbnail.selected{outline:2px solid #18b5bb;outline-offset:1px}.lab-add{min-height:80px;padding:16px;flex:1;border:1px dashed #bcd0e1;border-radius:10px;background:transparent;color:inherit;cursor:pointer}
+.entry-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.entry-actions button,.entry-actions .btn{font-size:12px;min-height:36px}
+.health-feedback{padding:12px 16px;border:1px solid currentColor;border-radius:12px;margin-bottom:16px;background:var(--s)}
+.health-feedback[hidden]{display:none}.theme-toggle{font:inherit;cursor:pointer;min-width:40px;min-height:40px;border-radius:10px;padding:6px 9px;border:1px solid var(--border,#dce8f3);background:var(--surface,#fff);color:inherit;white-space:nowrap}
+:focus-visible{outline:2px solid #18b5bb!important;outline-offset:3px!important}
+html[data-theme="dark"]{color-scheme:dark;--bg:#07111e!important;--surface:#0d1b2b!important;--surface2:#132539!important;--surface3:#173044!important;--accent:#67d7db!important;--green:#7be0b3!important;--yellow:#f5ca77!important;--red:#ff91a2!important;--text:#e6eff8!important;--dim:#a3b6ca!important;--border:#243a50!important;--s:#0d1b2b!important;--s2:#132539!important;--s3:#173044!important;--a:#67d7db!important;--g:#7be0b3!important;--y:#f5ca77!important;--r:#ff91a2!important;--t:#e6eff8!important;--d:#a3b6ca!important;--b:#243a50!important;--ink:#e6eff8;--muted:#a3b6ca;--blue:#67d7db;--teal:#7be0b3}
+html[data-theme="dark"] body{background:#07111e!important;color:#e6eff8!important}
+html[data-theme="dark"] body:before{background:radial-gradient(ellipse at 10% 0%,#12304066,transparent 40%),linear-gradient(#07111e,#091625)!important}
+html[data-theme="dark"] :is(header,.topbar,.tabs,footer){background:#0b1829f2!important;border-color:#243a50!important;color:#e6eff8!important;box-shadow:none!important}
+html[data-theme="dark"] :is(.card,.box,.panel,.item,.feature,.plan,.dialog,.sidebar,.scope,.stat,.metric,.service,.settingCard,.intro,.doc,.doctorJoin,.labCard,.heroBox,.familyBox,.floatCard,.cta){background:#0d1b2b!important;color:#e6eff8!important;border-color:#243a50!important;box-shadow:0 10px 30px #00000012!important}
+html[data-theme="dark"] :is(.hero,.trend,.careBox,.chat,.bubble,.familyImage,.trust){background:#132539!important;border-color:#243a50!important;color:#e6eff8!important}
+html[data-theme="dark"] :is(h1,h2,h3,.brand,.logo,.card h2,.hero h1,.heroCopy b,.sectionHead h2){color:#e6eff8!important}
+html[data-theme="dark"] :is(.muted,.hint,.sub,.text,.tiny,small,.hero p,.familyCopy p,.medical,.resultMeta,.nav a){color:#a3b6ca!important}
+html[data-theme="dark"] :is(input,select,textarea,button,.btn,.tab,table){background:#132539!important;color:#e6eff8!important;border-color:#30485e!important;box-shadow:none!important}
+html[data-theme="dark"] :is(.primary,.btn.primary,.analyze){background:#238b98!important;color:#fff!important}
+html[data-theme="dark"] :is(.success,.stat b,.eyebrow){color:#7be0b3!important}
+html[data-theme="dark"] .danger{color:#ff91a2!important}html[data-theme="dark"] .warning{color:#f5ca77!important}
+html[data-theme="dark"] :is(.tab.on,.tab.active,.eyebrow){background:#193c46!important;border-color:#44878a!important}
+html[data-theme="dark"] :is(.result,.loading){background:#132539!important;color:#e6eff8!important;border-color:#30485e!important}
+html[data-theme="dark"] .error{background:#3b202c!important;color:#ffb7c2!important;border-color:#874b5e!important}
+html[data-theme="dark"] :is(.accountBar,.accountStrip,.doctorBanner){background:#132539!important;color:#e6eff8!important;border-color:#30485e!important}
+html[data-theme="dark"] .heroVisual:before{background:radial-gradient(circle,#164457,transparent 70%)!important}
+html[data-theme="dark"] .bubble.me{background:#1a3d49!important;color:#e6eff8!important}
+html[data-theme="dark"] :is(th,td){border-color:#243a50!important;background:#132539!important;color:#e6eff8!important}
+@media(max-width:620px){.lab-preview{height:240px}.theme-toggle{font-size:11px}.entry-actions{gap:8px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*:before,*:after{animation:none!important;transition:none!important}}

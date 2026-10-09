@@ -1,0 +1,54 @@
+@font-face{font-family:Vazirmatn;src:url('/assets/fonts/vazirmatn-arabic.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+200C-200E,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Vazirmatn;src:url('/assets/fonts/vazirmatn-latin.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
+body{font-family:Vazirmatn,Tahoma,sans-serif!important;font-size:16px!important;line-height:1.9}
+button,input,select,textarea{font-family:inherit!important}input,select,textarea{font-size:16px!important}
+.btn,nav a,.nav a,.tab{font-size:15px!important;min-height:44px}.theme-toggle{font-size:14px!important;min-height:44px}
+.tiny,small,.hint,.trustItem span{font-size:13px!important}.feature h3,.feature b{font-size:18px!important}.feature p,.feature span{font-size:14px!important}
+.sectionHead p,.familyCopy p,.labTop p,.formGrid label,.medical,.doctorBanner p{font-size:15px!important}
+.brand small{font-size:13px!important}.brand strong{font-size:24px!important}
+html:not([data-theme="dark"]){color-scheme:light;--ink:#071b50;--text:#071b50;--t:#071b50;--muted:#617299;--dim:#617299;--d:#617299;--teal:#00a6a4;--accent:#008f91;--a:#008f91;--blue:#0868fa;--bg:#f4fbff;--surface:#fff;--s:#fff;--surface2:#edf7ff;--s2:#edf7ff}
+html:not([data-theme="dark"]) body{background:#f4fbff!important;color:#071b50!important}
+html:not([data-theme="dark"]) .btn.primary{background:#009d9c!important;box-shadow:0 8px 20px #00a6a422;color:white!important}
+.hero-selected{display:block;min-height:0;aspect-ratio:1672/941;box-shadow:none;border-color:#dfeef8;background:#f0f9ff}
+.hero-selected .heroArtwork{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+.hero-selected .heroCopy{position:absolute;right:0;top:50%;transform:translateY(-50%);width:50%;padding:30px 34px;z-index:2}
+.hero-selected h1{font-size:clamp(32px,3.7vw,49px);line-height:1.55;letter-spacing:0;margin:18px 0}
+.hero-selected h1 span{color:#009d9c}.hero-selected p{font-size:20px;line-height:1.95;margin-bottom:25px;color:#617299}
+.hero-selected .eyebrow{font-size:14px;background:#e5f9f8;color:#007b80}.hero-selected .heroMedical{display:block;margin-top:18px;line-height:1.9;color:#617299;font-size:13px}
+html[data-theme="dark"] .hero-selected:after{content:"";position:absolute;inset:0;background:linear-gradient(to left,#0d1b2b 0%,#0d1b2b 46%,transparent 65%);pointer-events:none}
+html[data-theme="dark"] .heroMedical{color:#a3b6ca}
+@media(max-width:900px){.hero-selected{aspect-ratio:auto;display:flex;flex-direction:column}.hero-selected .heroCopy{position:relative;transform:none;top:auto;width:100%;padding:30px 28px;order:0}.hero-selected .heroArtwork{position:relative;inset:auto;width:100%;height:auto;order:1}.hero-selected h1{font-size:36px}.hero-selected p{font-size:18px}html[data-theme="dark"] .hero-selected:after{display:none}.navrow{gap:12px}}
+@media(max-width:620px){.hero-selected .heroCopy{padding:26px 20px}.hero-selected h1{font-size:32px}.hero-selected p{font-size:18px}.hero-selected .heroCtas{gap:10px}.hero-selected .btn{padding:0 14px}.brand strong{font-size:20px!important}}
+/* Shared navigation and keyboard access across the product. */
+*,*:before,*:after{box-sizing:border-box}
+.skip-link{position:fixed;inset-inline-start:16px;top:10px;z-index:200;transform:translateY(-180%);padding:10px 16px;border-radius:10px;background:#fff;color:#071b50;box-shadow:0 4px 20px #071b5020}
+.skip-link:focus{transform:none}
+main:focus{outline:none}
+.site-controls{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;min-height:44px}
+.theme-toggle>span:first-child{font-size:22px;line-height:1}
+.site-menu{position:relative;flex-shrink:0}
+.site-menu>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:7px 11px;border:1px solid var(--b,#dce8f3);border-radius:10px;background:var(--s,#fff);color:var(--t,#071b50);font-size:14px;font-weight:700;white-space:nowrap}
+.site-menu>summary::-webkit-details-marker{display:none}
+.site-menu>summary:before{content:'☰';font-size:18px;line-height:1}
+header nav.site-menu-panel{position:absolute;inset-inline-end:0;top:calc(100% + 10px);z-index:100;display:flex!important;flex-direction:column;gap:2px;width:250px;max-width:calc(100vw - 28px);padding:8px;border:1px solid var(--b,#dce8f3);border-radius:14px;background:var(--s,#fff);box-shadow:0 12px 35px #071b5024;overflow:hidden}
+.site-menu:not([open])>.site-menu-panel{display:none!important}
+header nav.site-menu-panel a{display:flex;align-items:center;min-height:44px;margin:0;padding:9px 12px;border-radius:8px;color:var(--t,#071b50)!important;text-decoration:none;font-size:15px!important;font-weight:500}
+header nav.site-menu-panel a:hover,header nav.site-menu-panel a[aria-current="page"]{background:var(--s2,#edf7ff)!important;color:var(--a,#008f91)!important}
+header,.navrow,header .toolbar,header .actions{flex-wrap:wrap}
+header .actions,header .toolbar{align-items:center}
+.composer input{min-width:0}
+.box p,.box li,.scopeNote,.intro p{font-size:15px!important}
+html:not([data-theme="dark"]) :is(.box p,.box li,.scopeNote){color:#617299}
+html[data-theme="dark"] :is(.box p,.box li,.scopeNote){color:#a3b6ca}
+.help-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px}
+.help-grid details{border:1px solid var(--b);border-radius:14px;background:var(--s);padding:12px 16px}
+.help-grid summary{cursor:pointer;font-weight:700;min-height:32px}
+.help-grid p{font-size:15px;color:var(--d);margin:10px 0 0}
+.help-grid a{color:var(--a);text-decoration:underline;text-underline-offset:3px}
+.chat .messages{max-height:65vh;min-height:220px}
+.chat .m{font-size:15px}
+.meta{font-size:13px!important}
+@media(max-width:950px){.tabs{top:var(--drman-header-height,67px)!important}.navrow{height:auto!important;min-height:74px;gap:10px!important;padding-block:10px}.navrow>.actions{margin-inline-start:auto}}
+@media(max-width:700px){.theme-text{display:none}header{gap:10px;padding:12px 14px!important}.site-controls{gap:6px}.site-menu>summary{padding:7px 9px}.help-grid{grid-template-columns:1fr}.navrow>.actions{gap:6px}.navrow{min-height:68px}.navrow>.brand{flex:1}.intro h1{font-size:25px}}
+@media(max-width:700px){header nav.site-menu-panel{position:fixed;inset-inline-start:14px;inset-inline-end:14px;top:calc(var(--drman-header-height,68px) + 6px);width:calc(100vw - 28px);max-width:none}}

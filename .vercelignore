@@ -1,0 +1,15 @@
+.git/
+.env
+.env.*
+node_modules/
+test-results/
+playwright-report/
+tests/
+docs/
+playwright.config.mjs
+*.log
+
+work/
+hero-options.html
+assets/*options*.png
+assets/hero-signature.png
