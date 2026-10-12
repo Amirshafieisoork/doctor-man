@@ -1,0 +1,117 @@
+:root{
+  --bg:#f6f9fd!important;--surface:#ffffff!important;--surface2:#f2f7fc!important;--surface3:#eaf3fb!important;
+  --accent:#1267df!important;--green:#0dbb8a!important;--yellow:#d89a1c!important;--red:#e05267!important;
+  --text:#10243e!important;--dim:#6f839c!important;--border:#dce8f3!important;
+  --s:#ffffff!important;--s2:#f2f7fc!important;--s3:#eaf3fb!important;
+  --a:#1267df!important;--g:#0dbb8a!important;--y:#d89a1c!important;--r:#e05267!important;
+  --t:#10243e!important;--d:#6f839c!important;--b:#dce8f3!important
+}
+html{color-scheme:light;scroll-behavior:smooth}
+body{
+  background:#f6f9fd!important;color:#10243e!important;
+  font-size:14px!important;line-height:1.85!important;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-2;
+  background:
+    radial-gradient(circle at 12% 6%,rgba(18,103,223,.07),transparent 26%),
+    radial-gradient(circle at 88% 10%,rgba(13,187,138,.05),transparent 22%),
+    linear-gradient(180deg,#fbfdff 0%,#f6f9fd 100%)!important
+}
+header{
+  background:rgba(255,255,255,.92)!important;
+  border-bottom:1px solid #e4edf5!important;
+  box-shadow:0 6px 28px rgba(31,72,118,.045)!important;
+  backdrop-filter:blur(18px)!important
+}
+.brand,.logo{color:#10243e!important}
+.brand img,.logo img{filter:none!important}
+.card,.box,.panel,.item,.feature,.plan,.currentBox,.dialog,.sidebar,.scope,.stat,.metric,.service,.settingCard,.intro,.chat,.doc,.doctorJoin{
+  background:#fff!important;
+  border-color:#dfeaf4!important;
+  color:#10243e!important;
+  box-shadow:0 10px 28px rgba(31,72,118,.05)!important
+}
+.muted,.hint,.sub,.text,.tiny,small{color:#6f839c!important}
+input,select,textarea{
+  background:#f8fbfe!important;color:#10243e!important;
+  border:1px solid #d9e6f1!important;border-radius:12px!important;
+  font-size:14px!important;line-height:1.6!important;min-height:46px;
+  box-shadow:none!important
+}
+input:focus,select:focus,textarea:focus{
+  border-color:#76aaf0!important;
+  box-shadow:0 0 0 3px rgba(18,103,223,.09)!important;
+  outline:0!important
+}
+button,.btn{
+  background:#fff!important;color:#24415f!important;
+  border:1px solid #dce8f3!important;
+  min-height:42px;font-size:13px!important;border-radius:11px!important;
+  box-shadow:0 4px 12px rgba(31,72,118,.03)!important
+}
+button:not(:disabled):hover,.btn:hover{
+  border-color:#b9d1e9!important;background:#f8fbfe!important;
+  transform:translateY(-1px)
+}
+.primary,.btn.primary{
+  background:linear-gradient(135deg,#1976ed,#0b5fd8)!important;
+  color:#fff!important;border:0!important;
+  box-shadow:0 10px 22px rgba(18,103,223,.18)!important
+}
+.success{color:#0a9d74!important}.danger{color:#d9435a!important}.warning{color:#c5840f!important}
+.nav a,.back{color:#506984!important;background:transparent!important;border-color:transparent!important}
+.nav a:hover,.back:hover{color:#1267df!important;background:#f2f7fc!important}
+.tab{
+  color:#607894!important;background:#fff!important;
+  border:1px solid #dce8f3!important;font-size:12.5px!important
+}
+.tab.on,.tab.active{
+  color:#1267df!important;background:#eaf3ff!important;border-color:#bdd7f3!important
+}
+table{background:#fff!important;color:#10243e!important}
+th{background:#f2f7fc!important;color:#607894!important}
+td{border-color:#e8eff6!important}
+.modal,.drawer{background:rgba(16,36,62,.25)!important;backdrop-filter:blur(8px)!important}
+:focus-visible{outline:2px solid rgba(18,103,223,.55)!important;outline-offset:2px!important}
+::selection{background:rgba(18,103,223,.15);color:#10243e}
+
+/* health/dashboard readability */
+.wrap{max-width:1240px!important}
+.hero{background:linear-gradient(135deg,#ffffff,#f5faff)!important;border-color:#dce8f3!important}
+.hero h1{color:#10243e!important}
+.hero p{font-size:13px!important;line-height:1.9!important}
+.patientbar button{font-size:12px!important;padding:9px 12px!important}
+.stats{gap:10px!important}
+.stat{background:#f7fbff!important;border:1px solid #e0ebf5!important}
+.stat b{color:#1267df!important;font-size:22px!important}
+.stat .tiny{font-size:11px!important}
+.tabs{
+  background:#fff!important;border-color:#e0ebf5!important;
+  box-shadow:0 8px 24px rgba(31,72,118,.04)!important
+}
+.grid{gap:13px!important}
+.card{padding:17px!important}
+.card h2{font-size:14px!important;color:#18314e!important}
+.card h2 button{font-size:12px!important}
+.item{background:#f8fbfe!important;border-color:#e7eef5!important;font-size:12px!important}
+.item strong{font-size:12.5px!important}
+.tiny{font-size:11px!important;line-height:1.8!important}
+.trend,.careBox{background:#f8fbfe!important;border-color:#e7eef5!important}
+.careBox h3{font-size:13px!important}
+.careBox li{font-size:11.5px!important}
+.timeline{font-size:12px!important}
+.chat{background:#f8fbfe!important}
+.bubble{background:#eef5fc!important;color:#17324d!important;font-size:12px!important}
+.bubble.me{background:#dcecff!important;color:#14345c!important}
+.form label{font-size:11.5px!important}
+header .btn,header button{font-size:12px!important}
+.logo{font-size:19px!important}
+@media(max-width:700px){
+  body{font-size:14px!important}
+  .card{padding:15px!important}
+  .hero p{font-size:12.5px!important}
+  .tab{font-size:12px!important}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}

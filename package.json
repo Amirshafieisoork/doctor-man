@@ -1,8 +1,27 @@
 {
+  "name": "drman",
+  "version": "0.1.0-beta",
+  "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
-    "openai": "^4.0.0",
-    "@supabase/supabase-js": "^2.0.0",
-    "busboy": "^1.6.0"
+    "@supabase/supabase-js": "2.105.4",
+    "@vercel/oidc": "4.0.0",
+    "busboy": "1.6.0",
+    "openai": "4.104.0",
+    "sanitize-html": "2.18.0"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check.mjs && node scripts/build-article-sanitizer.mjs --check",
+    "build:article-sanitizer": "node scripts/build-article-sanitizer.mjs",
+    "test:ui": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "esbuild": "0.27.0"
   }
 }

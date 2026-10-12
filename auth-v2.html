@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ورود و ساخت حساب | دکتر من</title><meta name="description" content="ورود امن به حساب دکتر من و ساخت حساب رایگان برای پرونده سلامت و تفسیر آزمایش."><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" href="/assets/drman-logo.svg"><link rel="apple-touch-icon" href="/assets/drman-logo.svg"><style>:root{--bg:#050d1a;--s:#0a1628;--s2:#0f1e36;--a:#00d4ff;--g:#00ff9d;--r:#ff4466;--t:#e8f4ff;--d:#7aa0c4;--b:rgba(0,212,255,.14)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font-family:Vazirmatn,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px}body:before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);background-size:55px 55px;pointer-events:none}.card{position:relative;width:min(460px,100%);background:var(--s);border:1px solid var(--b);border-radius:24px;padding:30px;box-shadow:0 0 45px rgba(0,212,255,.09)}.brand{text-align:center;margin-bottom:22px}.logo{width:66px;height:66px;border-radius:18px;object-fit:cover;display:block;margin:auto;box-shadow:0 8px 24px rgba(0,212,255,.18)}.brand h1{font-size:24px;margin:10px 0 4px;color:var(--a)}.brand p{margin:0;color:var(--d);font-size:12px}.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--s2);border-radius:12px;padding:4px;margin-bottom:20px}.tab{border:0;background:transparent;color:var(--d);font:700 13px Vazirmatn;padding:10px;border-radius:9px;cursor:pointer}.tab.active{background:rgba(0,212,255,.12);color:var(--a)}.form{display:none}.form.active{display:block}.group{margin-bottom:13px}label{display:block;color:var(--d);font-size:12px;margin-bottom:6px}input{width:100%;padding:12px 14px;border-radius:11px;border:1px solid var(--b);background:var(--s2);color:var(--t);font:13px Vazirmatn;outline:none}input:focus{border-color:var(--a)}.btn{width:100%;border:0;border-radius:12px;padding:13px;background:linear-gradient(135deg,var(--a),#0066ff);color:white;font:700 14px Vazirmatn;cursor:pointer;margin-top:4px}.btn:disabled{opacity:.5}.msg{display:none;margin-top:14px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.7}.msg.show{display:block}.msg.error{background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.25);color:#ff9aae}.msg.ok{background:rgba(0,255,157,.07);border:1px solid rgba(0,255,157,.2);color:var(--g)}.back{display:block;text-align:center;color:var(--d);text-decoration:none;font-size:12px;margin-top:18px}</style><link rel="stylesheet" href="/assets/theme-v1.css"><link rel="stylesheet" href="/assets/product.css"><script src="/assets/theme.js"></script><link rel="stylesheet" href="/assets/site-style.css"></head><body><main class="card"><div class="brand"><img class="logo" src="/assets/drman-logo.svg" alt="لوگوی دکتر من"><h1>دکتر من</h1><p>ورود امن به پرونده سلامت شما</p></div><div class="tabs" role="tablist" aria-label="ورود یا ثبت‌نام"><button id="loginTab" type="button" class="tab active" role="tab" aria-selected="true" aria-controls="login" onclick="show('login')">ورود</button><button id="registerTab" type="button" class="tab" role="tab" aria-selected="false" aria-controls="register" tabindex="-1" onclick="show('register')">ثبت‌نام</button></div><form id="login" class="form active" role="tabpanel" aria-labelledby="loginTab" onsubmit="login(event)"><div class="group"><label for="lp">شماره موبایل</label><input id="lp" type="tel" maxlength="20" inputmode="numeric" autocomplete="tel" placeholder="۰۹xxxxxxxxx" required></div><div class="group"><label for="lw">رمز عبور</label><input id="lw" maxlength="128" type="password" autocomplete="current-password" required></div><button id="lb" class="btn">ورود به حساب</button></form><form id="register" class="form" role="tabpanel" aria-labelledby="registerTab" onsubmit="register(event)"><div class="group"><label for="rn">نام</label><input id="rn" maxlength="80" autocomplete="name" placeholder="نام و نام خانوادگی" required></div><div class="group"><label for="rp">شماره موبایل</label><input id="rp" type="tel" maxlength="20" inputmode="numeric" autocomplete="tel" placeholder="09xxxxxxxxx" required></div><div class="group"><label for="rw">رمز عبور (حداقل ۸ کاراکتر)</label><input id="rw" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div><button id="rb" class="btn">ساخت حساب رایگان</button></form><div id="msg" class="msg" role="status" aria-live="polite"></div><a class="back" href="/">← بازگشت به دکتر من</a></main><script>
+const $ = id => document.getElementById(id);
+let submitting = false;
+function norm(value) {
+  return String(value).trim().replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[\s-]/g, '');
+}
+function show(id) {
+  if (submitting) return;
+  document.querySelectorAll('.form').forEach(form => form.classList.toggle('active', form.id === id));
+  for (const name of ['login', 'register']) {
+    const tab = $(name + 'Tab');
+    tab.classList.toggle('active', id === name);
+    tab.setAttribute('aria-selected', String(id === name));
+    tab.tabIndex = id === name ? 0 : -1;
+  }
+  $('msg').className = 'msg';
+}
+function message(text, type) {
+  $('msg').textContent = text;
+  $('msg').className = 'msg show ' + type;
+}
+function nextPath() {
+  const value = new URLSearchParams(location.search).get('next');
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/health';
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(decoded)) return '/health';
+    const url = new URL(value, location.origin);
+    return url.origin === location.origin ? url.pathname + url.search + url.hash : '/health';
+  } catch { return '/health'; }
+}
+async function req(url, payload, button) {
+  if (submitting) return;
+  submitting = true;
+  const original = button.textContent;
+  document.querySelectorAll('.btn,.tab').forEach(el => el.disabled = true);
+  button.textContent = 'در حال بررسی…';
+  let navigating = false;
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(url, {method: 'POST', credentials: 'include', signal: controller.signal,
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+    const data = await response.json().catch(() => null);
+    if (!response.ok || data?.success !== true) throw new Error(data?.error || 'ورود انجام نشد. دوباره تلاش کنید.');
+    try { localStorage.removeItem('user'); } catch {}
+    message('ورود موفق بود؛ در حال انتقال…', 'ok');
+    navigating = true;
+    location.assign(nextPath());
+  } catch (error) {
+    message(error.name === 'AbortError' ? 'پاسخ سرور طول کشید. دوباره تلاش کنید.' : error instanceof TypeError ? 'ارتباط با سرور برقرار نشد. دوباره تلاش کنید.' : error.message || 'ارتباط با سرور برقرار نشد.', 'error');
+  } finally {
+    clearTimeout(timer);
+    if (!navigating) {
+      submitting = false;
+      button.textContent = original;
+      document.querySelectorAll('.btn,.tab').forEach(el => el.disabled = false);
+    }
+  }
+}
+function login(event) {
+  event.preventDefault();
+  const phone = norm($('lp').value), password = $('lw').value;
+  if (!/^09\d{9}$/.test(phone) || !password) return message('شماره موبایل و رمز عبور را صحیح وارد کنید.', 'error');
+  req('/api/login', {phone, password}, $('lb'));
+}
+function register(event) {
+  event.preventDefault();
+  const phone = norm($('rp').value), password = $('rw').value, name = $('rn').value.trim();
+  if (!name || !/^09\d{9}$/.test(phone) || password.length < 8) return message('نام، شماره موبایل معتبر و رمز حداقل ۸ کاراکتری لازم است.', 'error');
+  req('/api/register', {name, phone, password}, $('rb'));
+}
+document.querySelector('.tabs').addEventListener('keydown', event => {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || submitting) return;
+  event.preventDefault();
+  const id = event.key === 'Home' ? 'login' : event.key === 'End' ? 'register' : $('loginTab').classList.contains('active') ? 'register' : 'login';
+  show(id); $(id + 'Tab').focus();
+});
+fetch('/api/account', {credentials: 'include'}).then(async response => {
+  const data = await response.json().catch(() => null);
+  if (response.ok && data?.success === true && data.user && !submitting) location.assign(nextPath());
+}).catch(() => {});
+</script></body></html>

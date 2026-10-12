@@ -1,0 +1,18 @@
+import { requireUser } from './_lib/session.js';
+import { supabase } from './_lib/db.js';
+import { safeErrorMetadata } from './_lib/errors.js';
+import { InputValidationError } from './_lib/validate.js';
+import { build, requiredValue } from './_lib/health-entry.js';
+const TYPE_MAP={condition:'patient_conditions',allergy:'patient_allergies',medication:'patient_medications',vaccination:'patient_vaccinations',vital:'patient_vitals',task:'care_tasks',insurance:'patient_insurances',procedure:'patient_procedures',family_history:'patient_family_history',screening:'preventive_screenings'};
+async function ensureOwned(userId,patientId){const {data}=await supabase.from('patients').select('id').eq('id',patientId).eq('owner_user_id',userId).maybeSingle();return Boolean(data)}
+export default async function handler(req,res){
+ const session=await requireUser(req,res);if(!session)return;if(!['POST','PATCH','DELETE'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
+ const body=req.body&&typeof req.body==='object'?req.body:{},type=String(body.type||''),table=TYPE_MAP[type],patientId=String(body.patient_id||'');
+ if(!table||!patientId||!(await ensureOwned(session.sub,patientId)))return res.status(400).json({success:false,error:'درخواست معتبر نیست'});
+ try{
+  if(req.method==='POST'){const payload=build(type,body,false);if(!payload)return res.status(400).json({success:false,error:'نوع اطلاعات پشتیبانی نمی‌شود'});if(!requiredValue(type,payload))return res.status(400).json({success:false,error:'اطلاعات ضروری کامل نیست'});const {data,error}=await supabase.from(table).insert({patient_id:patientId,...payload}).select('*').single();if(error)throw error;await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:`record.${type}.created`,resource_type:type,resource_id:data.id}).catch(()=>null);return res.status(201).json({success:true,item:data})}
+  const id=String(body.id||'');if(!id)return res.status(400).json({success:false,error:'شناسه لازم است'});const {data:existing}=await supabase.from(table).select('*').eq('id',id).eq('patient_id',patientId).maybeSingle();if(!existing)return res.status(404).json({success:false,error:'آیتم پیدا نشد'});
+  if(req.method==='DELETE'){const {error}=await supabase.from(table).delete().eq('id',id).eq('patient_id',patientId);if(error)throw error;await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:`record.${type}.deleted`,resource_type:type,resource_id:id}).catch(()=>null);return res.status(200).json({success:true})}
+  const payload=build(type,body,true);if(!payload||!Object.keys(payload).length)return res.status(400).json({success:false,error:'فیلدی برای ویرایش ارسال نشده است'});build(type,{...existing,...payload,task_type:payload.type||existing.type},false);const {data,error}=await supabase.from(table).update(payload).eq('id',id).eq('patient_id',patientId).select('*').single();if(error)throw error;await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:`record.${type}.updated`,resource_type:type,resource_id:id}).catch(()=>null);return res.status(200).json({success:true,item:data});
+ }catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('health-entry',safeErrorMetadata(error));return res.status(500).json({success:false,error:'ثبت اطلاعات سلامت انجام نشد'})}
+}

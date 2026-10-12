@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /doctor-portal
+Disallow: /health
+Disallow: /profile
+Disallow: /settings
+Disallow: /api/
+Sitemap: https://drman.vercel.app/sitemap.xml
