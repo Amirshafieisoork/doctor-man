@@ -6,6 +6,11 @@ button,input,select,textarea{font-family:inherit!important}input,select,textarea
 .tiny,small,.hint,.trustItem span{font-size:13px!important}.feature h3,.feature b{font-size:18px!important}.feature p,.feature span{font-size:14px!important}
 .sectionHead p,.familyCopy p,.labTop p,.formGrid label,.medical,.doctorBanner p{font-size:15px!important}
 .brand small{font-size:13px!important}.brand strong{font-size:24px!important}
+/* Keep the vector mark square and visible when header controls wrap. */
+header :is(.brand,.logo){display:inline-flex;align-items:center;gap:10px;line-height:1.3}
+header :is(.brand,.logo)>img[src="/assets/drman-logo.svg"]{display:block;width:44px;height:44px;min-width:44px;flex:none;object-fit:contain;border-radius:0}
+header .brand strong{display:block;line-height:1.25}
+header .brand small{margin-top:2px;line-height:1.45}
 html:not([data-theme="dark"]){color-scheme:light;--ink:#071b50;--text:#071b50;--t:#071b50;--muted:#617299;--dim:#617299;--d:#617299;--teal:#00a6a4;--accent:#008f91;--a:#008f91;--blue:#0868fa;--bg:#f4fbff;--surface:#fff;--s:#fff;--surface2:#edf7ff;--s2:#edf7ff}
 html:not([data-theme="dark"]) body{background:#f4fbff!important;color:#071b50!important}
 html:not([data-theme="dark"]) .btn.primary{background:#009d9c!important;box-shadow:0 8px 20px #00a6a422;color:white!important}
