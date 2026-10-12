@@ -1,10 +1,18 @@
 (() => {
   let saved;
   try { saved = localStorage.getItem('drman-theme'); } catch {}
-  const apply = value => { document.documentElement.dataset.theme = value; };
+  const apply = value => {
+    document.documentElement.dataset.theme = value;
+    document.querySelectorAll('source[data-theme-source]').forEach(source => {
+      source.media = source.dataset.themeSource === value ? 'all' : 'not all';
+    });
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = value === 'dark' ? '#07111e' : '#f4fbff';
+  };
   apply(['light', 'dark'].includes(saved) ? saved : 'dark');
 
   document.addEventListener('DOMContentLoaded', () => {
+    apply(document.documentElement.dataset.theme);
     const main = document.querySelector('main');
     if (main) {
       main.id ||= 'main-content';

@@ -10,15 +10,16 @@ html:not([data-theme="dark"]){color-scheme:light;--ink:#071b50;--text:#071b50;--
 html:not([data-theme="dark"]) body{background:#f4fbff!important;color:#071b50!important}
 html:not([data-theme="dark"]) .btn.primary{background:#009d9c!important;box-shadow:0 8px 20px #00a6a422;color:white!important}
 .hero-selected{display:block;min-height:0;aspect-ratio:1672/941;box-shadow:none;border-color:#dfeef8;background:#f0f9ff}
+.hero-selected picture,.familyImage picture{display:contents}
 .hero-selected .heroArtwork{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .hero-selected .heroCopy{position:absolute;right:0;top:50%;transform:translateY(-50%);width:50%;padding:30px 34px;z-index:2}
 .hero-selected h1{font-size:clamp(32px,3.7vw,49px);line-height:1.55;letter-spacing:0;margin:18px 0}
 .hero-selected h1 span{color:#009d9c}.hero-selected p{font-size:20px;line-height:1.95;margin-bottom:25px;color:#617299}
 .hero-selected .eyebrow{font-size:14px;background:#e5f9f8;color:#007b80}.hero-selected .heroMedical{display:block;margin-top:18px;line-height:1.9;color:#617299;font-size:13px}
-html[data-theme="dark"] .hero-selected:after{content:"";position:absolute;inset:0;background:linear-gradient(to left,#0d1b2b 0%,#0d1b2b 46%,transparent 65%);pointer-events:none}
+html[data-theme="dark"] .hero-selected:after{content:"";position:absolute;inset:0;background:linear-gradient(to left,#0d1b2be0 0%,#0d1b2bb8 38%,#0d1b2b1f 60%,transparent 78%);pointer-events:none}
 html[data-theme="dark"] .heroMedical{color:#a3b6ca}
 @media(max-width:900px){.hero-selected{aspect-ratio:auto;display:flex;flex-direction:column}.hero-selected .heroCopy{position:relative;transform:none;top:auto;width:100%;padding:30px 28px;order:0}.hero-selected .heroArtwork{position:relative;inset:auto;width:100%;height:auto;order:1}.hero-selected h1{font-size:36px}.hero-selected p{font-size:18px}html[data-theme="dark"] .hero-selected:after{display:none}.navrow{gap:12px}}
-@media(max-width:620px){.hero-selected .heroCopy{padding:26px 20px}.hero-selected h1{font-size:32px}.hero-selected p{font-size:18px}.hero-selected .heroCtas{gap:10px}.hero-selected .btn{padding:0 14px}.brand strong{font-size:20px!important}}
+@media(max-width:620px){.hero-selected .heroCopy{padding:26px 20px}.hero-selected .heroArtwork{height:auto;aspect-ratio:1;object-fit:cover;object-position:left center}.hero-selected h1{font-size:32px}.hero-selected p{font-size:18px}.hero-selected .heroCtas{gap:10px}.hero-selected .btn{padding:0 14px}.brand strong{font-size:20px!important}}
 /* Shared navigation and keyboard access across the product. */
 *,*:before,*:after{box-sizing:border-box}
 .skip-link{position:fixed;inset-inline-start:16px;top:10px;z-index:200;transform:translateY(-180%);padding:10px 16px;border-radius:10px;background:#fff;color:#071b50;box-shadow:0 4px 20px #071b5020}
