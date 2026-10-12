@@ -11,11 +11,18 @@ function mins(t){const [h,m]=String(t).slice(0,5).split(':').map(Number);return 
 async function slotsForDate(doctor,schedule,date){
   const tz=doctor.timezone||'Asia/Tehran',weekday=dayIndex(date,tz),rows=(schedule||[]).filter(x=>Number(x.weekday)===weekday);
   const dayStart=zonedDate(date,'00:00',tz).toISOString(),dayEnd=zonedDate(addDay(date),'00:00',tz).toISOString();
-  const {data:appointments,error}=await supabase.from('appointments').select('starts_at,ends_at,status').eq('doctor_id',doctor.id).gte('starts_at',dayStart).lt('starts_at',dayEnd).neq('status','cancelled');
+  const {data:appointments,error}=await supabase.from('appointments').select('starts_at,ends_at,status').eq('doctor_id',doctor.id).gte('starts_at',dayStart).lt('starts_at',dayEnd).in('status',['requested','confirmed']);
   if(error)throw error;
   const slots=[];
-  for(const r of rows){const start=mins(r.start_time),end=mins(r.end_time),step=Math.max(10,Math.min(180,Number(r.slot_minutes)||30));for(let n=start;n+step<=end;n+=step){const local=hhmm(n),s=zonedDate(date,local,tz),e=new Date(s.getTime()+step*60000),busy=(appointments||[]).some(a=>{const as=new Date(a.starts_at),ae=a.ends_at?new Date(a.ends_at):new Date(as.getTime()+step*60000);return s<ae&&e>as});if(!busy&&s.getTime()>Date.now()+5*60000)slots.push({starts_at:s.toISOString(),ends_at:e.toISOString(),local_time:local,mode:r.mode,organization_id:r.organization_id,slot_minutes:step})}}
-  return [...new Map(slots.sort((a,b)=>a.starts_at.localeCompare(b.starts_at)).map(s=>[s.starts_at+'|'+s.mode,s])).values()];
+  for(const r of rows){const start=mins(r.start_time),end=mins(r.end_time),step=Math.max(10,Math.min(180,Number(r.slot_minutes)||30));for(let n=start;n+step<=end;n+=step){const local=hhmm(n),s=zonedDate(date,local,tz),e=new Date(s.getTime()+step*60000),busy=(appointments||[]).some(a=>{const as=new Date(a.starts_at),ae=a.ends_at?new Date(a.ends_at):new Date(as.getTime()+step*60000);return s<ae&&e>as});if(s.getTime()>Date.now()+5*60000)slots.push({starts_at:s.toISOString(),ends_at:e.toISOString(),local_time:local,mode:r.mode,organization_id:r.organization_id,organization_name:r.organizations?.name||null,organization_address:r.organizations?.address||null,slot_minutes:step,busy})}}
+  const byLocation=new Map();
+  for(const slot of slots.sort((a,b)=>a.starts_at.localeCompare(b.starts_at))){
+    const key=JSON.stringify([slot.starts_at,slot.mode,slot.organization_id||null]);
+    const existing=byLocation.get(key);
+    if(!existing)byLocation.set(key,{slot,ambiguous:false});
+    else if(existing.slot.ends_at!==slot.ends_at)existing.ambiguous=true;
+  }
+  return [...byLocation.values()].filter(item=>!item.ambiguous&&!item.slot.busy).map(({slot:{busy,...slot}})=>slot);
 }
 export async function nextAvailable(doctor,schedule,days=14){
   const today=localDate(new Date(),doctor.timezone||'Asia/Tehran');let date=today;
@@ -35,7 +42,7 @@ export default async function handler(req,res){
     const doctorId=text(req.query?.doctor_id,64),slug=text(req.query?.slug,120),date=text(req.query?.date,10);if(!doctorId&&!slug)return res.status(400).json({success:false,error:'پزشک مشخص نشده است'});
     let q=supabase.from('doctor_profiles').select('id,slug,full_name,specialty,city,timezone,verification_status,public_profile').eq('verification_status','verified').eq('public_profile',true);q=doctorId?q.eq('id',doctorId):q.eq('slug',slug);
     const {data:doctor}=await q.maybeSingle();if(!doctor)return res.status(404).json({success:false,error:'پزشک پیدا نشد'});
-    const {data:schedule,error}=await supabase.from('doctor_availability').select('*').eq('doctor_id',doctor.id).eq('active',true).order('weekday').order('start_time');if(error)return res.status(500).json({success:false,error:'برنامه پزشک دریافت نشد'});
+    const {data:schedule,error}=await supabase.from('doctor_availability').select('*,organizations(name,city,address)').eq('doctor_id',doctor.id).eq('active',true).order('weekday').order('start_time');if(error)return res.status(500).json({success:false,error:'برنامه پزشک دریافت نشد'});
     if(!date){const next_available=await nextAvailable(doctor,schedule||[],14);return res.status(200).json({success:true,doctor,schedule:schedule||[],next_available});}
     dateField(date);
     const slots=await slotsForDate(doctor,schedule||[],date);

@@ -78,6 +78,7 @@ export default async function handler(req,res){
       const dueAt=days(Math.max(0,Math.min(365,Number(item.due_in_days)||0)));
       const {data:existing}=await supabase.from('care_tasks').select('id').eq('patient_id',patientId).eq('source_type','care_plan').eq('source_id',recommendationId).maybeSingle();
       if(existing)return res.status(200).json({success:true,task_id:existing.id,already_exists:true});
+      if(!(await requireUser(req,res)))return;
       const {data:task,error}=await supabase.from('care_tasks').insert({patient_id:patientId,type:'follow_up',title:String(item.title||'پیگیری سلامت').slice(0,180),details:String(item.reason||'').slice(0,1500),due_at:dueAt,priority:['routine','soon','urgent'].includes(item.urgency)?item.urgency:'routine',source_type:'care_plan',source_id:recommendationId,status:'open'}).select('id,title,due_at,priority').single();if(error)throw error;
       return res.status(201).json({success:true,task});
     }
@@ -116,8 +117,11 @@ export default async function handler(req,res){
     const safetyIdentifier=crypto.createHash('sha256').update(`drman-care-plan:${session.sub}`).digest('hex').slice(0,32);
     const messages=[{role:'system',content:system},{role:'user',content:`زمان سیستم: ${new Date().toISOString()}\nپرونده سلامت:\n${JSON.stringify(record)}\n\nیک برنامه مراقبت شخصی کوتاه، اولویت‌بندی‌شده و قابل پیگیری بساز.`}];
     const {plan:raw,model,requestId}=await generate(client,messages,safetyIdentifier);const plan=addRecommendationIds(raw);
+    if(!(await requireUser(req,res)))return;
     await supabase.from('personalized_care_plans').update({status:'superseded'}).eq('user_id',session.sub).eq('patient_id',patientId).eq('status','active');
+    if(!(await requireUser(req,res)))return;
     const {data:saved,error}=await supabase.from('personalized_care_plans').insert({patient_id:patientId,user_id:session.sub,status:'active',plan,source_snapshot:snapshot(record),ai_model:model,ai_version:AI_VERSION,valid_until:days(14)}).select('id,patient_id,plan,ai_model,ai_version,generated_at,valid_until,status').single();if(error)throw error;
+    if(!(await requireUser(req,res)))return;
     await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'ai.care_plan_generated',resource_type:'personalized_care_plan',resource_id:saved.id,metadata:{model,request_id:requestId}}).catch(()=>null);
     const articles=await relatedArticles(plan);
     return res.status(201).json({success:true,care_plan:saved,articles,remaining_today:Math.max(0,dailyLimit-Number(todayCount||0)-1),disclaimer:'این برنامه آموزشی است و جای تشخیص، نسخه یا ارزیابی پزشک را نمی‌گیرد.'});

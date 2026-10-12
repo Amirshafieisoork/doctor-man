@@ -14,18 +14,35 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'process-deletion') {
-      const { data: request } = await supabase.from('account_deletion_requests')
+      const { data: request, error: requestError } = await supabase.from('account_deletion_requests')
         .select('id,user_id,status,users(name,phone,account_type)').eq('id',id).maybeSingle();
+      if(requestError) throw requestError;
       if(!request) return res.status(404).json({success:false,error:'درخواست حذف پیدا نشد'});
       if(!['requested','processing'].includes(request.status)) return res.status(409).json({success:false,error:'این درخواست قابل پردازش نیست'});
       if(request.users?.account_type!=='patient') return res.status(409).json({success:false,error:'حساب حرفه‌ای باید به‌صورت دستی و حقوقی بررسی شود'});
 
-      const { data: ps } = await supabase.from('patients').select('id').eq('owner_user_id',request.user_id);
+      // Claim and freeze the account before taking the private-file inventory.
+      // Cleanup failures stay in processing and may be retried by an admin.
+      if(request.status==='requested'){
+        const {data:claimed,error:claimError}=await supabase.from('account_deletion_requests')
+          .update({status:'processing'}).eq('id',id).eq('status','requested').select('id').maybeSingle();
+        if(claimError) throw claimError;
+        if(!claimed) return res.status(409).json({success:false,error:'وضعیت درخواست حذف تغییر کرده است؛ صفحه را تازه کنید'});
+      }
+      const {data:blocked,error:blockError}=await supabase.from('users').update({status:'blocked'})
+        .eq('id',request.user_id).eq('account_type','patient').select('id,status').maybeSingle();
+      if(blockError) throw blockError;
+      if(!blocked||blocked.status!=='blocked') throw new Error('ACCOUNT_ERASURE_FREEZE_NOT_CONFIRMED');
+
+      const { data: ps, error: patientsError } = await supabase.from('patients').select('id').eq('owner_user_id',request.user_id);
+      if(patientsError) throw patientsError;
       const patientIds=(ps||[]).map(x=>x.id);
-      const [{data:docs},{data:tests}]=await Promise.all([
+      const [{data:docs,error:documentsError},{data:tests,error:testsError}]=await Promise.all([
         patientIds.length?supabase.from('medical_documents').select('storage_path').in('patient_id',patientIds):Promise.resolve({data:[]}),
         supabase.from('test_results').select('image_paths').eq('user_id',request.user_id)
       ]);
+      if(documentsError) throw documentsError;
+      if(testsError) throw testsError;
       const docPaths=(docs||[]).map(x=>x.storage_path).filter(Boolean);
       const labPaths=(tests||[]).flatMap(x=>Array.isArray(x.image_paths)?x.image_paths:[]).filter(Boolean);
       async function removeChunks(bucket,paths){
@@ -38,6 +55,7 @@ export default async function handler(req, res) {
       await removeChunks('lab-images',labPaths);
       const {data:result,error}=await supabase.rpc('process_patient_account_erasure',{p_request_id:id});
       if(error) throw error;
+      if(result?.ok!==true) throw new Error('ACCOUNT_ERASURE_NOT_CONFIRMED');
       await audit('account.erasure_processed','account_deletion_request',id,{user_id:request.user_id,documents_removed:docPaths.length,lab_images_removed:labPaths.length});
       return res.status(200).json({success:true,result});
     }
@@ -49,11 +67,14 @@ export default async function handler(req, res) {
     }
     if (['publish-review','reject-review','hide-review'].includes(action)) {
       const status=action==='publish-review'?'published':action==='reject-review'?'rejected':'hidden';
-      const {data:review,error}=await supabase.from('doctor_reviews')
-        .update({status,updated_at:new Date().toISOString()})
-        .eq('id',id).select('id,doctor_id,user_id,appointment_id,rating,verified_visit,status').maybeSingle();
+      const {data:existing,error:lookupError}=await supabase.from('doctor_reviews')
+        .select('id,verified_visit').eq('id',id).maybeSingle();
+      if(lookupError)throw lookupError;if(!existing)return res.status(404).json({success:false,error:'نظر پیدا نشد'});
+      if(status==='published'&&!existing.verified_visit)return res.status(409).json({success:false,error:'نظر بدون ویزیت تأییدشده قابل انتشار نیست'});
+      let update=supabase.from('doctor_reviews').update({status,updated_at:new Date().toISOString()}).eq('id',id);
+      if(status==='published')update=update.eq('verified_visit',true);
+      const {data:review,error}=await update.select('id,doctor_id,user_id,appointment_id,rating,verified_visit,status').maybeSingle();
       if(error)throw error;if(!review)return res.status(404).json({success:false,error:'نظر پیدا نشد'});
-      if(status==='published'&&!review.verified_visit)return res.status(409).json({success:false,error:'نظر بدون ویزیت تأییدشده قابل انتشار نیست'});
       await audit('doctor_review.'+status,'doctor_review',id,{doctor_id:review.doctor_id,appointment_id:review.appointment_id,rating:review.rating});
       return res.status(200).json({success:true,review});
     }

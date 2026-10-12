@@ -44,15 +44,15 @@ for (const path of ['/', '/auth', '/doctors', '/pricing', '/privacy', '/terms', 
 
 test('theme can be changed with the keyboard and persists on reload', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  const toggle = page.getByRole('button', { name: /حالت تیره$/ });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const toggle = page.getByRole('button', { name: /حالت روشن$/ });
   await toggle.focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: /حالت روشن$/ }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: /حالت تیره$/ }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
 for (const [path, next] of [['/health', '/health'], ['/account', '/account'], ['/doctor-portal', '/doctor-portal']]) {
@@ -215,6 +215,22 @@ async function mockHealth(page, record = {}) {
   for (const route of ['care-plan', 'care-episodes', 'biomarker-trends']) await page.route('**/api/' + route + '**', request => json(request, 200, { success: true }));
 }
 
+test('health sections expose selected tabs and navigate in Persian reading order with the keyboard', async ({ page }) => {
+  await mockHealth(page);
+  await page.goto('/health');
+  const overview = page.getByRole('tab', { name: 'نمای کلی', exact: true });
+  const history = page.getByRole('tab', { name: 'تاریخچه پزشکی', exact: true });
+  await expect(overview).toHaveAttribute('aria-selected', 'true');
+  await overview.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(history).toBeFocused();
+  await expect(history).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel', { name: 'تاریخچه پزشکی', exact: true })).toBeVisible();
+  await page.keyboard.press('Home');
+  await expect(overview).toBeFocused();
+  await expect(overview).toHaveAttribute('aria-selected', 'true');
+});
+
 test('health family dialog traps keyboard focus and returns to the opening control', async ({ page }) => {
   await mockHealth(page);
   await page.goto('/health');
@@ -284,7 +300,7 @@ test('future appointment offers intake and cancellation then removes the cancell
   });
   await page.goto('/health');
   await expect(page.locator('#patientSelect')).toHaveValue('synthetic-patient');
-  await page.getByRole('button', { name: 'مراقبت و پیگیری', exact: true }).click();
+  await page.getByRole('tab', { name: 'مراقبت و پیگیری', exact: true }).click();
   await expect(page.getByRole('link', { name: 'آماده‌سازی ویزیت', exact: true })).toHaveAttribute('href', '/visit-intake?appointment_id=synthetic-appointment');
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'لغو نوبت', exact: true }).click();

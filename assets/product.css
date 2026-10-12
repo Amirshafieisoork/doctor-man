@@ -27,5 +27,10 @@ html[data-theme="dark"] :is(.accountBar,.accountStrip,.doctorBanner){background:
 html[data-theme="dark"] .heroVisual:before{background:radial-gradient(circle,#164457,transparent 70%)!important}
 html[data-theme="dark"] .bubble.me{background:#1a3d49!important;color:#e6eff8!important}
 html[data-theme="dark"] :is(th,td){border-color:#243a50!important;background:#132539!important;color:#e6eff8!important}
+.featureIcon svg{width:24px;height:24px;display:block}
+.drawer #closeDrawerButton{align-self:flex-start;flex-shrink:0}
+html[data-theme="dark"] :is(.featureIcon,.feature:nth-child(2n) .featureIcon,.secure,.soon){background:#193c46;color:#7be0b3}
+html[data-theme="dark"] :is(.formGrid label,.labTop p,.uploadHead span,.sectionHead p,.doctorBanner p,.familyChecks){color:#a3b6ca}
+html[data-theme="dark"] .btn.teal{background:#238b98!important;color:#fff!important;border-color:transparent!important}
 @media(max-width:620px){.lab-preview{height:240px}.theme-toggle{font-size:11px}.entry-actions{gap:8px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*:before,*:after{animation:none!important;transition:none!important}}

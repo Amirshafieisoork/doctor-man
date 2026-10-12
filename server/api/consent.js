@@ -11,6 +11,8 @@ export default async function handler(req, res) {
   const patientId = String(body.patient_id || '');
   const type = String(body.consent_type || '');
   if (!TYPES.has(type)) return res.status(400).json({ success: false, error: 'نوع رضایت معتبر نیست' });
+  if (type === 'doctor_share') return res.status(400).json({ success: false, code: 'DOCTOR_ACCESS_REQUIRED',
+    error: 'برای ایجاد یا لغو اشتراک پرونده، از بخش «دسترسی پزشک» در پرونده سلامت استفاده کنید.' });
   const { data: patient } = await supabase.from('patients').select('id').eq('id', patientId).eq('owner_user_id', session.sub).maybeSingle();
   if (!patient) return res.status(404).json({ success: false, error: 'پرونده پیدا نشد' });
   const granted = body.granted === true;

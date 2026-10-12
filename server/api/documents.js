@@ -26,23 +26,37 @@ export default async function handler(req,res){
   if(!doc||!doc.storage_path)return res.status(404).json({success:false,error:'سند پیدا نشد'});
   const access=await documentAccess(supabase,session.sub,doc.patient_id);
   if(!access)return res.status(404).json({success:false,error:'سند پیدا نشد یا اجازه دسترسی فعال نیست'});
+  if(!(await requireUser(req,res)))return;
   const {data,error}=await supabase.storage.from('medical-documents').createSignedUrl(doc.storage_path,access.expiresIn);
   if(error||!data?.signedUrl)return res.status(500).json({success:false,error:'لینک سند ساخته نشد'});
+  if(!(await requireUser(req,res)))return;
   await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:access.actorType,patient_id:doc.patient_id,action:access.actorType==='doctor'?'doctor.document_opened':'document.opened',resource_type:'medical_document',resource_id:id,metadata:access.grantId?{grant_id:access.grantId}:{}});
   return res.status(200).json({success:true,url:data.signedUrl,title:doc.title,mime_type:doc.mime_type,expires_in:access.expiresIn});
   }catch(error){console.error('document link access',safeErrorMetadata(error));return res.status(503).json({success:false,error:'بررسی دسترسی سند موقتاً در دسترس نیست'});}
  }
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
  if(!String(req.headers?.['content-type']||'').toLowerCase().startsWith('multipart/form-data;'))return res.status(415).json({success:false,error:'سند باید به شکل فایل ارسال شود'});
+ let uploadedPath=null,documentSaved=false;
  try{
   const {fields,file}=await parse(req);const patientId=String(fields.patient_id||'');if(!file||!patientId||!(await owned(session.sub,patientId)))return res.status(400).json({success:false,error:'فایل یا پرونده معتبر نیست'});
   const type=['lab','prescription','imaging','discharge','visit_note','insurance','vaccine','other'].includes(fields.document_type)?fields.document_type:'other';
   const documentDate=dateField(fields.document_date,{label:'تاریخ سند',allowFuture:false});
   const path=`${patientId}/${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}.${ext(file.mimeType)}`;
+  if(!(await requireUser(req,res)))return;
   const {error:uploadError}=await supabase.storage.from('medical-documents').upload(path,file.buffer,{contentType:file.mimeType,upsert:false});if(uploadError)throw uploadError;
+  uploadedPath=path;
+  if(!(await requireUser(req,res)))return;
   const {data,error}=await supabase.from('medical_documents').insert({patient_id:patientId,uploaded_by_user_id:session.sub,document_type:type,title:String(fields.title||file.filename||'سند پزشکی').trim().slice(0,180),storage_path:path,mime_type:file.mimeType,document_date:documentDate}).select('id,document_type,title,document_date,created_at').single();
-  if(error){await supabase.storage.from('medical-documents').remove([path]);throw error;}
+  if(error)throw error;
+  documentSaved=true;
+  if(!(await requireUser(req,res)))return;
   await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'document.uploaded',resource_type:'medical_document',resource_id:data.id});
   return res.status(201).json({success:true,document:data});
  }catch(e){if(e instanceof InputValidationError)return res.status(400).json({success:false,error:e.message});console.error('documents',safeErrorMetadata(e));return res.status(500).json({success:false,error:'آپلود سند انجام نشد'});}
+ finally{
+  if(uploadedPath&&!documentSaved){
+   try{const {error}=await supabase.storage.from('medical-documents').remove([uploadedPath]);if(error)throw error;}
+   catch(error){console.error('document upload cleanup',safeErrorMetadata(error));}
+  }
+ }
 }

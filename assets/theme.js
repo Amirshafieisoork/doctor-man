@@ -2,7 +2,7 @@
   let saved;
   try { saved = localStorage.getItem('drman-theme'); } catch {}
   const apply = value => { document.documentElement.dataset.theme = value; };
-  apply(['light', 'dark'].includes(saved) ? saved : 'light');
+  apply(['light', 'dark'].includes(saved) ? saved : 'dark');
 
   document.addEventListener('DOMContentLoaded', () => {
     const main = document.querySelector('main');
@@ -87,6 +87,39 @@
     document.querySelectorAll('input:not([type="hidden"]),select,textarea').forEach(field => {
       if (field.labels?.length || field.hasAttribute('aria-label') || field.hasAttribute('aria-labelledby')) return;
       if (field.placeholder) field.setAttribute('aria-label', field.placeholder);
+    });
+
+    document.querySelectorAll('nav.tabs:not([role])').forEach(nav => {
+      const tabs = [...nav.querySelectorAll('button[data-page]')];
+      if (!tabs.length) return;
+      nav.setAttribute('role', 'tablist');
+      nav.setAttribute('aria-label', 'بخش‌های پرونده سلامت');
+      const select = active => tabs.forEach(tab => {
+        const selected = tab === active;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      tabs.forEach(tab => {
+        const pane = document.getElementById(tab.dataset.page);
+        if (!pane) return;
+        tab.type = 'button';
+        tab.id ||= pane.id + '-tab';
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-controls', pane.id);
+        pane.setAttribute('role', 'tabpanel');
+        pane.setAttribute('aria-labelledby', tab.id);
+        tab.addEventListener('click', () => select(tab));
+      });
+      select(tabs.find(tab => tab.classList.contains('on')) || tabs[0]);
+      nav.addEventListener('keydown', event => {
+        const tab = event.target.closest('[role="tab"]');
+        if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const index = tabs.indexOf(tab);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowLeft' ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[next].click();
+        tabs[next].focus();
+      });
     });
 
     // Keep keyboard users inside an open dialog, then return to the control that opened it.

@@ -108,7 +108,17 @@ async function getEntitlement(userId) {
   return {plan,limit:planLimit(plan,'test_limit')};
 }
 
-async function uploadPrivateImages(userId, images) {
+async function removePrivateImages(paths) {
+  if (!paths.length) return;
+  try {
+    const { error } = await supabase.storage.from('lab-images').remove(paths);
+    if (error) throw error;
+  } catch (error) {
+    console.error('lab image cleanup', safeErrorMetadata(error));
+  }
+}
+
+async function uploadPrivateImages(userId, images, verifyActive) {
   const uploaded = [];
   try {
     for (let i = 0; i < images.length; i++) {
@@ -118,10 +128,14 @@ async function uploadPrivateImages(userId, images) {
       const { error } = await supabase.storage.from('lab-images').upload(path, img.buffer, { contentType: img.mimeType, upsert: false, cacheControl: '3600' });
       if (error) throw error;
       uploaded.push(path);
+      if (!(await verifyActive())) {
+        await removePrivateImages(uploaded);
+        return null;
+      }
     }
     return uploaded;
   } catch (error) {
-    if (uploaded.length) await supabase.storage.from('lab-images').remove(uploaded).catch(() => null);
+    await removePrivateImages(uploaded);
     throw error;
   }
 }
@@ -191,6 +205,7 @@ export default async function handler(req, res) {
   if (!client) return res.status(503).json({ success: false, error: 'سرویس هوش مصنوعی هنوز تنظیم نشده است' });
 
   let storedPaths = [];
+  let resultSaved = false;
   let reservation=null;
   let selectedPlan=null;
   try {
@@ -209,6 +224,7 @@ export default async function handler(req, res) {
     const gender = String(patient?.sex || fields.gender || 'نامشخص').slice(0, 40);
     const reason = String(fields.reason || '').trim().slice(0, 500);
 
+    if (!(await requireUser(req, res))) return;
     const {error:consentError}=await supabase.from('consent_records').insert({patient_id:patient.id,user_id:session.sub,consent_type:'ai_processing',version:'lab-upload-v1',granted:true,metadata:{source:'lab_upload'}});
     if(consentError)throw consentError;
     reservation=await reserveLabAnalysisQuota(supabase,session.sub,{limit:entitlement.limit});
@@ -221,7 +237,10 @@ export default async function handler(req, res) {
     const safetyIdentifier = crypto.createHash('sha256').update(`drman:${session.sub}`).digest('hex').slice(0, 32);
     const { parsed, model, requestId } = await analyze(client, content, safetyIdentifier);
 
-    storedPaths = await uploadPrivateImages(session.sub, images);
+    if (!(await requireUser(req, res))) return;
+    const uploaded = await uploadPrivateImages(session.sub, images, () => requireUser(req, res));
+    if (!uploaded) return;
+    storedPaths = uploaded;
     const insert = {
       user_id: session.sub,
       patient_id: patient?.id || null,
@@ -241,9 +260,12 @@ export default async function handler(req, res) {
       created_at:reservation.reservedAt
     };
     const { data: saved, error: saveError } = await supabase.from('test_results').insert(insert).select('id').single();
-    if (saveError) { await supabase.storage.from('lab-images').remove(storedPaths); throw saveError; }
+    if (saveError) throw saveError;
+    resultSaved = true;
+    if (!(await requireUser(req, res))) return;
     await saveBiomarkers(supabase,{testResultId:saved?.id,patientId:patient?.id||null,userId:session.sub,items:parsed.items,confidence:parsed.confidence,observedAt:new Date().toISOString()}).catch(e=>console.error('biomarker save',safeErrorMetadata(e)));
 
+    if (!(await requireUser(req, res))) return;
     await supabase.from('audit_logs').insert({
       actor_user_id: session.sub,
       actor_type: 'user',
@@ -278,6 +300,7 @@ export default async function handler(req, res) {
     if (error.message === 'USER_BLOCKED') return res.status(403).json({ success: false, error: 'حساب کاربری شما غیرفعال شده است' });
     return res.status(500).json({ success: false, error: 'تحلیل آزمایش انجام نشد. تصویر واضح‌تر ارسال کنید یا دوباره تلاش کنید.' });
   }finally{
+    if (!resultSaved) await removePrivateImages(storedPaths);
     if(reservation)await releaseLabAnalysisQuota(supabase,session.sub,reservation.reservationId).catch(error=>console.error('lab quota release',safeErrorMetadata(error)));
   }
 }

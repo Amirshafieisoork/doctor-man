@@ -98,7 +98,7 @@ test('a pending Navigator answer cannot appear in another family member record',
   });
   await page.goto('/health');
   await expect(page.locator('#healthLoadStatus')).toBeHidden();
-  await page.getByRole('button', { name: 'Health Navigator', exact: true }).click();
+  await page.getByRole('tab', { name: 'Health Navigator', exact: true }).click();
   await page.locator('#navQuestion').fill('چه چیزهایی را برای مراجعه آماده کنم؟');
   await page.getByRole('button', { name: 'پرسیدن', exact: true }).click();
   await expect.poll(() => asked).toBe(1);
