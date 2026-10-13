@@ -29,10 +29,10 @@ export default async function handler(req,res){
   if(['failed','cancelled'].includes(payment.status))return redirect(res,'failed',payment.id);
 
   if(!nonce||!payment.checkout_nonce_hash||!safeEqual(sha256(nonce),payment.checkout_nonce_hash)){
-    await supabase.from('audit_logs').insert({
+    await Promise.resolve(supabase.from('audit_logs').insert({
       actor_type:'system',action:'payment.callback_nonce_rejected',resource_type:'payment',resource_id:payment.id,
       metadata:{provider:'digipay'}
-    }).catch(()=>null);
+    })).catch(()=>null);
     return redirect(res,'failed',payment.id);
   }
 

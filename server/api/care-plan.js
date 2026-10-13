@@ -122,7 +122,7 @@ export default async function handler(req,res){
     if(!(await requireUser(req,res)))return;
     const {data:saved,error}=await supabase.from('personalized_care_plans').insert({patient_id:patientId,user_id:session.sub,status:'active',plan,source_snapshot:snapshot(record),ai_model:model,ai_version:AI_VERSION,valid_until:days(14)}).select('id,patient_id,plan,ai_model,ai_version,generated_at,valid_until,status').single();if(error)throw error;
     if(!(await requireUser(req,res)))return;
-    await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'ai.care_plan_generated',resource_type:'personalized_care_plan',resource_id:saved.id,metadata:{model,request_id:requestId}}).catch(()=>null);
+    await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'ai.care_plan_generated',resource_type:'personalized_care_plan',resource_id:saved.id,metadata:{model,request_id:requestId}})).catch(()=>null);
     const articles=await relatedArticles(plan);
     return res.status(201).json({success:true,care_plan:saved,articles,remaining_today:Math.max(0,dailyLimit-Number(todayCount||0)-1),disclaimer:'این برنامه آموزشی است و جای تشخیص، نسخه یا ارزیابی پزشک را نمی‌گیرد.'});
   }catch(error){console.error('care-plan',safeErrorMetadata(error));return res.status(500).json({success:false,error:'ساخت یا ذخیره برنامه مراقبت انجام نشد'})}

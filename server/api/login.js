@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import { setUserSession } from './_lib/session.js';
+import { setUserSession, validateSessionConfiguration } from './_lib/session.js';
+import { normalizeIranianMobile } from './_lib/phone.js';
 import { supabase } from './_lib/db.js';
 import { allowRate, recordRate } from './_lib/rate-limit.js';
 
@@ -21,8 +22,9 @@ function verifyPassword(password, stored) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  validateSessionConfiguration();
   const body = req.body && typeof req.body === 'object' ? req.body : {};
-  const phone = String(body.phone || '').trim();
+  const phone = normalizeIranianMobile(body.phone);
   const password = String(body.password || '');
   const gate=await allowRate(req,{action:'login',subject:phone,limit:8,windowMinutes:15});
   if(gate.unavailable)return res.status(503).json({error:'ورود موقتاً در دسترس نیست. دوباره تلاش کنید.'});

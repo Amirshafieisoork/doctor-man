@@ -19,5 +19,10 @@ export async function allowRate(req,{action,subject='',limit=8,windowMinutes=15}
 }
 export async function recordRate(keyHash,action,success=false,eventId){
   if(!keyHash||!eventId)return;
-  await supabase.from('auth_rate_events').update({success:Boolean(success)}).eq('id',eventId).eq('key_hash',keyHash).eq('action',action).catch(()=>null);
+  // PostgREST builders are thenables, not native Promises with .catch(). The
+  // attempt is already reserved, so bookkeeping must not prevent login.
+  try{
+    const {error}=await supabase.from('auth_rate_events').update({success:Boolean(success)}).eq('id',eventId).eq('key_hash',keyHash).eq('action',action);
+    if(error)console.error('rate-limit record',error?.code||'DATABASE_ERROR');
+  }catch(error){console.error('rate-limit record',error?.code||'DATABASE_ERROR')}
 }

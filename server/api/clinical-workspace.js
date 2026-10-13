@@ -8,8 +8,8 @@ function text(v,max=3000){return v==null?null:String(v).trim().slice(0,max)}
 function bool(v){return v===true||v==='true'||v===1||v==='1'}
 async function doctorForUser(userId){const {data}=await supabase.from('doctor_profiles').select('id,user_id,full_name,verification_status,organization_id').eq('user_id',userId).maybeSingle();return data}
 async function writableGrant(patientId,doctorId){const {data}=await supabase.from('patient_access_grants').select('id,scope,status,expires_at').eq('patient_id',patientId).eq('doctor_id',doctorId).eq('status','active').maybeSingle();if(!data)return null;if(data.expires_at&&new Date(data.expires_at).getTime()<Date.now())return null;return Array.isArray(data.scope)&&data.scope.includes('clinical_write')?data:null}
-async function notifyPatient(patientId,title,body,type='care_update'){const {data:p}=await supabase.from('patients').select('owner_user_id').eq('id',patientId).maybeSingle();if(p?.owner_user_id)await supabase.from('notifications').insert({user_id:p.owner_user_id,patient_id:patientId,type,title,body:text(body,300),action_url:'/health'}).catch(()=>null)}
-async function audit(userId,patientId,action,type,id,meta={}){await supabase.from('audit_logs').insert({actor_user_id:userId,actor_type:'doctor',patient_id:patientId,action,resource_type:type,resource_id:id,metadata:meta}).catch(()=>null)}
+async function notifyPatient(patientId,title,body,type='care_update'){const {data:p}=await supabase.from('patients').select('owner_user_id').eq('id',patientId).maybeSingle();if(p?.owner_user_id)await Promise.resolve(supabase.from('notifications').insert({user_id:p.owner_user_id,patient_id:patientId,type,title,body:text(body,300),action_url:'/health'})).catch(()=>null)}
+async function audit(userId,patientId,action,type,id,meta={}){await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:userId,actor_type:'doctor',patient_id:patientId,action,resource_type:type,resource_id:id,metadata:meta})).catch(()=>null)}
 function readyForPrescription(e){
   if(!e)return false;
   const core=[e.chief_complaint,e.history_of_present_illness,e.assessment,e.plan].every(v=>String(v||'').trim());

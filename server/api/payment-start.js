@@ -63,11 +63,11 @@ export default async function handler(req,res){
       }).eq('id',payment.id).eq('status','initiated');
       if(updateError)throw updateError;
 
-      await supabase.from('audit_logs').insert({
+      await Promise.resolve(supabase.from('audit_logs').insert({
         actor_user_id:user.id,actor_type:'user',action:'payment.started',
         resource_type:'payment',resource_id:payment.id,
         metadata:{provider:'digipay',plan_slug:plan.slug,amount_rial:amountRial}
-      }).catch(()=>null);
+      })).catch(()=>null);
 
       return res.status(200).json({success:true,redirect_url:ticket.redirectUrl,payment_id:payment.id});
     }catch(gatewayError){

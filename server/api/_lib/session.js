@@ -11,6 +11,10 @@ function getSecret() {
   if (!serverOnlyKey) throw new Error('Session signing secret is missing');
   return crypto.createHash('sha256').update(`drman-session:${serverOnlyKey}`).digest('hex');
 }
+export function validateSessionConfiguration() { getSecret(); }
+export function isSessionConfigured() {
+  try { validateSessionConfiguration(); return true; } catch { return false; }
+}
 function b64url(value) { return Buffer.from(value).toString('base64url'); }
 function sign(unsigned) { return crypto.createHmac('sha256', getSecret()).update(unsigned).digest('base64url'); }
 function safeEqual(a, b) { const aa=Buffer.from(a||''),bb=Buffer.from(b||''); return aa.length===bb.length && crypto.timingSafeEqual(aa,bb); }

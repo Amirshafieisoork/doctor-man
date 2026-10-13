@@ -10,7 +10,7 @@ export default async function handler(req,res){
       const {data:open}=await supabase.from('account_deletion_requests').select('id,status,requested_at').eq('user_id',session.sub).in('status',['requested','processing']).maybeSingle();
       if(open)return res.status(200).json({success:true,request:open,already_requested:true});
       const {data,error}=await supabase.from('account_deletion_requests').insert({user_id:session.sub,reason,status:'requested'}).select('id,status,reason,requested_at').single();if(error)throw error;
-      await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',action:'account.deletion_requested',resource_type:'user',resource_id:session.sub}).catch(()=>null);
+      await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',action:'account.deletion_requested',resource_type:'user',resource_id:session.sub})).catch(()=>null);
       return res.status(201).json({success:true,request:data});
     }
     if(req.method==='DELETE'){

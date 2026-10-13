@@ -33,13 +33,13 @@ export default async function handler(req,res){
       if(usage.error)throw usage.error;
       const limit=planLimit(plan,'family_profile_limit');if(Number(usage.count||0)>=limit)return res.status(403).json({success:false,code:'PLAN_LIMIT',error:`سقف پروفایل خانواده پلن شما ${limit.toLocaleString('fa-IR')} پرونده است. برای افزودن عضو بیشتر پلن را ارتقا دهید.`});
       const {data,error}=await supabase.from('patients').insert({...input,owner_user_id:session.sub}).select('id,relation,display_name,birth_date,sex,blood_type,height_cm').single();if(error)throw error;
-      await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:data.id,action:'patient.created',resource_type:'patient',resource_id:data.id}).catch(()=>null);return res.status(201).json({success:true,patient:data});
+      await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:data.id,action:'patient.created',resource_type:'patient',resource_id:data.id})).catch(()=>null);return res.status(201).json({success:true,patient:data});
     }
     if(req.method==='PATCH'){
       const id=String(req.body?.id||''),patient=await ownedPatient(session.sub,id);if(!patient)return res.status(404).json({success:false,error:'پرونده پیدا نشد'});
       const input=clean(req.body||{},true,patient.relation);if(input.display_name!==undefined&&!input.display_name)return res.status(400).json({success:false,error:'نام پرونده الزامی است'});
       const {data,error}=await supabase.from('patients').update(input).eq('id',id).eq('owner_user_id',session.sub).select('id,relation,display_name,birth_date,sex,blood_type,height_cm,emergency_contact_name,emergency_contact_phone').single();if(error)throw error;
-      await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:id,action:'patient.updated',resource_type:'patient',resource_id:id}).catch(()=>null);return res.status(200).json({success:true,patient:data});
+      await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:id,action:'patient.updated',resource_type:'patient',resource_id:id})).catch(()=>null);return res.status(200).json({success:true,patient:data});
     }
     return res.status(405).json({error:'Method not allowed'});
   }catch(error){if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});console.error('patients',safeErrorMetadata(error));return res.status(500).json({success:false,error:'مدیریت پرونده انجام نشد'})}

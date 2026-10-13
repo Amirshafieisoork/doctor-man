@@ -1,6 +1,7 @@
 import { safeErrorMetadata } from './_lib/errors.js';
 import crypto from 'node:crypto';
-import { setUserSession } from './_lib/session.js';
+import { setUserSession, validateSessionConfiguration } from './_lib/session.js';
+import { normalizeIranianMobile } from './_lib/phone.js';
 import { supabase } from './_lib/db.js';
 import { allowRate, recordRate } from './_lib/rate-limit.js';
 
@@ -12,9 +13,11 @@ function hashPassword(password) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // Fail before inserting an account if this deployment cannot sign a session.
+  validateSessionConfiguration();
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
-  const phone = String(body.phone || '').trim();
+  const phone = normalizeIranianMobile(body.phone);
   const password = String(body.password || '');
   const name = String(body.name || '').trim().slice(0, 80);
   const gate=await allowRate(req,{action:'register',subject:phone,limit:5,windowMinutes:60});

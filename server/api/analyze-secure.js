@@ -266,7 +266,7 @@ export default async function handler(req, res) {
     await saveBiomarkers(supabase,{testResultId:saved?.id,patientId:patient?.id||null,userId:session.sub,items:parsed.items,confidence:parsed.confidence,observedAt:new Date().toISOString()}).catch(e=>console.error('biomarker save',safeErrorMetadata(e)));
 
     if (!(await requireUser(req, res))) return;
-    await supabase.from('audit_logs').insert({
+    await Promise.resolve(supabase.from('audit_logs').insert({
       actor_user_id: session.sub,
       actor_type: 'user',
       patient_id: patient?.id || null,
@@ -274,7 +274,7 @@ export default async function handler(req, res) {
       resource_type: 'test_result',
       resource_id: saved?.id || null,
       metadata: { model, version: AI_VERSION, request_id: requestId, read_quality: parsed.read_quality, confidence: parsed.confidence }
-    }).catch(() => null);
+    })).catch(() => null);
 
     const remainingAfter = reservation.remaining;
     return res.status(200).json({

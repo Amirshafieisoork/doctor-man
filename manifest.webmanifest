@@ -10,10 +10,9 @@
   "background_color": "#050d1a",
   "theme_color": "#050d1a",
   "icons": [
-    {"src":"/assets/drman-logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any"},
-    {"src":"/assets/drman-icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
-    {"src":"/assets/drman-icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
-    {"src":"/assets/drman-icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+    {"src":"/assets/drman-icon-v3-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/assets/drman-icon-v3-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"/assets/drman-icon-v3-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
   ],
   "categories": ["medical","health","productivity"],
   "shortcuts": [

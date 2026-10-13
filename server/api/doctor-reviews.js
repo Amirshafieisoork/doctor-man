@@ -49,11 +49,11 @@ export default async function handler(req,res){
     }).select('id,status,created_at').single();
     if(error)throw error;
 
-    await supabase.from('audit_logs').insert({
+    await Promise.resolve(supabase.from('audit_logs').insert({
       actor_user_id:session.sub,actor_type:'user',patient_id:appt.patient_id,
       action:'doctor_review.submitted',resource_type:'doctor_review',resource_id:data.id,
       metadata:{doctor_id:appt.doctor_id,appointment_id:appointmentId,rating}
-    }).catch(()=>null);
+    })).catch(()=>null);
 
     return res.status(201).json({success:true,review:data,message:'نظر شما پس از بررسی منتشر می‌شود'});
   }catch(error){

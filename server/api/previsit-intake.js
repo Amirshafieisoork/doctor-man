@@ -20,7 +20,7 @@ export default async function handler(req,res){
         const {data:appt}=await supabase.from('appointments').select('id,patient_id,doctor_id,starts_at,mode,status,reason,patients(display_name,birth_date,sex)').eq('id',appointmentId).eq('doctor_id',doctor.id).maybeSingle();
         if(!appt)return res.status(404).json({success:false,error:'نوبت پیدا نشد'});
         const {data:intake}=await supabase.from('visit_intakes').select('*').eq('appointment_id',appointmentId).maybeSingle();
-        await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'doctor',patient_id:appt.patient_id,action:'visit_intake.viewed',resource_type:'visit_intake',resource_id:intake?.id||null,metadata:{appointment_id:appointmentId}}).catch(()=>null);
+        await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'doctor',patient_id:appt.patient_id,action:'visit_intake.viewed',resource_type:'visit_intake',resource_id:intake?.id||null,metadata:{appointment_id:appointmentId}})).catch(()=>null);
         return res.status(200).json({success:true,appointment:appt,intake:intake||null});
       }
       const {data:appt}=await supabase.from('appointments').select('id,patient_id,doctor_id,starts_at,mode,status,reason,patients!inner(owner_user_id,display_name),doctor_profiles(full_name,specialty)').eq('id',appointmentId).eq('patients.owner_user_id',session.sub).maybeSingle();
@@ -47,10 +47,10 @@ export default async function handler(req,res){
         questions_for_doctor:text(b.questions_for_doctor,2500),status:submit?'submitted':'draft',submitted_at:submit?new Date().toISOString():null,updated_at:new Date().toISOString()
       };
       const {data,error}=await supabase.from('visit_intakes').upsert(payload,{onConflict:'appointment_id'}).select('*').single();if(error)throw error;
-      await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:appt.patient_id,action:submit?'visit_intake.submitted':'visit_intake.saved',resource_type:'visit_intake',resource_id:data.id,metadata:{appointment_id:appointmentId}}).catch(()=>null);
+      await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:appt.patient_id,action:submit?'visit_intake.submitted':'visit_intake.saved',resource_type:'visit_intake',resource_id:data.id,metadata:{appointment_id:appointmentId}})).catch(()=>null);
       if(submit){
         const {data:doc}=await supabase.from('doctor_profiles').select('user_id,full_name').eq('id',appt.doctor_id).maybeSingle();
-        if(doc?.user_id)await supabase.from('notifications').insert({user_id:doc.user_id,patient_id:appt.patient_id,type:'visit_intake',title:'شرح حال قبل از ویزیت آماده است',body:'بیمار شرح حال اولیه را برای نوبت پیش‌رو تکمیل کرده است.',action_url:'/doctor-portal'}).catch(()=>null);
+        if(doc?.user_id)await Promise.resolve(supabase.from('notifications').insert({user_id:doc.user_id,patient_id:appt.patient_id,type:'visit_intake',title:'شرح حال قبل از ویزیت آماده است',body:'بیمار شرح حال اولیه را برای نوبت پیش‌رو تکمیل کرده است.',action_url:'/doctor-portal'})).catch(()=>null);
       }
       return res.status(200).json({success:true,intake:data});
     }

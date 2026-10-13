@@ -24,7 +24,7 @@ export default async function handler(req,res){
     const payload={exported_at:new Date().toISOString(),format_version:'drman-export-v1',account:user,patients,data:{conditions,allergies,medications,vaccinations,vitals,procedures,family_history:familyHistory,screenings,tasks,documents,tests,appointments,encounters,prescriptions,diagnostic_orders:orders,diagnostic_reports:reports,health_topics:episodes,personalized_care_plans:carePlans,consents,payments}};
     res.setHeader('Content-Type','application/json; charset=utf-8');
     res.setHeader('Content-Disposition',`attachment; filename="drman-health-export-${new Date().toISOString().slice(0,10)}.json"`);
-    await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',action:'account.data_exported',resource_type:'user',resource_id:session.sub}).catch(()=>null);
+    await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',action:'account.data_exported',resource_type:'user',resource_id:session.sub})).catch(()=>null);
     return res.status(200).send(JSON.stringify(payload,null,2));
   }catch(error){console.error('account-export',safeErrorMetadata(error));return res.status(500).json({success:false,error:'آماده‌سازی خروجی اطلاعات انجام نشد'})}
 }

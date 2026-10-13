@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
-import { setAdminSession } from './_lib/session.js';
+import { setAdminSession, validateSessionConfiguration } from './_lib/session.js';
 import { allowRate, recordRate } from './_lib/rate-limit.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  validateSessionConfiguration();
 
   const { password } = req.body || {};
   const gate=await allowRate(req,{action:'admin-login',subject:'admin',limit:5,windowMinutes:30});

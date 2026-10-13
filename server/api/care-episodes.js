@@ -20,7 +20,7 @@ export default async function handler(req,res){
      const b=req.body||{},title=txt(b.title,180);if(!title)return res.status(400).json({success:false,error:'عنوان موضوع سلامت لازم است'});
      const payload={patient_id:patientId,created_by_user_id:session.sub,title,kind:KINDS.has(b.kind)?b.kind:'other',summary:txt(b.summary,4000),goal:txt(b.goal,2000),urgency:URGENCY.has(b.urgency)?b.urgency:'routine',preferred_specialty:txt(b.preferred_specialty,120),status:'open',updated_at:new Date().toISOString()};
      const {data,error}=await supabase.from('care_episodes').insert(payload).select('*').single();if(error)throw error;
-     await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'care_episode.created',resource_type:'care_episode',resource_id:data.id,metadata:{kind:data.kind,urgency:data.urgency}}).catch(()=>null);
+     await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'care_episode.created',resource_type:'care_episode',resource_id:data.id,metadata:{kind:data.kind,urgency:data.urgency}})).catch(()=>null);
      return res.status(201).json({success:true,episode:data});
    }
    if(req.method==='PATCH'){

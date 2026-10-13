@@ -60,7 +60,7 @@ export default async function handler(req,res){
     const safetyIdentifier=crypto.createHash('sha256').update(`drman-nav:${session.sub}`).digest('hex').slice(0,32);
     const messages=[{role:'system',content:system},{role:'user',content:`زمان فعلی سیستم: ${new Date().toISOString()}\nپرونده سلامت:\n${JSON.stringify(record)}\n\nسؤال کاربر:\n${question}`}];
     const {parsed,model,requestId}=await runNavigator(client,messages,safetyIdentifier);const answer=renderAnswer(parsed);
-    await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'ai.navigator_used',resource_type:'patient',resource_id:patientId,metadata:{model,request_id:requestId}}).catch(()=>null);
+    await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:patientId,action:'ai.navigator_used',resource_type:'patient',resource_id:patientId,metadata:{model,request_id:requestId}})).catch(()=>null);
     return res.status(200).json({success:true,answer,structured:parsed,model,remaining_today:Math.max(0,dailyLimit-Number(todayCount||0)-1),disclaimer:'این راهنمایی آموزشی است و جای تشخیص یا درمان توسط پزشک را نمی‌گیرد.'});
   }catch(error){console.error('health-navigator',safeErrorMetadata(error));return res.status(500).json({success:false,error:'راهنمای هوشمند فعلاً در دسترس نیست. دوباره تلاش کنید.'});}
 }

@@ -30,7 +30,7 @@ export default async function handler(req,res){
     const {error:saveError}=await supabase.from('support_messages').insert([{user_id:session.sub,role:'user',content:message},{user_id:session.sub,role:'assistant',content:answer||'پاسخی دریافت نشد'}]);
     if(saveError)throw saveError;
     if(!(await requireUser(req,res)))return;
-    await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',action:'ai.support_used',resource_type:'support',metadata:{model,request_id:requestId}}).catch(()=>null);
+    await Promise.resolve(supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',action:'ai.support_used',resource_type:'support',metadata:{model,request_id:requestId}})).catch(()=>null);
     return res.status(200).json({success:true,answer:answer||'در حال حاضر پاسخ آماده نشد. لطفاً دوباره تلاش کنید.',model,remaining_today:Math.max(0,dailyLimit-Number(todayCount||0)-1)});
   }catch(error){console.error('support-chat',safeErrorMetadata(error));return res.status(500).json({success:false,error:'پشتیبانی هوشمند فعلاً در دسترس نیست. لطفاً دوباره امتحان کنید.'})}
 }
