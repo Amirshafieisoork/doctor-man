@@ -41,6 +41,33 @@ test('admin login submits with Enter and recovers from rejected credentials', as
   expect(requests).toBe(1);
 });
 
+test('admin rate limit shows its actual wait and permits retry after expiry', async ({ page }) => {
+  let requests = 0, authenticated = false;
+  await page.clock.install();
+  await page.route('**/api/admin-login', route => {
+    requests++;
+    if (requests === 1) return route.fulfill({ status: 429, contentType: 'application/json', headers: { 'Retry-After': '3' }, body: JSON.stringify({ error: 'تعداد تلاش‌های ورود زیاد بوده است.', retry_after_seconds: 3 }) });
+    authenticated = true;
+    return json(route, 200, { success: true });
+  });
+  await page.route('**/api/admin-dashboard', route => json(route, authenticated ? 200 : 401, authenticated ? dashboard : { error: 'ورود لازم است' }));
+  await page.route('**/api/admin-settings', route => json(route, authenticated ? 200 : 401, { settings: {} }));
+  await page.goto('/admin');
+  await page.getByLabel('رمز مدیر', { exact: true }).fill('synthetic-password');
+  await page.getByLabel('رمز مدیر', { exact: true }).press('Enter');
+  await expect(page.locator('#loginCooldown')).toContainText('۰۰:۰۳');
+  await expect(page.getByRole('button', { name: 'ورود', exact: true })).toBeDisabled();
+  await page.evaluate(() => login({ preventDefault() {} }));
+  expect(requests).toBe(1);
+  await page.clock.runFor(3100);
+  await expect(page.getByRole('button', { name: 'ورود', exact: true })).toBeEnabled();
+  await expect(page.locator('#loginCooldown')).toBeHidden();
+  await expect(page.locator('#loginErr')).toContainText('زمان انتظار تمام شد');
+  await page.getByRole('button', { name: 'ورود', exact: true }).click();
+  await expect(page.locator('#app')).toBeVisible();
+  expect(requests).toBe(2);
+});
+
 test('accepted admin login reports a dashboard outage and retries without resubmitting credentials', async ({ page }, testInfo) => {
   let authenticated = false, unavailable = true, loginRequests = 0;
   await page.route('**/api/admin-login', route => { authenticated = true; loginRequests++; return json(route, 200, { success: true }); });

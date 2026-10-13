@@ -12,6 +12,7 @@ process.env.SESSION_SECRET = 'test-only-session-secret-32-characters';
 process.env.ADMIN_PASSWORD = 'test-only-admin-password';
 const { supabase } = await import('../server/api/_lib/db.js');
 const { default: router } = await import('../api/router.js');
+const { allowRate } = await import('../server/api/_lib/rate-limit.js');
 const userId = '11111111-1111-4111-8111-111111111111';
 const phone = '09123456789', password = 'test-only-user-password';
 const salt = 'test-only-salt';
@@ -27,7 +28,7 @@ function response() {
     setHeader(key, value) { this.headers[key] = value; }, getHeader(key) { return this.headers[key]; }
   };
 }
-function database(t, { recordingFailure = '', reserveFailure = false, count = 0 } = {}) {
+function database(t, { recordingFailure = '', reserveFailure = false, countFailure = false, count = 0, rateEvents, expiryFailure = '', expiryValue } = {}) {
   const calls = [];
   const client = createClient('https://auth-flow-tests.invalid', 'test-only-client-key', {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -37,7 +38,16 @@ function database(t, { recordingFailure = '', reserveFailure = false, count = 0 
       const table = url.pathname.split('/').at(-1), body = req.method === 'GET' || req.method === 'HEAD' ? null : await req.json();
       calls.push({ table, method: req.method, body, query: url.searchParams });
       if (table === 'auth_rate_events') {
-        if (req.method === 'HEAD') return new Response(null, { status: 200, headers: { 'Content-Range': `*/${count}` } });
+        if (req.method === 'HEAD') return new Response(null, { status: countFailure ? 500 : 200, headers: { 'Content-Range': `*/${count}` } });
+        if (req.method === 'GET') {
+          if (expiryFailure === 'http') return json({ code: 'TEST_EXPIRY_FAILURE', message: 'private expiry error' }, 500);
+          if (expiryFailure === 'transport') throw new TypeError('private expiry transport error');
+          if (expiryValue !== undefined) return json(expiryValue);
+          const events = rateEvents || Array.from({ length: count }, (_, i) => ({ created_at: new Date(Date.now() - 60000 - i * 1000).toISOString() }));
+          const ordered = [...events].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+          const offset = Number(url.searchParams.get('offset') || 0), limit = Number(url.searchParams.get('limit') || ordered.length);
+          return json(ordered.slice(offset, offset + limit));
+        }
         if (req.method === 'POST') return reserveFailure ? json({ code: 'TEST_RESERVATION_FAILURE', message: 'private reservation error' }, 503) : json({ id: 'reserved-attempt' }, 201);
         if (req.method === 'PATCH') {
           if (recordingFailure === 'http') return json({ code: 'TEST_RECORD_FAILURE', message: 'private recording error' }, 500);
@@ -90,6 +100,13 @@ function assertAttemptRecorded(calls, action) {
   assert.equal(record.query.get('key_hash'), `eq.${reservation.body.key_hash}`);
   assert.equal(record.query.get('action'), `eq.${action}`);
   assert.ok(calls.indexOf(record) > calls.indexOf(reservation));
+  assert.equal(calls.some(call => call.table === 'auth_rate_events' && call.method === 'GET'), false, 'allowed attempts do not need an expiry lookup');
+}
+function freezeTime(t) {
+  const now = Date.parse('2026-10-13T11:00:00.000Z'), original = Date.now;
+  Date.now = () => now;
+  t.after(() => { Date.now = original; });
+  return now;
 }
 
 test('authentication regression exercises actual Supabase thenables without a catch method', t => {
@@ -132,7 +149,12 @@ for (const route of ['register', 'login', 'admin-login']) {
     const res = await authenticate(route);
     assert.equal(res.statusCode, 429); assert.equal(res.headers['Set-Cookie'], undefined);
     assert.ok(Number(res.headers['Retry-After']) > 0);
-    assert.equal(calls.length, 1); assert.equal(calls[0].method, 'HEAD');
+    assert.equal(calls.length, 2); assert.equal(calls[0].method, 'HEAD'); assert.equal(calls[1].method, 'GET');
+    const limit = route === 'login' ? 8 : 5;
+    assert.equal(calls[1].query.get('offset'), String(limit - 1)); assert.equal(calls[1].query.get('limit'), '1');
+    for (const key of ['key_hash', 'action', 'created_at']) assert.equal(calls[1].query.get(key), calls[0].query.get(key));
+    assert.equal(calls[1].query.get('order'), 'created_at.desc');
+    assert.equal(calls[0].query.has('success'), false); assert.equal(calls[1].query.has('success'), false);
   });
 
   for (const secret of [undefined, 'short-session-key']) {
@@ -183,3 +205,56 @@ for (const route of ['login', 'admin-login']) {
     assert.equal(calls.some(call => call.method === 'PATCH'), false);
   });
 }
+
+test('over-limit retry waits for the fifth-newest expiry rather than the oldest event', async t => {
+  const now = freezeTime(t);
+  const rateEvents = [29, 28, 27, 20, 15, 10, 5].map(minutes => ({ created_at: new Date(now - minutes * 60000).toISOString() }));
+  const { calls } = database(t, { count: 7, rateEvents });
+  const gate = await allowRate({ headers: {} }, { action: 'admin-login', subject: 'admin', limit: 5, windowMinutes: 30 });
+  assert.equal(gate.allowed, false); assert.equal(gate.retry_after_seconds, 181);
+  assert.deepEqual(calls.map(call => call.method), ['HEAD', 'GET']);
+  const query = calls[1].query;
+  assert.equal(query.get('offset'), '4'); assert.equal(query.get('limit'), '1');
+  assert.equal(query.get('order'), 'created_at.desc');
+  for (const key of ['key_hash', 'action', 'created_at']) assert.equal(query.get(key), calls[0].query.get(key));
+});
+
+test('a rate event exactly on the inclusive boundary returns a one-second retry without admission', async t => {
+  const now = freezeTime(t);
+  const { calls } = database(t, { count: 5, rateEvents: Array.from({ length: 5 }, () => ({ created_at: new Date(now - 1800000).toISOString() })) });
+  const gate = await allowRate({ headers: {} }, { action: 'admin-login', subject: 'admin', limit: 5, windowMinutes: 30 });
+  assert.equal(gate.allowed, false); assert.equal(gate.retry_after_seconds, 1);
+  assert.equal(calls.some(call => call.method === 'POST'), false);
+});
+
+test('retry duration is capped at the full window for newly reserved events', async t => {
+  const now = freezeTime(t);
+  database(t, { count: 5, rateEvents: Array.from({ length: 5 }, () => ({ created_at: new Date(now).toISOString() })) });
+  const gate = await allowRate({ headers: {} }, { action: 'admin-login', subject: 'admin', limit: 5, windowMinutes: 30 });
+  assert.equal(gate.allowed, false); assert.equal(gate.retry_after_seconds, 1800);
+});
+
+for (const scenario of ['http', 'transport', 'missing', 'invalid', 'future', 'outside-window']) {
+  test(`an ${scenario} expiry lookup preserves denial with a conservative full-window retry`, async t => {
+    const now = freezeTime(t);
+    const options = { count: 5 };
+    if (scenario === 'http' || scenario === 'transport') options.expiryFailure = scenario;
+    else options.expiryValue = scenario === 'missing' ? [] : [{ created_at: scenario === 'invalid'
+      ? 'invalid timestamp' : new Date(now + (scenario === 'future' ? 1000 : -1801000)).toISOString() }];
+    const { calls } = database(t, options);
+    const res = await authenticate('admin-login');
+    assert.equal(res.statusCode, 429); assert.equal(res.headers['Retry-After'], '1800');
+    assert.equal(res.headers['Set-Cookie'], undefined);
+    assert.equal(calls[0].method, 'HEAD');
+    assert.ok(calls.length >= 2);
+    assert.ok(calls.slice(1).every(call => call.table === 'auth_rate_events' && call.method === 'GET'), 'SDK transport retries must not reach credentials or reserve more attempts');
+    assert.doesNotMatch(JSON.stringify(res.body), /private|TEST_EXPIRY_FAILURE/);
+  });
+}
+
+test('an unavailable count remains fail-closed without reserving an attempt or consulting expiry', async t => {
+  const { calls } = database(t, { countFailure: true });
+  const gate = await allowRate({ headers: {} }, { action: 'admin-login', subject: 'admin', limit: 5, windowMinutes: 30 });
+  assert.equal(gate.allowed, false); assert.equal(gate.unavailable, true);
+  assert.deepEqual(calls.map(call => call.method), ['HEAD']);
+});

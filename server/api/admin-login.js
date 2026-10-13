@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const { password } = req.body || {};
   const gate=await allowRate(req,{action:'admin-login',subject:'admin',limit:5,windowMinutes:30});
   if(gate.unavailable)return res.status(503).json({error:'ورود مدیر موقتاً در دسترس نیست'});
-  if(!gate.allowed){res.setHeader('Retry-After',String(gate.retry_after_seconds));return res.status(429).json({error:'ورود مدیر موقتاً محدود شده است'})}
+  if(!gate.allowed){res.setHeader('Retry-After',String(gate.retry_after_seconds));return res.status(429).json({success:false,code:'RATE_LIMITED',retry_after_seconds:gate.retry_after_seconds,error:'تعداد تلاش‌های ورود زیاد بوده است؛ پس از پایان زمان انتظار دوباره تلاش کنید.'})}
   const configuredPassword = process.env.ADMIN_PASSWORD;
   if (!configuredPassword || typeof password !== 'string') {
     return res.status(503).json({ error: 'تنظیمات ورود مدیر کامل نیست' });
