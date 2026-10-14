@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { avalaiClient, configuredModels } from '../server/api/_lib/ai-models.js';
 import { analyzeLabImages, labErrorResponse } from '../server/api/_lib/lab-ai.js';
 import { safeErrorMetadata } from '../server/api/_lib/errors.js';
+import { checkSyntheticLabResult } from '../server/api/admin-ai-test.js';
 
 const expectedCommit = process.env.DRMAN_LAB_AI_PROBE || '';
 const enabled = /^[a-f0-9]{40}$/.test(expectedCommit) && expectedCommit === process.env.VERCEL_GIT_COMMIT_SHA;
@@ -29,10 +30,10 @@ if (enabled) {
       return response;
     };
     const run = async (name, file) => {
-      const bytes = await readFile(new URL('../tests/fixtures/' + file, import.meta.url));
+      const bytes = await readFile(new URL('../server/api/_fixtures/' + file, import.meta.url));
       const start = Date.now();
       const result = await analyzeLabImages(client, [
-        { type: 'text', text: 'این تصویر فقط آزمون مصنوعی نرم‌افزار است. برای زن ۳۵ ساله، نام تست‌ها و اعداد و واحدهای چاپ‌شده را دقیق بخوان. نام انگلیسی چاپ‌شده تست‌ها را در items نگه دار و تفسیر آموزشی را فارسی بنویس. هیچ داده‌ای از تصویر ناخوانا حدس نزن.' },
+        { type: 'text', text: 'این برگه کاملاً ساختگی و فقط برای آزمون اتصال است و اطلاعات بیمار واقعی ندارد. مقادیر چاپ‌شده را بخوان و تفسیر آموزشی فارسی ارائه بده.' },
         { type: 'image_url', image_url: { url: 'data:image/png;base64,' + bytes.toString('base64'), detail: 'high' } }
       ], 'drman-synthetic-release-test');
       assert.match(result.parsed.full_text, /[\u0600-\u06ff]/);
@@ -40,6 +41,9 @@ if (enabled) {
       return result.parsed;
     };
     const verifyClear = result => {
+      const checks = checkSyntheticLabResult(result);
+      report({ stage: 'owner_checks', ...checks });
+      assert.ok(checks.passed, 'Owner connection-test checks did not pass');
       assert.notEqual(result.read_quality, 'poor');
       const cases = [[/hemoglobin|\bhb\b/i, 10.2, 'low'], [/creatinine/i, .9, 'normal'], [/ldl/i, 162, 'high'], [/triglyceride/i, 140, 'normal']];
       for (const [name, value, flag] of cases) {
