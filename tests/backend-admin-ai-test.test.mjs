@@ -28,6 +28,7 @@ function interpreterReport() {
   const value = report();
   value.items = value.items.map((item, index) => ({ row_id: index + 1, flag: item.flag, explanation: item.explanation }));
   delete value.full_text;
+  delete value.abnormal_items;
   value.sections = syntheticLabSections();
   return value;
 }
@@ -57,6 +58,7 @@ test('owner test runs the actual two-stage SDK pipeline on the server-owned PNG 
     assert.deepEqual(payload.response_format.json_schema.schema.properties.items.items.properties.row_id.enum, [1, 2, 3, 4]);
     assert.equal(Object.hasOwn(payload.response_format.json_schema.schema.properties, 'full_text'), false);
     assert.ok(payload.response_format.json_schema.schema.required.includes('sections'));
+    assert.equal(Object.hasOwn(payload.response_format.json_schema.schema.properties, 'abnormal_items'), false);
     return completion(interpreterReport(), payload.model);
   });
   const handler = createAdminAITestHandler({ getClient: async () => client });

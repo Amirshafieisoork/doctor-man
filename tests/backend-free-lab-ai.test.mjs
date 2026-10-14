@@ -17,7 +17,7 @@ function report(rows = [row()], changes = {}) {
   return {
     status: 'normal', status_reason: 'در محدوده چاپ‌شده', confidence: .9, read_quality: 'good', summary: 'نتیجه ساختگی خوانا است',
     items: rows.map((row, index) => ({ row_id: index + 1, flag: row.f, explanation: 'تفسیر آموزشی ساختگی' })),
-    abnormal_items: [], next_steps: ['با پزشک مرور کنید.'], when_to_seek_care: 'در صورت علائم شدید مراجعه کنید.', sections: syntheticLabSections(),
+    next_steps: ['با پزشک مرور کنید.'], when_to_seek_care: 'در صورت علائم شدید مراجعه کنید.', sections: syntheticLabSections(),
     ...changes
   };
 }
@@ -99,6 +99,9 @@ test('four pages are extracted in two complete batches and only grounded text is
   const itemSchema = text.response_format.json_schema.schema.properties.items.items;
   assert.equal(text.response_format.json_schema.name, 'drman_lab_analysis');
   assert.equal(text.response_format.json_schema.strict, true);
+  const expectedReportFields = ['status', 'status_reason', 'confidence', 'read_quality', 'summary', 'items', 'next_steps', 'when_to_seek_care', 'sections'].sort();
+  assert.deepEqual([...text.response_format.json_schema.schema.required].sort(), expectedReportFields);
+  assert.deepEqual(Object.keys(text.response_format.json_schema.schema.properties).sort(), expectedReportFields);
   assert.equal(itemSchema.additionalProperties, false);
   assert.deepEqual(itemSchema.properties.row_id, { type: 'integer', enum: [1, 2, 3, 4] });
   assert.deepEqual([...itemSchema.required].sort(), ['explanation', 'flag', 'row_id']);
@@ -197,7 +200,7 @@ test('reordered interpreter IDs preserve the source order and attach each explan
   ]);
 });
 
-test('abnormal test names come from authoritative rows after flag validation rather than interpreter IDs or invented labels', async () => {
+test('the abnormal list is never requested from the model and is derived from authoritative rows after flag validation', async () => {
   const rows = [
     row(1, { n: 'Hemoglobin', v: '10.2', u: 'g/dL', r: '12-16', f: 'low' }),
     row(2, { n: 'Glucose', v: '120', f: 'unknown' }),
@@ -205,18 +208,30 @@ test('abnormal test names come from authoritative rows after flag validation rat
     row(4, { n: 'Normal marker', v: '90', f: 'unknown' }),
     row(5, { n: 'Potassium', v: '7.1', u: 'mmol/L', r: '3.5-5.1', f: 'critical' })
   ];
-  const interpreted = report(rows, { status: 'danger', abnormal_items: ['1', 'inventedlabel'] });
+  const interpreted = report(rows, { status: 'danger' });
   interpreted.items[1].flag = 'normal'; // The printed range validates this as high.
   interpreted.items[2].flag = 'high'; // An unreadable value must stay unknown.
   interpreted.items[3].flag = 'high'; // The printed range validates this as normal.
-  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+  const before = structuredClone(interpreted);
+  const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
     ? { pages: [{ p: 1, read_quality: 'partial', rows }] } : interpreted));
   const result = await analyzeFreeLabImages(client, content(), 'synthetic');
   assert.deepEqual(result.parsed.items.map(item => item.flag), ['low', 'high', 'unknown', 'normal', 'critical']);
   assert.deepEqual(result.parsed.abnormal_items, ['Hemoglobin', 'Glucose', 'Potassium']);
   assert.equal(result.parsed.abnormal_items.includes('1'), false);
   assert.equal(result.parsed.abnormal_items.includes('inventedlabel'), false);
-  assert.deepEqual(interpreted.abnormal_items, ['1', 'inventedlabel'], 'the synthetic provider response is not mutated');
+  assert.equal(Object.hasOwn(interpreted, 'abnormal_items'), false);
+  assert.deepEqual(interpreted, before, 'the synthetic provider response is not mutated');
+  assert.equal(Object.hasOwn(calls[1].payload.response_format.json_schema.schema.properties, 'abnormal_items'), false);
+  assert.equal(calls[1].payload.response_format.json_schema.schema.required.includes('abnormal_items'), false);
+});
+
+test('an interpreter cannot return an abnormal list of any type in place of the server-derived labels', async () => {
+  for (const abnormal_items of [[], ['1', 'invented label'], { Hemoglobin: 'low' }, null, 'Hemoglobin', 1]) {
+    const interpreted = report([row()], { abnormal_items });
+    const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
+    await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
+  }
 });
 
 test('incomplete or mistyped interpreter report fields are rejected before source rows are assembled', async () => {

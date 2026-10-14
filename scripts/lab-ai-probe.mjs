@@ -53,9 +53,9 @@ if (enabled) {
     // in-memory server session. Neither the cookie nor its secret is logged.
     const ownerHandler = createAdminAITestHandler({ getClient: async () => client, analyze: async (...args) => {
       const result = await analyzeLabImages(...args);
-      report({ stage: 'synthetic_report', section_count: result.parsed.sections?.length || 0,
-        sections: (result.parsed.sections || []).map(section => ({ id: section.section_id,
-          words: countPersianWords(section.content), excerpt: section.content.slice(0, 600) })) });
+      report({ stage: 'synthetic_report', section_count: result.parsed.sections?.length || 0 });
+      for (const section of result.parsed.sections || []) report({ stage: 'synthetic_section', id: section.section_id,
+        words: countPersianWords(section.content), excerpt: section.content.slice(0, 650) });
       return result;
     } });
     let ownerStatus, ownerBody;

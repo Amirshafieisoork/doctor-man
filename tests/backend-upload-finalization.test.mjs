@@ -30,6 +30,7 @@ const generatedPlan = { summary: 'برنامه مراقبت آموزشی', follo
 function interpreterLabReport(rows) {
   const value = { ...labResult, items: rows.map((row, index) => ({ row_id: index + 1, flag: row.f, explanation: 'در محدوده مرجع' })), sections: syntheticLabSections() };
   delete value.full_text;
+  delete value.abnormal_items;
   return value;
 }
 
