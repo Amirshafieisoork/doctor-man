@@ -196,6 +196,28 @@ test('reordered interpreter IDs preserve the source order and attach each explan
   ]);
 });
 
+test('abnormal test names come from authoritative rows after flag validation rather than interpreter IDs or invented labels', async () => {
+  const rows = [
+    row(1, { n: 'Hemoglobin', v: '10.2', u: 'g/dL', r: '12-16', f: 'low' }),
+    row(2, { n: 'Glucose', v: '120', f: 'unknown' }),
+    row(3, { n: 'Unreadable marker', v: 'ناخوانا', f: 'unknown' }),
+    row(4, { n: 'Normal marker', v: '90', f: 'unknown' }),
+    row(5, { n: 'Potassium', v: '7.1', u: 'mmol/L', r: '3.5-5.1', f: 'critical' })
+  ];
+  const interpreted = report(rows, { status: 'danger', abnormal_items: ['1', 'inventedlabel'] });
+  interpreted.items[1].flag = 'normal'; // The printed range validates this as high.
+  interpreted.items[2].flag = 'high'; // An unreadable value must stay unknown.
+  interpreted.items[3].flag = 'high'; // The printed range validates this as normal.
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'partial', rows }] } : interpreted));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.deepEqual(result.parsed.items.map(item => item.flag), ['low', 'high', 'unknown', 'normal', 'critical']);
+  assert.deepEqual(result.parsed.abnormal_items, ['Hemoglobin', 'Glucose', 'Potassium']);
+  assert.equal(result.parsed.abnormal_items.includes('1'), false);
+  assert.equal(result.parsed.abnormal_items.includes('inventedlabel'), false);
+  assert.deepEqual(interpreted.abnormal_items, ['1', 'inventedlabel'], 'the synthetic provider response is not mutated');
+});
+
 test('incomplete or mistyped interpreter report fields are rejected before source rows are assembled', async () => {
   const invalidReports = [
     report([], { items: null }), report([], { items: {} }), report([row()], { confidence: '0.9' }),

@@ -209,7 +209,11 @@ function groundInterpretation(response, rows, quality) {
   }
   if (raw.status === 'normal' && (parsed.status !== 'normal' || parsed.items.some(item => ['low','high','critical'].includes(item.flag)) || rows.some(row => readableValue(row.v) && ['low','high','critical'].includes(row.f)))) throw failure('AI_GROUNDING_FAILED');
   if (QUALITIES.indexOf(quality) > QUALITIES.indexOf(parsed.read_quality)) parsed.read_quality = quality;
-  return validateLabResult(parsed);
+  const validated = validateLabResult(parsed);
+  // The interpreter can return row IDs in this display list. Derive labels
+  // from the grounded, validated rows so IDs or invented names never persist.
+  validated.abnormal_items = validated.items.filter(item => ['low', 'high', 'critical'].includes(item.flag)).map(item => item.name);
+  return validated;
 }
 
 export async function analyzeFreeLabImages(client, content, safetyIdentifier, options = {}) {

@@ -20,24 +20,18 @@ if (enabled) {
     const client = await avalaiClient();
     assert.ok(client);
     // This client is used exclusively with the two synthetic fixtures below.
-    // Capture synthetic output to locate a rejected response; never log keys,
-    // request headers, or responses from patient requests.
+    // Record metadata only; never log keys, headers or report content.
     const create = client.chat.completions.create.bind(client.chat.completions);
     client.chat.completions.create = async (body, options) => {
       let response;
       try { response = await create(body, options); }
       catch (error) {
-        // Only this known synthetic request may expose a provider diagnostic.
-        // Redact credential-shaped strings even if a provider echoes one.
-        const diagnostic = String(error?.error?.message || '').replace(/(?:gsk_|sk-)[A-Za-z0-9_-]+/g, '[redacted]').slice(0, 3000);
-        const generation = String(error?.error?.failed_generation || '').replace(/(?:gsk_|sk-)[A-Za-z0-9_-]+/g, '[redacted]').slice(0, 12000);
         report({ stage: 'synthetic_request_rejected', schema: body.response_format?.json_schema?.name,
-          model: body.model, status: error?.status, code: error?.error?.code, diagnostic, generation });
+          model: body.model, ...safeErrorMetadata(error), classification: labErrorResponse(error).code });
         throw error;
       }
       report({ stage: 'synthetic_response', schema: body.response_format?.json_schema?.name,
-        model: response.model, finish_reason: response.choices?.[0]?.finish_reason,
-        content: response.choices?.[0]?.message?.content?.slice(0, 24000) });
+        model: response.model, finish_reason: response.choices?.[0]?.finish_reason });
       return response;
     };
     const run = async (name, file) => {
