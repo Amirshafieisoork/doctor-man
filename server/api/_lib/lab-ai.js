@@ -52,12 +52,15 @@ function normalizeResult(value) {
 }
 
 export async function callLabModel(client, model = LAB_INTERPRETATION_MODEL, content, safetyIdentifier, options = {}) {
+  // These schema/instruction overrides are supplied only by trusted server
+  // callers. Keep them out of the OpenAI-compatible SDK request options.
+  const { responseSchema = LAB_SCHEMA, additionalSystemInstructions = '', ...requestOptions } = options;
   const payload = {
     model,
     messages: [
       {
         role: 'system',
-        content: `تو موتور تفسیر آموزشی آزمایش DrMan هستی. اول فقط آنچه واقعاً از برگه قابل خواندن است استخراج کن، سپس تفسیر آموزشی و محافظه‌کارانه ارائه بده.\n\nقواعد ایمنی:\n- تشخیص قطعی، نسخه، تغییر دارو یا دوز، یا تضمین پزشکی ممنوع است.\n- هیچ عدد، نام آزمایش، واحد یا محدوده مرجع ناخوانا را حدس نزن.\n- محدوده مرجع چاپ‌شده روی همان برگه بر دانش عمومی مقدم است.\n- status=danger فقط وقتی مجاز است که داده خوانا، به‌طور واضح بسیار غیرطبیعی/بحرانی باشد یا برگه خودش علامت critical داشته باشد؛ صرفاً براساس احتمال یا علائم مبهم danger نده.\n- برای نتیجه‌ای که با علائم شدید، بارداری، کودک، سالمند یا بیماری زمینه‌ای حساس می‌شود، به ارزیابی پزشک ارجاع بده.\n- مکمل، گیاه دارویی یا داروی خاص تجویز نکن.\n- اگر کیفیت تصویر ناکافی است، read_quality را partial/poor بگذار و محدودیت را واضح بنویس.\n- full_text فارسی، ساده، ساختاریافته و شامل خلاصه، موارد مهم، قدم بعدی و زمان مراجعه باشد.\n- نتیجه آموزشی است و جای تشخیص یا درمان پزشک را نمی‌گیرد.`
+        content: `تو موتور تفسیر آموزشی آزمایش DrMan هستی. اول فقط آنچه واقعاً از برگه قابل خواندن است استخراج کن، سپس تفسیر آموزشی و محافظه‌کارانه ارائه بده.\n\nقواعد ایمنی:\n- تشخیص قطعی، نسخه، تغییر دارو یا دوز، یا تضمین پزشکی ممنوع است.\n- هیچ عدد، نام آزمایش، واحد یا محدوده مرجع ناخوانا را حدس نزن.\n- محدوده مرجع چاپ‌شده روی همان برگه بر دانش عمومی مقدم است.\n- status=danger فقط وقتی مجاز است که داده خوانا، به‌طور واضح بسیار غیرطبیعی/بحرانی باشد یا برگه خودش علامت critical داشته باشد؛ صرفاً براساس احتمال یا علائم مبهم danger نده.\n- برای نتیجه‌ای که با علائم شدید، بارداری، کودک، سالمند یا بیماری زمینه‌ای حساس می‌شود، به ارزیابی پزشک ارجاع بده.\n- مکمل، گیاه دارویی یا داروی خاص تجویز نکن.\n- اگر کیفیت تصویر ناکافی است، read_quality را partial/poor بگذار و محدودیت را واضح بنویس.\n- full_text فارسی، ساده، ساختاریافته و شامل خلاصه، موارد مهم، قدم بعدی و زمان مراجعه باشد.\n- نتیجه آموزشی است و جای تشخیص یا درمان پزشک را نمی‌گیرد.${additionalSystemInstructions ? '\n\n' + additionalSystemInstructions : ''}`
       },
       { role: 'user', content }
     ],
@@ -66,11 +69,11 @@ export async function callLabModel(client, model = LAB_INTERPRETATION_MODEL, con
     include_reasoning: false,
     response_format: {
       type: 'json_schema',
-      json_schema: { name: 'drman_lab_analysis', strict: true, schema: LAB_SCHEMA }
+      json_schema: { name: 'drman_lab_analysis', strict: true, schema: responseSchema }
     },
     user: safetyIdentifier
   };
-  return client.chat.completions.create(payload, { timeout: 110000, ...options });
+  return client.chat.completions.create(payload, { timeout: 110000, ...requestOptions });
 }
 
 function failure(code) { const error = new Error(code); error.code = code; return error; }
@@ -97,13 +100,15 @@ export function parseLabCompletion(response) {
 
 export function labErrorResponse(error, stage = 'provider') {
   const status = Number(error?.status);
+  const providerCode = error?.code || error?.error?.code;
   if (status === 401 || status === 403) return { status: 503, code: 'AI_AUTH_UNAVAILABLE', message: 'اتصال سرویس هوش مصنوعی نیاز به بررسی مدیر دارد. تصویر ذخیره‌شده را در پرونده سلامت می‌توانید ببینید.' };
   if (status === 402) return { status: 503, code: 'FREE_ACCOUNT_UNAVAILABLE', message: 'تنظیمات حساب رایگان سرویس نیاز به بررسی مدیر دارد. تصویر ذخیره‌شده در پرونده سلامت در دسترس است.' };
   if (status === 429) return { status: 503, code: 'FREE_RATE_LIMIT', message: 'سهمیه دقیقه‌ای یا روزانه سرویس رایگان پر شده است. بعداً دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت باقی می‌ماند.' };
   if (error?.code === 'FREE_INPUT_LIMIT') return { status: 413, code: 'FREE_INPUT_LIMIT', message: 'این مجموعه برای تحلیل با سهمیه رایگان بزرگ است. برگه‌ها را در چند نوبت با صفحات کمتر تحلیل کنید؛ اصل تصاویر در پرونده سلامت ذخیره شده است.' };
   if (['APIConnectionTimeoutError', 'TimeoutError', 'AbortError'].includes(error?.name) || error?.code === 'AI_TIMEOUT') return { status: 504, code: 'AI_TIMEOUT', message: 'تفسیر بیشتر از زمان مجاز طول کشید. کمی بعد دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت در دسترس است.' };
   if (error?.code === 'AI_REFUSED') return { status: 422, code: 'AI_REFUSED', message: 'این تصویر توسط سرویس قابل تفسیر نبود. یک برگه آزمایش خوانا انتخاب کنید.' };
-  if (['AI_OUTPUT_TRUNCATED','AI_RESPONSE_EMPTY','AI_RESPONSE_INVALID','AI_GROUNDING_FAILED'].includes(error?.code)) return { status: 502, code: 'AI_RESPONSE_INVALID', message: 'پاسخ کامل و قابل‌اعتماد از هوش مصنوعی دریافت نشد. دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت باقی می‌ماند.' };
+  if (['AI_OUTPUT_TRUNCATED','AI_RESPONSE_EMPTY','AI_RESPONSE_INVALID','AI_GROUNDING_FAILED'].includes(error?.code)
+    || (status === 400 && providerCode === 'json_validate_failed')) return { status: 502, code: 'AI_RESPONSE_INVALID', message: 'پاسخ کامل و قابل‌اعتماد از هوش مصنوعی دریافت نشد. دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت باقی می‌ماند.' };
   if (stage === 'persist' || stage === 'storage') return { status: 503, code: 'ANALYSIS_SAVE_FAILED', message: 'ثبت نتیجه تحلیل انجام نشد. دوباره تلاش کنید؛ اصل تصویر ذخیره‌شده را در پرونده سلامت بررسی کنید.' };
   return { status: 503, code: 'AI_UNAVAILABLE', message: 'سرویس تحلیل موقتاً پاسخ نداد. کمی بعد دوباره تلاش کنید؛ اصل تصویر ذخیره‌شده در پرونده سلامت در دسترس است.' };
 }

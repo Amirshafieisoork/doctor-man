@@ -15,7 +15,7 @@ function extraction(ids, changes = {}) {
 function report(rows = [row()], changes = {}) {
   return {
     status: 'normal', status_reason: 'در محدوده چاپ‌شده', confidence: .9, read_quality: 'good', summary: 'نتیجه ساختگی خوانا است',
-    items: rows.map(row => ({ name: row.n, value: row.v, unit: row.u, reference_range: row.r, flag: row.f, explanation: 'تفسیر آموزشی ساختگی' })),
+    items: rows.map((row, index) => ({ row_id: index + 1, flag: row.f, explanation: 'تفسیر آموزشی ساختگی' })),
     abnormal_items: [], next_steps: ['با پزشک مرور کنید.'], when_to_seek_care: 'در صورت علائم شدید مراجعه کنید.', full_text: 'تفسیر آموزشی برگه آزمایشی ساختگی.',
     ...changes
   };
@@ -61,6 +61,13 @@ test('a normal summary that contradicts a printed abnormal row fails instead of 
   const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? { pages: [{ p: 1, read_quality: 'good', rows: [source] }] } : report([source])));
   await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_GROUNDING_FAILED' });
 });
+test('a normal summary cannot hide a readable value outside its printed range when no abnormal marker was copied', async () => {
+  const source = row(1, { v: '120', f: 'unknown' });
+  const interpreted = report([source]); interpreted.items[0].flag = 'normal';
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows: [source] }] } : interpreted));
+  await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_GROUNDING_FAILED' });
+});
 function busy(seconds = '2') {
   return new Response(JSON.stringify({ error: { message: 'synthetic traffic limit', type: 'rate_limit_error' } }),
     { status: 429, headers: { 'content-type': 'application/json', 'retry-after': seconds } });
@@ -86,8 +93,15 @@ test('four pages are extracted in two complete batches and only grounded text is
   assert.equal(Object.hasOwn(text, 'reasoning_format'), false);
   assert.equal(Object.hasOwn(text, 'safety_identifier'), false);
   assert.ok(text.max_completion_tokens <= 3000);
-  assert.equal(text.messages[1].content.filter(part => part.type === 'image_url').length, 0);
-  for (let p = 1; p <= 4; p++) assert.ok(text.messages[1].content[0].text.includes(`Glucose page ${p}`));
+  assert.equal(typeof text.messages[1].content, 'string');
+  for (let p = 1; p <= 4; p++) assert.ok(text.messages[1].content.includes(`Glucose page ${p}`));
+  const itemSchema = text.response_format.json_schema.schema.properties.items.items;
+  assert.equal(text.response_format.json_schema.name, 'drman_lab_analysis');
+  assert.equal(text.response_format.json_schema.strict, true);
+  assert.equal(itemSchema.additionalProperties, false);
+  assert.deepEqual(itemSchema.properties.row_id, { type: 'integer', enum: [1, 2, 3, 4] });
+  assert.deepEqual([...itemSchema.required].sort(), ['explanation', 'flag', 'row_id']);
+  assert.deepEqual(Object.keys(itemSchema.properties).sort(), ['explanation', 'flag', 'row_id']);
   assert.equal(result.parsed.items.length, 4);
   assert.equal(result.model, FREE_LAB_TEXT_MODEL);
   assert.equal(result.ocr_model, FREE_LAB_OCR_MODEL);
@@ -126,14 +140,79 @@ test('malformed extraction bodies, invalid qualities and nonarray rows are rejec
   }
 });
 
-test('an interpreter cannot add, omit or alter an extracted test name, value, unit or printed range', async () => {
-  for (const change of [{ name: 'invented test' }, { value: '999' }, { unit: 'mmol/L' }, { reference_range: '1-999' }]) {
+test('an interpreter cannot supply copied or invented test names, values, units or printed ranges', async () => {
+  for (const change of [{ name: row().n }, { value: row().v }, { unit: row().u }, { reference_range: row().r }, { name: 'invented test', value: '999' }]) {
     const interpreted = report(); interpreted.items[0] = { ...interpreted.items[0], ...change };
     const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
     await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
   }
-  for (const items of [[], [...report().items, { ...report().items[0], name: 'invented additional test' }]]) {
-    const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : report([row()], { items })));
+});
+
+test('omitting an extracted row ID fails rather than presenting an incomplete report', async () => {
+  const rows = [row(1), row(2)], interpreted = report(rows);
+  interpreted.items.pop();
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1, 2]) : interpreted));
+  await assert.rejects(analyzeFreeLabImages(client, content(2), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
+});
+
+test('duplicating a row ID cannot replace another extracted row even when item count matches', async () => {
+  const rows = [row(1), row(2)], interpreted = report(rows);
+  interpreted.items[1].row_id = 1;
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1, 2]) : interpreted));
+  await assert.rejects(analyzeFreeLabImages(client, content(2), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
+});
+
+test('invented row IDs cannot attach an interpretation to an unextracted test', async () => {
+  for (const id of [0, -1, 2, 999]) {
+    const interpreted = report(); interpreted.items[0].row_id = id;
+    const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
+    await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
+  }
+});
+
+test('row IDs must be actual integers and are never coerced from strings, booleans or fractions', async () => {
+  for (const id of ['1', true, null, 1.5]) {
+    const interpreted = report(); interpreted.items[0].row_id = id;
+    const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
+    await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
+  }
+  const interpreted = report(); delete interpreted.items[0].row_id;
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
+  await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
+});
+
+test('reordered interpreter IDs preserve the source order and attach each explanation to its own row', async () => {
+  const rows = [row(1), row(2, { n: 'Creatinine', v: '2.4', u: 'mg/dL', r: '0.6-1.2', f: 'high' })];
+  const interpreted = report(rows, { status: 'warning' });
+  interpreted.items[0].explanation = 'توضیح قند ساختگی';
+  interpreted.items[1].explanation = 'توضیح کراتینین ساختگی';
+  interpreted.items.reverse();
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows }] } : interpreted));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.deepEqual(result.parsed.items.map(item => [item.name, item.value, item.unit, item.reference_range, item.flag, item.explanation]), [
+    [rows[0].n, rows[0].v, rows[0].u, rows[0].r, 'normal', 'توضیح قند ساختگی'],
+    [rows[1].n, rows[1].v, rows[1].u, rows[1].r, 'high', 'توضیح کراتینین ساختگی']
+  ]);
+});
+
+test('incomplete or mistyped interpreter report fields are rejected before source rows are assembled', async () => {
+  const invalidReports = [
+    report([], { items: null }), report([], { items: {} }), report([row()], { confidence: '0.9' }),
+    report([row()], { confidence: 1.1 }), report([row()], { confidence: -0.1 }),
+    report([row()], { status_reason: null }), report([row()], { summary: false }),
+    report([row()], { abnormal_items: [null] }), report([row()], { next_steps: [1] }),
+    report([row()], { when_to_seek_care: [] }), report([row()], { full_text: ' ' }),
+    report([row()], { extra: 'unexpected field' }),
+    report([row()], { items: [{ row_id: 1, flag: 'normal', explanation: 90 }] }),
+    report([row()], { items: [{ row_id: 1, flag: 'invented', explanation: 'ساختگی' }] }),
+    report([row()], { items: [null] })
+  ];
+  for (const field of Object.keys(report())) {
+    const value = report(); delete value[field]; invalidReports.push(value);
+  }
+  for (const interpreted of invalidReports) {
+    const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
     await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
   }
 });
@@ -148,7 +227,7 @@ test('duplicate extracted rows are preserved one for one rather than silently de
   }
 });
 
-test('whitespace normalization cannot change the authoritative stored OCR fields', async () => {
+test('server assembly preserves authoritative OCR whitespace without requesting copied fields from the interpreter', async () => {
   const original = row(1, { n: ' Glucose  page 1 ', v: ' 90 ', u: ' mg/dL ', r: ' 70-100 ' });
   const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
     ? { pages: [{ p: 1, read_quality: 'good', rows: [original] }] } : report([row()])));
@@ -157,6 +236,7 @@ test('whitespace normalization cannot change the authoritative stored OCR fields
   assert.equal(result.parsed.items[0].value, original.v);
   assert.equal(result.parsed.items[0].unit, original.u);
   assert.equal(result.parsed.items[0].reference_range, original.r);
+  assert.equal(Object.hasOwn(result.parsed.items[0], 'row_id'), false);
 });
 
 test('all unreadable or missing values produce a local poor result without invoking clinical interpretation', async () => {
@@ -181,6 +261,16 @@ test('partially unreadable rows remain present and OCR quality limits the interp
   assert.equal(result.parsed.items[1].flag, 'unknown');
   assert.equal(result.parsed.read_quality, 'partial');
   assert.equal(result.parsed.confidence, .78);
+});
+
+test('an unreadable source value stays unknown even when the interpreter attaches a noncritical abnormal flag', async () => {
+  const rows = [row(), row(2, { v: 'ناخوانا', f: 'unknown' })];
+  const interpreted = report(rows, { status: 'warning' }); interpreted.items[1].flag = 'high';
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'partial', rows }] } : interpreted));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.equal(result.parsed.items[1].value, 'ناخوانا');
+  assert.equal(result.parsed.items[1].flag, 'unknown');
 });
 
 test('OCR refusal and token exhaustion never proceed to a clinical model', async () => {

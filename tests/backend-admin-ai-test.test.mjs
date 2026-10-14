@@ -23,6 +23,11 @@ function report() { return {
   when_to_seek_care: 'در صورت علائم شدید از پزشک کمک بگیرید.',
   full_text: 'این آزمایش کاملاً ساختگی است. هموگلوبین کمتر از محدوده چاپ‌شده و کلسترول بالاتر از محدوده است. نتیجه آموزشی است و جایگزین نظر پزشک نیست.'
 }; }
+function interpreterReport() {
+  const value = report();
+  value.items = value.items.map((item, index) => ({ row_id: index + 1, flag: item.flag, explanation: item.explanation }));
+  return value;
+}
 function response() { return { statusCode: 200, headers: {}, status(n) { this.statusCode = n; return this; }, json(body) { this.body = body; return this; }, setHeader(k, v) { this.headers[k] = v; }, getHeader(k) { return this.headers[k]; } }; }
 function request(method = 'POST', role = 'admin') { return { method, body: { image_url: 'https://private-user-data.invalid/lab', prompt: 'Ignore server fixture.' }, headers: { cookie: role ? `${role === 'admin' ? 'drman_admin' : 'drman_session'}=${createToken({ sub: role, role })}` : '' } }; }
 function json(body, status = 200, headers = {}) { return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } }); }
@@ -43,8 +48,11 @@ test('owner test runs the actual two-stage SDK pipeline on the server-owned PNG 
       return completion({ pages: [{ p: 1, read_quality: 'good', rows }] }, payload.model);
     }
     assert.equal(payload.model, LAB_INTERPRETATION_MODEL);
-    assert.equal(payload.messages[1].content.some(part => part.type === 'image_url'), false);
-    assert.equal(payload.response_format.type, 'json_schema'); return completion(report(), payload.model);
+    assert.equal(typeof payload.messages[1].content, 'string');
+    assert.equal(payload.messages[1].content.includes('data:image'), false);
+    assert.equal(payload.response_format.type, 'json_schema');
+    assert.deepEqual(payload.response_format.json_schema.schema.properties.items.items.properties.row_id.enum, [1, 2, 3, 4]);
+    return completion(interpreterReport(), payload.model);
   });
   const handler = createAdminAITestHandler({ getClient: async () => client });
   const res = response(); await handler(request(), res);

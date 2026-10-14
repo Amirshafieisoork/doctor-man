@@ -134,7 +134,7 @@ function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThr
       return { model: 'qwen/qwen3.8-27b', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ pages: ids.map(p => ({ p, read_quality: 'good', rows: [{ ...row }] })) }) } }] };
     }
     return { model: 'test-model', choices: [{ message: { content: schema === 'drman_lab_analysis'
-      ? JSON.stringify({ ...labResult, items: state.labRows.map(row => ({ name: row.n, value: row.v, unit: row.u, reference_range: row.r, flag: row.f, explanation: 'در محدوده مرجع' })) }) : schema === 'drman_personal_care_plan' ? JSON.stringify(generatedPlan) : 'پاسخ آموزشی پشتیبانی' } }] };
+      ? JSON.stringify({ ...labResult, items: state.labRows.map((row, index) => ({ row_id: index + 1, flag: row.f, explanation: 'در محدوده مرجع' })) }) : schema === 'drman_personal_care_plan' ? JSON.stringify(generatedPlan) : 'پاسخ آموزشی پشتیبانی' } }] };
   };
   return { state, calls, uploads, removals, rpcCalls };
 }

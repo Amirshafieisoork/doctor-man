@@ -54,6 +54,26 @@ test('request overrides preserve the interpretation cancellation signal and dead
   assert.equal(calls[0].options.signal, signal);
 });
 
+test('trusted schema and system instructions are included in the payload and never forwarded as SDK options', async () => {
+  const signal = new AbortController().signal, calls = [];
+  const responseSchema = {
+    type: 'object', additionalProperties: false,
+    properties: { row_id: { type: 'integer', enum: [1] } }, required: ['row_id']
+  };
+  const additionalSystemInstructions = 'Return each supplied synthetic row ID exactly once.';
+  const options = { responseSchema, additionalSystemInstructions, timeout: 80000, signal, maxRetries: 0 };
+  const modelClient = client(async (payload, sdkOptions) => { calls.push({ payload, sdkOptions }); return completion(); });
+  await callLabModel(modelClient, 'openai/gpt-oss-120b', content, 'synthetic', options);
+  assert.equal(calls[0].payload.response_format.json_schema.schema, responseSchema);
+  assert.equal(calls[0].payload.response_format.json_schema.strict, true);
+  assert.match(calls[0].payload.messages[0].content, /حدس نزن/);
+  assert.ok(calls[0].payload.messages[0].content.endsWith(additionalSystemInstructions));
+  assert.deepEqual(calls[0].sdkOptions, { timeout: 80000, signal, maxRetries: 0 });
+  assert.equal(Object.hasOwn(calls[0].payload, 'additionalSystemInstructions'), false);
+  assert.equal(Object.hasOwn(calls[0].payload, 'responseSchema'), false);
+  assert.equal(options.responseSchema, responseSchema, 'server-provided options must not be mutated');
+});
+
 test('complete responses are validated against the printed range without mutating the input report', () => {
   const input = report({ items: [{ ...report().items[0], value: '120', flag: 'normal' }] });
   const result = parseLabCompletion(completion(input));
@@ -115,6 +135,21 @@ test('free provider errors distinguish credentials, account, quota and timeout w
     assert.equal(response.code, expectedCode);
     assert.ok(response.message.length > 0);
     assert.doesNotMatch(response.message, /private-provider-content/);
+  }
+});
+
+test('provider JSON validation failures are invalid responses while unrelated HTTP 400 errors remain unavailable', () => {
+  for (const details of [{ code: 'json_validate_failed' }, { error: { code: 'json_validate_failed' } }]) {
+    const response = labErrorResponse(Object.assign(providerError(400), details));
+    assert.equal(response.status, 502);
+    assert.equal(response.code, 'AI_RESPONSE_INVALID');
+    assert.doesNotMatch(response.message, /private-provider-content|json_validate_failed/);
+  }
+  for (const details of [{}, { code: 'invalid_request' }, { error: { code: 'unsupported_parameter' } }]) {
+    const response = labErrorResponse(Object.assign(providerError(400), details));
+    assert.equal(response.status, 503);
+    assert.equal(response.code, 'AI_UNAVAILABLE');
+    assert.doesNotMatch(response.message, /private-provider-content|invalid_request|unsupported_parameter/);
   }
 });
 
