@@ -193,7 +193,7 @@ test('text requests enforce the free output budget and GPT-OSS compatible reason
         max_completion_tokens: 10000, reasoning_format: 'raw', reasoning_effort: 'high', include_reasoning: true, user: 'existing-hash' };
       await modelClient.chat.completions.create(original);
       const sent = requests[0].body;
-      assert.equal(sent.max_completion_tokens, 3000);
+      assert.equal(sent.max_completion_tokens, 4500);
       assert.equal(sent.reasoning_effort, 'low');
       assert.equal(sent.include_reasoning, false);
       assert.equal(Object.hasOwn(sent, 'reasoning_format'), false);

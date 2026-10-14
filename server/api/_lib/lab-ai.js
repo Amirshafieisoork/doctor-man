@@ -54,17 +54,20 @@ function normalizeResult(value) {
 export async function callLabModel(client, model = LAB_INTERPRETATION_MODEL, content, safetyIdentifier, options = {}) {
   // These schema/instruction overrides are supplied only by trusted server
   // callers. Keep them out of the OpenAI-compatible SDK request options.
-  const { responseSchema = LAB_SCHEMA, additionalSystemInstructions = '', ...requestOptions } = options;
+  const { responseSchema = LAB_SCHEMA, additionalSystemInstructions = '', maxCompletionTokens = 3000, ...requestOptions } = options;
+  const reportInstruction = responseSchema.properties?.sections
+    ? 'متن فارسی، ساده و کاربردی را در هر ۹ بخش sections بنویس؛ متن کامل از این بخش‌ها روی سرور ساخته می‌شود.'
+    : 'full_text فارسی، ساده، ساختاریافته و شامل خلاصه، موارد مهم، قدم بعدی و زمان مراجعه باشد.';
   const payload = {
     model,
     messages: [
       {
         role: 'system',
-        content: `تو موتور تفسیر آموزشی آزمایش DrMan هستی. اول فقط آنچه واقعاً از برگه قابل خواندن است استخراج کن، سپس تفسیر آموزشی و محافظه‌کارانه ارائه بده.\n\nقواعد ایمنی:\n- تشخیص قطعی، نسخه، تغییر دارو یا دوز، یا تضمین پزشکی ممنوع است.\n- هیچ عدد، نام آزمایش، واحد یا محدوده مرجع ناخوانا را حدس نزن.\n- محدوده مرجع چاپ‌شده روی همان برگه بر دانش عمومی مقدم است.\n- status=danger فقط وقتی مجاز است که داده خوانا، به‌طور واضح بسیار غیرطبیعی/بحرانی باشد یا برگه خودش علامت critical داشته باشد؛ صرفاً براساس احتمال یا علائم مبهم danger نده.\n- برای نتیجه‌ای که با علائم شدید، بارداری، کودک، سالمند یا بیماری زمینه‌ای حساس می‌شود، به ارزیابی پزشک ارجاع بده.\n- مکمل، گیاه دارویی یا داروی خاص تجویز نکن.\n- اگر کیفیت تصویر ناکافی است، read_quality را partial/poor بگذار و محدودیت را واضح بنویس.\n- full_text فارسی، ساده، ساختاریافته و شامل خلاصه، موارد مهم، قدم بعدی و زمان مراجعه باشد.\n- نتیجه آموزشی است و جای تشخیص یا درمان پزشک را نمی‌گیرد.${additionalSystemInstructions ? '\n\n' + additionalSystemInstructions : ''}`
+        content: `تو موتور تفسیر آموزشی آزمایش DrMan هستی. اول فقط آنچه واقعاً از برگه قابل خواندن است استخراج کن، سپس تفسیر آموزشی و محافظه‌کارانه ارائه بده.\n\nقواعد ایمنی:\n- تشخیص قطعی، نسخه، تغییر دارو یا دوز، یا تضمین پزشکی ممنوع است.\n- هیچ عدد، نام آزمایش، واحد یا محدوده مرجع ناخوانا را حدس نزن.\n- محدوده مرجع چاپ‌شده روی همان برگه بر دانش عمومی مقدم است.\n- status=danger فقط وقتی مجاز است که داده خوانا، به‌طور واضح بسیار غیرطبیعی/بحرانی باشد یا برگه خودش علامت critical داشته باشد؛ صرفاً براساس احتمال یا علائم مبهم danger نده.\n- برای نتیجه‌ای که با علائم شدید، بارداری، کودک، سالمند یا بیماری زمینه‌ای حساس می‌شود، به ارزیابی پزشک ارجاع بده.\n- مکمل، گیاه دارویی یا داروی خاص تجویز نکن.\n- اگر کیفیت تصویر ناکافی است، read_quality را partial/poor بگذار و محدودیت را واضح بنویس.\n- ${reportInstruction}\n- نتیجه آموزشی است و جای تشخیص یا درمان پزشک را نمی‌گیرد.${additionalSystemInstructions ? '\n\n' + additionalSystemInstructions : ''}`
       },
       { role: 'user', content }
     ],
-    max_completion_tokens: 3000,
+    max_completion_tokens: Math.max(1, Math.min(4500, Math.floor(Number(maxCompletionTokens) || 3000))),
     reasoning_effort: 'low',
     include_reasoning: false,
     response_format: {

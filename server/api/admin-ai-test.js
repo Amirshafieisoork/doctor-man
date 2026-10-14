@@ -3,6 +3,7 @@ import { requireAdmin } from './_lib/session.js';
 import { safeErrorMetadata } from './_lib/errors.js';
 import { avalaiClient, LAB_PRIMARY_MODEL, LAB_INTERPRETATION_MODEL } from './_lib/ai-models.js';
 import { analyzeLabImages, labErrorResponse } from './_lib/lab-ai.js';
+import { countPersianWords } from './_lib/lab-report-format.js';
 
 const FIXTURE = new URL('./_fixtures/synthetic-lab-report.png', import.meta.url);
 const EXPECTED = [
@@ -68,6 +69,8 @@ export function createAdminAITestHandler({ getClient = avalaiClient, analyze = a
         success: true, free_only: true, provider: 'groq-free',
         checks_passed: checks.checks_passed, checks_total: checks.checks_total, samples_checked: checks.samples_checked,
         models: { vision: LAB_PRIMARY_MODEL, interpretation: LAB_INTERPRETATION_MODEL },
+        report_sections: result.parsed.sections?.length || 0,
+        report_words: countPersianWords((result.parsed.sections || []).map(section => section.content).join(' ')),
         elapsed_ms: Math.max(0, Date.now() - started)
       });
     } catch (error) {

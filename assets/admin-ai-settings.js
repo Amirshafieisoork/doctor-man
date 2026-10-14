@@ -76,7 +76,8 @@
       const result = await jf('/api/admin-ai-test', { method: 'POST', body: '{}', signal: controller.signal });
       if (result.success !== true || result.samples_checked !== 4 || result.checks_passed !== result.checks_total || result.checks_total !== 6) throw new Error('آزمون اتصال کامل تأیید نشد؛ دوباره تلاش کنید.');
       target.className = 'success';
-      target.textContent = `آزمون موفق بود: هر چهار مقدار و پرچم درست خوانده شد و توضیح فارسی دریافت شد. ${result.checks_passed} بررسی موفق؛ زمان ${Math.ceil(Number(result.elapsed_ms || 0) / 1000)} ثانیه.`;
+      const detail = result.report_sections === 9 ? ` گزارش ۹‌بخشی با ${Number(result.report_words || 0).toLocaleString('fa-IR')} کلمه تولید شد.` : '';
+      target.textContent = `آزمون موفق بود: هر چهار مقدار و پرچم درست خوانده شد و توضیح فارسی دریافت شد.${detail} ${result.checks_passed} بررسی موفق؛ زمان ${Math.ceil(Number(result.elapsed_ms || 0) / 1000)} ثانیه.`;
     } catch (error) {
       target.className = 'danger';
       target.textContent = controller.signal.aborted ? 'زمان آزمون پایان یافت. کمی بعد دوباره تلاش کنید.' : error.message || 'آزمون اتصال انجام نشد؛ دوباره تلاش کنید.';

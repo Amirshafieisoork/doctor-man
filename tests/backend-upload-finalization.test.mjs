@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import OpenAI from 'openai';
 import { createToken } from '../server/api/_lib/session.js';
+import { syntheticLabSections } from './fixtures/nine-section-report.mjs';
 
 // Synthetic account state and provider/storage stubs keep these races local.
 process.env.SUPABASE_URL = 'https://finalization-tests.invalid';
@@ -26,6 +27,11 @@ const labResult = {
   abnormal_items: [], next_steps: [], when_to_seek_care: 'در صورت علائم با پزشک مشورت کنید'
 };
 const generatedPlan = { summary: 'برنامه مراقبت آموزشی', follow_up: [], education_topics: [] };
+function interpreterLabReport(rows) {
+  const value = { ...labResult, items: rows.map((row, index) => ({ row_id: index + 1, flag: row.f, explanation: 'در محدوده مرجع' })), sections: syntheticLabSections() };
+  delete value.full_text;
+  return value;
+}
 
 function response() {
   return { statusCode: 200, headers: {}, sent: 0,
@@ -134,7 +140,7 @@ function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThr
       return { model: 'qwen/qwen3.8-27b', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ pages: ids.map(p => ({ p, read_quality: 'good', rows: [{ ...row }] })) }) } }] };
     }
     return { model: 'test-model', choices: [{ message: { content: schema === 'drman_lab_analysis'
-      ? JSON.stringify({ ...labResult, items: state.labRows.map((row, index) => ({ row_id: index + 1, flag: row.f, explanation: 'در محدوده مرجع' })) }) : schema === 'drman_personal_care_plan' ? JSON.stringify(generatedPlan) : 'پاسخ آموزشی پشتیبانی' } }] };
+      ? JSON.stringify(interpreterLabReport(state.labRows)) : schema === 'drman_personal_care_plan' ? JSON.stringify(generatedPlan) : 'پاسخ آموزشی پشتیبانی' } }] };
   };
   return { state, calls, uploads, removals, rpcCalls };
 }
@@ -279,6 +285,11 @@ test('active accounts still persist documents, lab biomarkers, care plans and su
   for (const table of ['medical_documents', 'test_results', 'lab_biomarkers', 'personalized_care_plans']) {
     assert.ok(writes(s.calls, table).length > 0, `${table} must still persist normally`);
   }
+  const storedLab = operation(writes(s.calls, 'test_results')[0].operations, 'insert')[1];
+  assert.deepEqual(storedLab.structured_analysis.sections.map(section => section.section_id), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(storedLab.structured_analysis.sections.map(section => section.content), syntheticLabSections().map(section => section.content));
+  assert.equal(storedLab.analysis, storedLab.structured_analysis.full_text);
+  assert.deepEqual([...storedLab.analysis.matchAll(/^## (\d+)\. /gm)].map(match => Number(match[1])), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   assert.deepEqual(s.state.supportMessages.map(message => message.sender_type), ['user', 'assistant']);
   assert.equal(s.removals.length, 0); releasedReservation(s.calls);
 });

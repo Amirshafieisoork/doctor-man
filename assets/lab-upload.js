@@ -155,7 +155,17 @@
       const result = $('result'); result.replaceChildren();
       const meta = document.createElement('div'); meta.className = 'resultMeta';
       meta.textContent = ({ good: 'کیفیت خواندن مناسب', partial: 'بخشی از برگه خوانا نیست', poor: 'کیفیت تصویر کافی نیست' }[data.read_quality] || 'نتیجه تفسیر');
-      const text = document.createElement('div'); text.textContent = data.analysis || '';
+      const text = document.createElement('div');
+      const sections = data.structured?.sections;
+      if (Array.isArray(sections) && sections.length === 9 && sections.every((section, index) =>
+        section?.section_id === index + 1 && typeof section.title === 'string' && typeof section.content === 'string')) {
+        for (const section of sections) {
+          const block = document.createElement('section'); block.className = 'lab-report-section';
+          const heading = document.createElement('h3'); heading.textContent = `${section.section_id}. ${section.title}`;
+          const body = document.createElement('p'); body.textContent = section.content;
+          block.append(heading, body); text.append(block);
+        }
+      } else { text.textContent = data.analysis || ''; }
       const history = document.createElement('a'); history.className = 'btn'; history.href = '/health'; history.textContent = 'مشاهده در پرونده سلامت';
       result.append(meta, text, history); result.classList.add('show'); result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       await loadAccount();

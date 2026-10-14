@@ -4,6 +4,20 @@ const photo = { name: 'synthetic-lab.png', mimeType: 'image/png', buffer: Buffer
 const account = { success: true, user: { id: 'synthetic-owner', name: 'کاربر آزمون' }, subscription: { plan: { name: 'رایگان' }, remaining: 2 } };
 const patients = { success: true, patients: [{ id: 'synthetic-patient', display_name: 'پرونده آزمایشی', relation: 'self', sex: 'male' }] };
 const result = { success: true, analysis: 'نتیجه آزمایشی برای بررسی رابط کاربری', read_quality: 'good' };
+const reportSections = [
+  { section_id: 1, title: 'خلاصه کلی وضعیت سلامت', content: 'این گزارش ساختگی برای نمایش ساختار تفسیر و کیفیت خواندن نتیجه آزمایش است.' },
+  { section_id: 2, title: 'بررسی تک‌تک مقادیر آزمایش', content: 'هر مقدار با نام، واحد و محدوده چاپ‌شده همان برگه مرور می‌شود.' },
+  { section_id: 3, title: 'توضیح تفصیلی موارد غیرنرمال', content: 'یافته غیرطبیعی بدون افزودن تشخیص قطعی توضیح داده می‌شود و نیاز به پیگیری دارد.' },
+  { section_id: 4, title: 'هشدارهای مهم پزشکی', content: 'علائم شدید و بدتر شدن سریع حال نیازمند ارزیابی پزشکی فوری هستند.' },
+  { section_id: 5, title: 'توصیه‌های تغذیه‌ای دقیق', content: 'سبزی، حبوبات و غلات کامل بیشتر مصرف کنید و نوشیدنی شیرین و غذاهای فراوری‌شده را کمتر کنید.' },
+  { section_id: 6, title: 'سبک زندگی و فعالیت بدنی', content: 'پیاده‌روی را تدریجی شروع کنید، خواب منظم داشته باشید و هنگام درد قفسه سینه فعالیت را متوقف کنید.' },
+  { section_id: 7, title: 'گزینه‌های گیاهی و طب مکمل (با احتیاط)', content: 'پیش از مصرف درمانی گیاه یا مکمل، تداخل آن با داروهای فعلی را با پزشک یا داروساز بررسی کنید.' },
+  { section_id: 8, title: 'کِی به پزشک مراجعه کند و چه تخصصی', content: 'برای مرور نتیجه با پزشک خود شروع کنید و تصویر خوانا و فهرست داروها را همراه داشته باشید.' },
+  { section_id: 9, title: 'نکته پایانی و دلگرمی', content: 'با نگهداری آزمایش در پرونده سلامت و نوشتن پرسش‌های خود، قدم بعدی را روشن و قابل انجام کنید.' }
+];
+function structuredResult(sections = reportSections) {
+  return { success: true, analysis: 'LEGACY_FULL_TEXT_MUST_NOT_REPLACE_SECTIONS', read_quality: 'good', structured: { sections } };
+}
 const json = (route, status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
 test.beforeEach(async ({ page }) => {
@@ -96,4 +110,36 @@ test('an analysis network failure reports an actionable error while preserving t
   await expect(page.locator('#error')).not.toContainText('Failed to fetch');
   await expect(page.locator('#error').getByRole('link', { name: 'مشاهده تصاویر در پرونده سلامت' })).toHaveAttribute('href', '/health');
   await expect(page.locator('#analyze')).toBeEnabled();
+});
+
+test('a detailed analysis displays all nine categories, actionable nutrition and exercise, and the health-record link', async ({ page }) => {
+  await page.route('**/api/documents', route => json(route, 201, { success: true, document: { id: 'saved-image' } }));
+  await page.route('**/api/analyze-lab', route => json(route, 200, structuredResult()));
+  await readyPhoto(page);
+  await page.locator('#analyze').click();
+  const output = page.locator('#result');
+  await expect(output.locator('h3')).toHaveText(reportSections.map(section => `${section.section_id}. ${section.title}`));
+  await expect(output.locator('.lab-report-section')).toHaveCount(9);
+  await expect(output.locator('.lab-report-section p')).toHaveText(reportSections.map(section => section.content));
+  await expect(output).toContainText('نوشیدنی شیرین و غذاهای فراوری‌شده را کمتر کنید');
+  await expect(output).toContainText('پیاده‌روی را تدریجی شروع کنید');
+  await expect(output).not.toContainText('LEGACY_FULL_TEXT_MUST_NOT_REPLACE_SECTIONS');
+  await expect(output.getByRole('link', { name: 'مشاهده در پرونده سلامت', exact: true })).toHaveAttribute('href', '/health');
+  await expect(page.locator('#analyze')).toBeEnabled();
+});
+
+test('section titles and bodies display embedded markup as text and never execute model-supplied HTML', async ({ page }) => {
+  const sections = structuredClone(reportSections);
+  sections[0].title += ' <img src=x onerror="window.syntheticReportXss=1">';
+  sections[4].content += ' <script>window.syntheticReportXss=2</script><img src=x onerror="window.syntheticReportXss=3">';
+  await page.route('**/api/documents', route => json(route, 201, { success: true, document: { id: 'saved-image' } }));
+  await page.route('**/api/analyze-lab', route => json(route, 200, structuredResult(sections)));
+  await readyPhoto(page);
+  await page.locator('#analyze').click();
+  const output = page.locator('#result');
+  await expect(output.locator('h3')).toHaveText(sections.map(section => `${section.section_id}. ${section.title}`));
+  await expect(output.locator('.lab-report-section p')).toHaveText(sections.map(section => section.content));
+  await expect(output.locator('img, script')).toHaveCount(0);
+  expect(await page.evaluate(() => window.syntheticReportXss)).toBeUndefined();
+  await expect(output.getByRole('link', { name: 'مشاهده در پرونده سلامت', exact: true })).toHaveAttribute('href', '/health');
 });

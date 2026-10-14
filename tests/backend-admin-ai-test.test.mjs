@@ -5,6 +5,7 @@ import OpenAI from 'openai';
 import { createToken } from '../server/api/_lib/session.js';
 import { createAdminAITestHandler, checkSyntheticLabResult } from '../server/api/admin-ai-test.js';
 import { AI_BASE_URL, LAB_PRIMARY_MODEL, LAB_INTERPRETATION_MODEL } from '../server/api/_lib/ai-models.js';
+import { syntheticLabSections } from './fixtures/nine-section-report.mjs';
 
 process.env.SESSION_SECRET = 'synthetic-owner-session-secret-at-least-32';
 const syntheticKey = 'gsk-synthetic-only-admin-test-key';
@@ -26,6 +27,8 @@ function report() { return {
 function interpreterReport() {
   const value = report();
   value.items = value.items.map((item, index) => ({ row_id: index + 1, flag: item.flag, explanation: item.explanation }));
+  delete value.full_text;
+  value.sections = syntheticLabSections();
   return value;
 }
 function response() { return { statusCode: 200, headers: {}, status(n) { this.statusCode = n; return this; }, json(body) { this.body = body; return this; }, setHeader(k, v) { this.headers[k] = v; }, getHeader(k) { return this.headers[k]; } }; }
@@ -52,6 +55,8 @@ test('owner test runs the actual two-stage SDK pipeline on the server-owned PNG 
     assert.equal(payload.messages[1].content.includes('data:image'), false);
     assert.equal(payload.response_format.type, 'json_schema');
     assert.deepEqual(payload.response_format.json_schema.schema.properties.items.items.properties.row_id.enum, [1, 2, 3, 4]);
+    assert.equal(Object.hasOwn(payload.response_format.json_schema.schema.properties, 'full_text'), false);
+    assert.ok(payload.response_format.json_schema.schema.required.includes('sections'));
     return completion(interpreterReport(), payload.model);
   });
   const handler = createAdminAITestHandler({ getClient: async () => client });

@@ -7,6 +7,7 @@ import { analyzeLabImages, labErrorResponse } from '../server/api/_lib/lab-ai.js
 import { safeErrorMetadata } from '../server/api/_lib/errors.js';
 import { createAdminAITestHandler } from '../server/api/admin-ai-test.js';
 import { createToken } from '../server/api/_lib/session.js';
+import { countPersianWords } from '../server/api/_lib/lab-report-format.js';
 
 const expectedCommit = process.env.DRMAN_LAB_AI_PROBE || '';
 const enabled = /^[a-f0-9]{40}$/.test(expectedCommit) && expectedCommit === process.env.VERCEL_GIT_COMMIT_SHA;
@@ -47,7 +48,13 @@ if (enabled) {
     };
     // Execute the exact owner-only connection handler with a short-lived,
     // in-memory server session. Neither the cookie nor its secret is logged.
-    const ownerHandler = createAdminAITestHandler({ getClient: async () => client });
+    const ownerHandler = createAdminAITestHandler({ getClient: async () => client, analyze: async (...args) => {
+      const result = await analyzeLabImages(...args);
+      report({ stage: 'synthetic_report', section_count: result.parsed.sections?.length || 0,
+        sections: (result.parsed.sections || []).map(section => ({ id: section.section_id,
+          words: countPersianWords(section.content), excerpt: section.content.slice(0, 600) })) });
+      return result;
+    } });
     let ownerStatus, ownerBody;
     const ownerResponse = {
       setHeader() {},
@@ -57,10 +64,13 @@ if (enabled) {
     await ownerHandler({ method: 'POST', headers: { cookie: 'drman_admin=' + createToken({ sub: 'admin', role: 'admin' }, 60) } }, ownerResponse);
     report({ stage: 'owner_checks', status: ownerStatus, passed: ownerBody?.success === true,
       checks_passed: ownerBody?.checks_passed, checks_total: ownerBody?.checks_total,
-      samples_checked: ownerBody?.samples_checked, code: ownerBody?.code });
+      samples_checked: ownerBody?.samples_checked, report_sections: ownerBody?.report_sections,
+      report_words: ownerBody?.report_words, code: ownerBody?.code });
     assert.equal(ownerStatus, 200, 'Owner connection handler did not pass');
     assert.equal(ownerBody?.success, true);
     assert.equal(ownerBody?.checks_passed, 6);
+    assert.equal(ownerBody?.report_sections, 9);
+    assert.ok(ownerBody?.report_words >= 450);
     const unreadable = await run('unreadable', 'unreadable-lab.png');
     assert.equal(unreadable.read_quality, 'poor');
     assert.equal(unreadable.items.length, 0, 'Invented a value on a blank image');

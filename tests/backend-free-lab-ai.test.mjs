@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import OpenAI from 'openai';
 import { analyzeFreeLabImages, FREE_LAB_OCR_MODEL, FREE_LAB_TEXT_MODEL } from '../server/api/_lib/free-lab-ai.js';
+import { syntheticLabSections } from './fixtures/nine-section-report.mjs';
 
 // Exercise the actual OpenAI-compatible SDK boundary with a fully local fetch.
 // No provider request, production account or health image is used.
@@ -16,7 +17,7 @@ function report(rows = [row()], changes = {}) {
   return {
     status: 'normal', status_reason: 'در محدوده چاپ‌شده', confidence: .9, read_quality: 'good', summary: 'نتیجه ساختگی خوانا است',
     items: rows.map((row, index) => ({ row_id: index + 1, flag: row.f, explanation: 'تفسیر آموزشی ساختگی' })),
-    abnormal_items: [], next_steps: ['با پزشک مرور کنید.'], when_to_seek_care: 'در صورت علائم شدید مراجعه کنید.', full_text: 'تفسیر آموزشی برگه آزمایشی ساختگی.',
+    abnormal_items: [], next_steps: ['با پزشک مرور کنید.'], when_to_seek_care: 'در صورت علائم شدید مراجعه کنید.', sections: syntheticLabSections(),
     ...changes
   };
 }
@@ -92,7 +93,7 @@ test('four pages are extracted in two complete batches and only grounded text is
   assert.equal(text.include_reasoning, false);
   assert.equal(Object.hasOwn(text, 'reasoning_format'), false);
   assert.equal(Object.hasOwn(text, 'safety_identifier'), false);
-  assert.ok(text.max_completion_tokens <= 3000);
+  assert.ok(text.max_completion_tokens >= 3500 && text.max_completion_tokens <= 4500, 'the nine-section report receives its bounded free-tier output budget');
   assert.equal(typeof text.messages[1].content, 'string');
   for (let p = 1; p <= 4; p++) assert.ok(text.messages[1].content.includes(`Glucose page ${p}`));
   const itemSchema = text.response_format.json_schema.schema.properties.items.items;
@@ -224,7 +225,7 @@ test('incomplete or mistyped interpreter report fields are rejected before sourc
     report([row()], { confidence: 1.1 }), report([row()], { confidence: -0.1 }),
     report([row()], { status_reason: null }), report([row()], { summary: false }),
     report([row()], { abnormal_items: [null] }), report([row()], { next_steps: [1] }),
-    report([row()], { when_to_seek_care: [] }), report([row()], { full_text: ' ' }),
+    report([row()], { when_to_seek_care: [] }), report([row()], { sections: null }),
     report([row()], { extra: 'unexpected field' }),
     report([row()], { items: [{ row_id: 1, flag: 'normal', explanation: 90 }] }),
     report([row()], { items: [{ row_id: 1, flag: 'invented', explanation: 'ساختگی' }] }),
@@ -237,6 +238,56 @@ test('incomplete or mistyped interpreter report fields are rejected before sourc
     const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
     await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
   }
+});
+
+test('the interpreter must provide all nine substantive sections once and cannot substitute an untrusted full_text', async () => {
+  const invalidReports = [];
+  const changeSections = change => { const value = report(); change(value.sections); invalidReports.push(value); };
+  changeSections(sections => sections.pop());
+  changeSections(sections => sections.push({ ...sections[0] }));
+  changeSections(sections => { sections[8].section_id = 1; });
+  changeSections(sections => { sections[8].section_id = 10; });
+  changeSections(sections => { sections[0].section_id = '1'; });
+  changeSections(sections => { sections[0].content = ''; });
+  changeSections(sections => { sections[0].content = ' \n\t '; });
+  changeSections(sections => { sections[0].content = 9; });
+  changeSections(sections => { sections[0].extra = 'unexpected'; });
+  changeSections(sections => { sections.forEach(section => { section.content = 'برای نتیجه با پزشک مشورت کنید.'; }); });
+  changeSections(sections => { sections.forEach(section => { section.content = 'English only detailed synthetic report. '.repeat(100); }); });
+  const withUntrustedText = report(); withUntrustedText.full_text = 'A replacement report must never be accepted.'; invalidReports.push(withUntrustedText);
+  for (const interpreted of invalidReports) {
+    const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
+    await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
+    assert.equal(calls.length, 2);
+  }
+});
+
+test('nine sections are assembled in canonical order independently of row ordering and preserve source medical fields', async () => {
+  const original = row(1, { n: ' Glucose page 1 ', v: ' 90 ', u: ' mg/dL ', r: ' 70-100 ' });
+  const interpreted = report([original]);
+  interpreted.sections.reverse();
+  const responseBefore = structuredClone(interpreted);
+  const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows: [original] }] } : interpreted));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.deepEqual(interpreted, responseBefore, 'server assembly never mutates the model response');
+  assert.deepEqual(result.parsed.items.map(item => [item.name, item.value, item.unit, item.reference_range]), [[original.n, original.v, original.u, original.r]]);
+  assert.deepEqual(result.parsed.sections.map(section => section.section_id), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.ok(result.parsed.sections.every(section => typeof section.title === 'string' && section.title.trim() && typeof section.content === 'string'));
+  assert.equal(result.parsed.sections[0].title, 'خلاصه کلی وضعیت سلامت');
+  assert.equal(result.parsed.sections[6].title, 'گزینه‌های گیاهی و طب مکمل (با احتیاط)');
+  const headings = [...result.parsed.full_text.matchAll(/^## (\d+)\. /gm)].map(match => Number(match[1]));
+  assert.deepEqual(headings, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  const ordered = syntheticLabSections();
+  for (let index = 0; index < ordered.length; index++) {
+    assert.ok(result.parsed.full_text.includes(ordered[index].content));
+    if (index > 0) assert.ok(result.parsed.full_text.indexOf(ordered[index - 1].content) < result.parsed.full_text.indexOf(ordered[index].content));
+  }
+  const schema = calls[1].payload.response_format.json_schema.schema;
+  assert.equal(Object.hasOwn(schema.properties, 'full_text'), false);
+  assert.ok(schema.required.includes('sections'));
+  assert.equal(schema.properties.sections.minItems, 9);
+  assert.equal(schema.properties.sections.maxItems, 9);
 });
 
 test('duplicate extracted rows are preserved one for one rather than silently deduplicated', async () => {
@@ -369,6 +420,25 @@ test('oversized but validated OCR input is rejected before interpretation instea
   const { client, calls } = sdk(payload => answer(payload, { pages: [{ p: 1, read_quality: 'good', rows }] }));
   await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'FREE_INPUT_LIMIT' });
   assert.equal(calls.length, 1);
+});
+
+test('a twenty-row report receives detailed interpretation without dropping ordinary source rows to fit the free budget', async () => {
+  const rows = Array.from({ length: 20 }, (_, index) => row(1, { n: `Synthetic marker ${index + 1}`, v: '90' }));
+  const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows }] } : report(rows)));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.equal(calls.length, 2);
+  assert.ok(calls[1].payload.max_completion_tokens >= 3500 && calls[1].payload.max_completion_tokens <= 4500);
+  assert.deepEqual(result.parsed.items.map(item => [item.name, item.value, item.unit, item.reference_range]), rows.map(row => [row.n, row.v, row.u, row.r]));
+  assert.equal(result.parsed.sections.length, 9);
+  for (const row of rows) assert.ok(calls[1].payload.messages[1].content.includes(row.n));
+});
+
+test('a twenty-row source that leaves too little room for a detailed report is rejected instead of shortening rows or sections', async () => {
+  const rows = Array.from({ length: 20 }, (_, index) => row(1, { n: `Synthetic marker ${index + 1} ${'x'.repeat(170)}`, v: '90' }));
+  const { client, calls } = sdk(payload => answer(payload, { pages: [{ p: 1, read_quality: 'good', rows }] }));
+  await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'FREE_INPUT_LIMIT' });
+  assert.equal(calls.length, 1, 'only OCR runs when the complete detailed report cannot fit');
 });
 
 test('more than 120 valid rows across pages are rejected without silently dropping later rows', async () => {

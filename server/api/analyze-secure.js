@@ -16,7 +16,7 @@ const MAX_IMAGES = 4;
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 4 * 1024 * 1024;
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const AI_VERSION = 'lab-v5-vision-validated-2026-10';
+const AI_VERSION = 'lab-v6-nine-sections-grounded-2026-10';
 
 
 function parseForm(req) {

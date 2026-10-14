@@ -40,7 +40,7 @@ export async function avalaiClient({ database } = {}) {
       payload.max_completion_tokens = Math.min(Number(payload.max_completion_tokens) || 2000, 2000);
       payload.reasoning_effort = 'none'; payload.reasoning_format = 'hidden'; delete payload.include_reasoning;
     } else {
-      payload.max_completion_tokens = Math.min(Number(payload.max_completion_tokens) || 3000, 3000);
+      payload.max_completion_tokens = Math.min(Number(payload.max_completion_tokens) || 3000, 4500);
       payload.reasoning_effort = 'low'; payload.include_reasoning = false; delete payload.reasoning_format;
     }
     return create(payload, requestOptions);

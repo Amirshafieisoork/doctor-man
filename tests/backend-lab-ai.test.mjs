@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { callLabModel, parseLabCompletion, labErrorResponse } from '../server/api/_lib/lab-ai.js';
+import { LAB_REPORT_SECTIONS_SCHEMA } from '../server/api/_lib/lab-report-format.js';
 
 // Complete synthetic reports and in-memory clients: no private image, provider
 // request, user quota or production database is used by these tests.
@@ -72,6 +73,33 @@ test('trusted schema and system instructions are included in the payload and nev
   assert.equal(Object.hasOwn(calls[0].payload, 'additionalSystemInstructions'), false);
   assert.equal(Object.hasOwn(calls[0].payload, 'responseSchema'), false);
   assert.equal(options.responseSchema, responseSchema, 'server-provided options must not be mutated');
+});
+
+test('nine-section schema selects the section instruction and carries its server-calculated output budget only in the payload', async () => {
+  const signal = new AbortController().signal, calls = [];
+  const responseSchema = {
+    type: 'object', additionalProperties: false,
+    properties: { sections: LAB_REPORT_SECTIONS_SCHEMA }, required: ['sections']
+  };
+  const options = { responseSchema, maxCompletionTokens: 4125, additionalSystemInstructions: 'Use all nine categories exactly once.', timeout: 80000, signal, maxRetries: 0 };
+  const modelClient = client(async (payload, sdkOptions) => { calls.push({ payload, sdkOptions }); return completion(); });
+  await callLabModel(modelClient, 'openai/gpt-oss-120b', content, 'synthetic', options);
+  assert.equal(calls[0].payload.response_format.json_schema.schema, responseSchema);
+  assert.equal(calls[0].payload.max_completion_tokens, 4125);
+  assert.match(calls[0].payload.messages[0].content, /هر ۹ بخش sections/);
+  assert.doesNotMatch(calls[0].payload.messages[0].content, /full_text فارسی/);
+  assert.match(calls[0].payload.messages[0].content, /حدس نزن/);
+  assert.ok(calls[0].payload.messages[0].content.endsWith(options.additionalSystemInstructions));
+  assert.deepEqual(calls[0].sdkOptions, { timeout: 80000, signal, maxRetries: 0 });
+  for (const key of ['responseSchema', 'maxCompletionTokens', 'additionalSystemInstructions']) assert.equal(Object.hasOwn(calls[0].payload, key), false);
+  assert.equal(options.maxCompletionTokens, 4125);
+});
+
+test('trusted output budget overrides cannot exceed the bounded free report allowance', async () => {
+  const calls = [];
+  const modelClient = client(async (payload) => { calls.push(payload); return completion(); });
+  for (const maxCompletionTokens of [10000, 4500, 3750.5]) await callLabModel(modelClient, 'openai/gpt-oss-120b', content, 'synthetic', { maxCompletionTokens });
+  assert.deepEqual(calls.map(payload => payload.max_completion_tokens), [4500, 4500, 3750]);
 });
 
 test('complete responses are validated against the printed range without mutating the input report', () => {
