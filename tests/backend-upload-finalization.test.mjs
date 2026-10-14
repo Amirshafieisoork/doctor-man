@@ -8,7 +8,8 @@ import { createToken } from '../server/api/_lib/session.js';
 process.env.SUPABASE_URL = 'https://finalization-tests.invalid';
 process.env.SUPABASE_SECRET_KEY = 'test-only-database-key';
 process.env.SESSION_SECRET = 'test-only-session-secret-32-characters';
-process.env.AVALAI_API_KEY = 'test-only-model-key';
+process.env.FREE_AI_API_KEY = 'test-only-model-key';
+process.env.FREE_AI_ACCOUNT_CONFIRMED='true';
 const { supabase } = await import('../server/api/_lib/db.js');
 const { default: analyze } = await import('../server/api/analyze-secure.js');
 const { default: documents } = await import('../server/api/documents.js');
@@ -63,7 +64,7 @@ function pause() {
 function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThrows = false } = {}) {
   const saved = { from: supabase.from, storage: supabase.storage.from, rpc: supabase.rpc, create: OpenAI.Chat.Completions.prototype.create };
   t.after(() => { supabase.from = saved.from; supabase.storage.from = saved.storage; supabase.rpc = saved.rpc; OpenAI.Chat.Completions.prototype.create = saved.create; });
-  const state = { status: 'active', userExists: true, verificationError: false, supportTicket: null, supportMessages: [] };
+  const state = { status: 'active', userExists: true, verificationError: false, supportTicket: null, supportMessages: [], labRows: [] };
   const calls = [], uploads = [], removals = [], rpcCalls = [];
   supabase.from = table => {
     const operations = [], query = {};
@@ -80,7 +81,7 @@ function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThr
       if (table === 'consent_records' && operation(operations, 'select')) return { data: { granted: true } };
       if (table === 'support_tickets') return { data: state.supportTicket };
       if (table === 'support_ticket_messages') return { data: state.supportMessages.slice().reverse() };
-      if (table === 'app_settings') return { data: { value: { support_chat: true } } };
+      if (table === 'app_settings') return operations.some(([name,field,value])=>name==='eq'&&field==='key'&&value==='private_ai')?{data:null}:{ data: { value: { support_chat: true } } };
       if (operation(operations, 'insert')) return { data: { id: 'saved-record', ...operation(operations, 'insert')[1] } };
       return { data: [], count: 0 };
     };
@@ -126,8 +127,14 @@ function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThr
   OpenAI.Chat.Completions.prototype.create = async function(payload) {
     await onAI?.(state);
     const schema = payload.response_format?.json_schema?.name;
+    if (schema === 'drman_lab_read') {
+      const ids = payload.response_format.json_schema.schema.properties.pages.items.properties.p.enum;
+      const row = { n: 'Glucose', v: '90', u: 'mg/dL', r: '70-100', f: 'normal' };
+      state.labRows.push(...ids.map(() => ({ ...row })));
+      return { model: 'qwen/qwen3.8-27b', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ pages: ids.map(p => ({ p, read_quality: 'good', rows: [{ ...row }] })) }) } }] };
+    }
     return { model: 'test-model', choices: [{ message: { content: schema === 'drman_lab_analysis'
-      ? JSON.stringify(labResult) : schema === 'drman_personal_care_plan' ? JSON.stringify(generatedPlan) : 'پاسخ آموزشی پشتیبانی' } }] };
+      ? JSON.stringify({ ...labResult, items: state.labRows.map(row => ({ name: row.n, value: row.v, unit: row.u, reference_range: row.r, flag: row.f, explanation: 'در محدوده مرجع' })) }) : schema === 'drman_personal_care_plan' ? JSON.stringify(generatedPlan) : 'پاسخ آموزشی پشتیبانی' } }] };
   };
   return { state, calls, uploads, removals, rpcCalls };
 }

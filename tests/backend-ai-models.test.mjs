@@ -1,169 +1,236 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import OpenAI from 'openai';
+import { avalaiClient, configuredModels, LAB_PRIMARY_MODEL, LAB_INTERPRETATION_MODEL } from '../server/api/_lib/ai-models.js';
+import { encryptPrivateAIKey } from '../server/api/_lib/private-ai-settings.js';
 
-const configurationKeys = [
-  'AVALAI_API_KEY', 'AVALAI_BASE_URL', 'AI_GATEWAY_API_KEY',
-  'GATEWAY_LAB_MODEL', 'GATEWAY_LAB_FALLBACK_MODEL',
-  'GATEWAY_HEALTH_NAVIGATOR_MODEL', 'GATEWAY_HEALTH_NAVIGATOR_FALLBACK_MODEL',
-  'GATEWAY_SUPPORT_MODEL', 'GATEWAY_SUPPORT_FALLBACK_MODEL'
-];
-let moduleNumber = 0;
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-}
-async function withModels(overrides, fetcher, run) {
+const syntheticKey = 'gsk-synthetic-private-account-key';
+const environmentKey = 'gsk-synthetic-environment-account-key';
+const configurationKeys = ['SESSION_SECRET', 'FREE_AI_API_KEY', 'GROQ_API_KEY', 'FREE_AI_ACCOUNT_CONFIRMED',
+  'AVALAI_API_KEY', 'AVALAI_BASE_URL', 'AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN',
+  'LAB_MODEL', 'LAB_FALLBACK_MODEL', 'GATEWAY_LAB_MODEL', 'GATEWAY_LAB_FALLBACK_MODEL',
+  'SUPPORT_MODEL', 'HEALTH_NAVIGATOR_MODEL'];
+async function withConfiguration(overrides, run) {
   const previous = new Map(configurationKeys.map(key => [key, process.env[key]]));
   const previousFetch = globalThis.fetch;
-  for (const key of configurationKeys) process.env[key] = '';
-  Object.assign(process.env, { AI_GATEWAY_API_KEY: 'test-gateway-token', ...overrides });
-  globalThis.fetch = fetcher;
-  try {
-    const models = await import(`../server/api/_lib/ai-models.js?test=${++moduleNumber}`);
-    await run(models);
-  } finally {
+  for (const key of configurationKeys) delete process.env[key];
+  process.env.SESSION_SECRET = 'synthetic-session-encryption-secret-at-least-32-characters';
+  Object.assign(process.env, overrides);
+  globalThis.fetch = async () => { throw new Error('unexpected external request'); };
+  try { await run(); }
+  finally {
     globalThis.fetch = previousFetch;
     for (const [key, value] of previous) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
   }
 }
+function fixture(row = null, error = null) {
+  const operations = [];
+  const database = { from(table) {
+    assert.equal(table, 'app_settings');
+    return {
+      select(fields) { operations.push(['select', fields]); return this; },
+      eq(key, value) { operations.push(['eq', key, value]); return this; },
+      async maybeSingle() { return { data: row, error }; }
+    };
+  } };
+  return { database, operations };
+}
+function stored(overrides = {}) {
+  return { value: { version: 1, provider: 'groq', free_only: true, free_account_confirmed: true,
+    encrypted_api_key: encryptPrivateAIKey(syntheticKey, 'groq'), ...overrides }, updated_at: '2026-10-14T00:00:00Z' };
+}
+const unconfigured = { provider: 'unconfigured', free_only: true };
+function json(body) { return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }); }
+async function sdkCalls(modelClient, run) {
+  const requests = [];
+  modelClient.fetch = async (input, options) => {
+    const request = new Request(input, options);
+    requests.push({ url: request.url, authorization: request.headers.get('authorization'), body: await request.json() });
+    return json({ id: 'synthetic-completion', model: requests.at(-1).body.model,
+      choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '{}' } }] });
+  };
+  await run(requests);
+  return requests;
+}
 
-test('catalog outages and malformed responses produce a controlled unconfigured result', async () => {
-  for (const fetcher of [
-    async () => json({ error: 'unavailable' }, 503),
-    async () => json({ data: [] }),
-    async () => json({ data: { id: 'openai/gpt-4.1' } }),
-    async () => json({ data: [{ id: null }, {}, { id: 123 }] }),
-    async () => new Response('invalid JSON'),
-    async () => { throw new TypeError('network unavailable'); }
-  ]) {
-    await withModels({}, fetcher, async models => {
-      assert.equal(await models.avalaiClient(), null);
-      assert.deepEqual(await models.configuredModels(), { provider: 'unconfigured' });
+test('old AvalAI, Gateway and OIDC credentials never activate a paid-provider connection', async () => {
+  await withConfiguration({ AVALAI_API_KEY: 'synthetic-paid-key', AI_GATEWAY_API_KEY: 'synthetic-paid-gateway-key',
+    VERCEL_OIDC_TOKEN: 'synthetic-oidc-token', AVALAI_BASE_URL: 'https://other-provider.invalid/v1' }, async () => {
+    const f = fixture();
+    assert.equal(await avalaiClient(f), null);
+    assert.deepEqual(await configuredModels(f), unconfigured);
+    assert.ok(f.operations.some(([op, key, value]) => op === 'eq' && key === 'key' && value === 'private_ai'));
+  });
+});
+
+test('environment keys require explicit confirmation of an account on the free plan', async () => {
+  for (const confirmation of [undefined, '', 'false', 'TRUE', '1']) {
+    await withConfiguration({ GROQ_API_KEY: environmentKey,
+      ...(confirmation === undefined ? {} : { FREE_AI_ACCOUNT_CONFIRMED: confirmation }) }, async () => {
+      assert.equal(await avalaiClient(fixture()), null);
+      assert.deepEqual(await configuredModels(fixture()), unconfigured);
     });
   }
 });
 
-test('one supported vision model keeps all AI features available without a separate fallback', async () => {
-  let catalogRequests = 0;
-  const completionModels = [];
-  await withModels({}, async (input, options) => {
-    const request = new Request(input, options);
-    if (request.url.endsWith('/models')) {
-      catalogRequests++;
-      assert.equal(request.headers.get('authorization'), 'Bearer test-gateway-token');
-      return json({ data: [{ id: 'openai/gpt-4.1' }] });
-    }
-    assert.equal(request.url, 'https://ai-gateway.vercel.sh/v1/chat/completions');
-    completionModels.push((await request.json()).model);
-    return json({ id: 'test-completion', model: 'openai/gpt-4.1', choices: [{ message: { role: 'assistant', content: 'ok' } }] });
-  }, async models => {
-    const configured = await models.configuredModels();
-    assert.equal(configured.provider, 'vercel-ai-gateway');
-    for (const role of ['lab', 'lab_fallback', 'navigator', 'navigator_fallback', 'support', 'support_fallback']) {
-      assert.equal(configured[role], 'openai/gpt-4.1');
-    }
-    const client = await models.avalaiClient();
-    assert.ok(client);
-    client.fetch = globalThis.fetch;
-    for (const model of [models.LAB_PRIMARY_MODEL, models.LAB_FALLBACK_MODEL, models.HEALTH_NAVIGATOR_MODEL, models.HEALTH_NAVIGATOR_FALLBACK_MODEL, models.SUPPORT_MODEL, models.SUPPORT_FALLBACK_MODEL]) {
-      await client.chat.completions.create({ model, messages: [{ role: 'user', content: 'test' }] });
-    }
-  });
-  assert.equal(catalogRequests, 1, 'a validated catalog is cached between configuration and completion calls');
-  assert.deepEqual(completionModels, Array(6).fill('openai/gpt-4.1'));
+test('a confirmed free environment key uses the fixed Groq endpoint and only the free model inventory', async () => {
+  for (const variable of ['FREE_AI_API_KEY', 'GROQ_API_KEY']) {
+    await withConfiguration({ [variable]: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true',
+      AVALAI_API_KEY: 'synthetic-paid-key', AI_GATEWAY_API_KEY: 'synthetic-paid-gateway-key', LAB_MODEL: 'paid-model' }, async () => {
+      const modelClient = await avalaiClient(fixture());
+      assert.equal(modelClient.baseURL, 'https://api.groq.com/openai/v1');
+      assert.equal(modelClient.maxRetries, 0);
+      const metadata = await configuredModels(fixture());
+      assert.deepEqual(metadata, {
+        provider: 'groq-free', free_only: true, lab: 'qwen/qwen3.8-27b', lab_interpreter: 'openai/gpt-oss-120b',
+        lab_fallback: 'qwen/qwen3.8-27b', navigator: 'openai/gpt-oss-120b', navigator_fallback: 'openai/gpt-oss-120b',
+        support: 'openai/gpt-oss-120b', support_fallback: 'openai/gpt-oss-120b'
+      });
+      assert.equal(JSON.stringify(metadata).includes(environmentKey), false);
+      await sdkCalls(modelClient, async requests => {
+        await modelClient.chat.completions.create({ model: LAB_PRIMARY_MODEL, messages: [] });
+        assert.equal(requests[0].authorization, `Bearer ${environmentKey}`);
+        assert.equal(requests[0].url, 'https://api.groq.com/openai/v1/chat/completions');
+      });
+    });
+  }
 });
 
-test('catalog choices prefer a distinct available fallback and a smaller support model', async () => {
-  await withModels({}, async () => json({ data: ['openai/gpt-5.2', 'openai/gpt-4.1', 'openai/gpt-4.1-mini'].map(id => ({ id })) }), async models => {
-    assert.deepEqual(await models.configuredModels(), {
-      provider: 'vercel-ai-gateway', lab: 'openai/gpt-5.2', lab_fallback: 'openai/gpt-4.1',
-      navigator: 'openai/gpt-5.2', navigator_fallback: 'openai/gpt-4.1',
-      support: 'openai/gpt-4.1-mini', support_fallback: 'openai/gpt-4.1'
+test('an encrypted private free key takes precedence over environment keys without exposing it in metadata', async () => {
+  await withConfiguration({ FREE_AI_API_KEY: environmentKey, GROQ_API_KEY: environmentKey,
+    FREE_AI_ACCOUNT_CONFIRMED: 'true', AVALAI_API_KEY: 'synthetic-paid-key' }, async () => {
+    const f = fixture(stored());
+    const metadata = await configuredModels(f);
+    assert.equal(metadata.provider, 'groq-free');
+    assert.equal(JSON.stringify(metadata).includes(syntheticKey), false);
+    for (const field of ['api_key', 'encrypted_api_key', 'ciphertext']) assert.equal(Object.hasOwn(metadata, field), false);
+    const modelClient = await avalaiClient(f);
+    await sdkCalls(modelClient, async requests => {
+      await modelClient.chat.completions.create({ model: LAB_INTERPRETATION_MODEL, messages: [] });
+      assert.equal(requests[0].authorization, `Bearer ${syntheticKey}`);
     });
   });
 });
 
-test('an unavailable explicit model fails closed instead of silently ignoring configuration', async () => {
-  await withModels({ GATEWAY_LAB_FALLBACK_MODEL: 'openai/missing-model' }, async () => json({ data: [{ id: 'openai/gpt-4.1' }] }), async models => {
-    assert.equal(await models.avalaiClient(), null);
-    assert.deepEqual(await models.configuredModels(), { provider: 'unconfigured' });
+test('an explicitly cleared private key disables a confirmed environment key', async () => {
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    const f = fixture(stored({ encrypted_api_key: null }));
+    assert.equal(await avalaiClient(f), null);
+    assert.deepEqual(await configuredModels(f), unconfigured);
   });
 });
 
-test('shared primary and fallback aliases resolve to the same actual model', async () => {
-  const calls = [];
-  await withModels({ GATEWAY_LAB_MODEL: 'openai/gpt-5.6-terra', GATEWAY_LAB_FALLBACK_MODEL: 'openai/gpt-5.6-terra' }, async (input, options) => {
-    const request = new Request(input, options);
-    if (request.url.endsWith('/models')) return json({ data: [{ id: 'openai/gpt-5.6-terra' }, { id: 'openai/gpt-4.1' }] });
-    calls.push((await request.json()).model);
-    return json({ id: 'test-completion', choices: [{ message: { role: 'assistant', content: 'ok' } }] });
-  }, async models => {
-    const configured = await models.configuredModels();
-    assert.equal(models.LAB_PRIMARY_MODEL, models.LAB_FALLBACK_MODEL);
-    assert.equal(configured.lab, configured.lab_fallback);
-    const client = await models.avalaiClient();
-    client.fetch = globalThis.fetch;
-    await client.chat.completions.create({ model: models.LAB_PRIMARY_MODEL, messages: [] });
-  });
-  assert.deepEqual(calls, ['openai/gpt-5.6-terra']);
-});
-
-test('available Astra and Sol take priority over older vision models regardless of catalog order', async () => {
-  await withModels({}, async () => json({ data: ['openai/gpt-4.1', 'openai/gpt-5.6-sol', 'openai/gpt-6.1-sol', 'openai/gpt-6-astra', 'openai/gpt-4.1-mini'].map(id => ({ id })) }), async models => {
-    const configured = await models.configuredModels();
-    assert.equal(models.LAB_PRIMARY_MODEL, 'openai/gpt-6-astra');
-    assert.equal(models.LAB_FALLBACK_MODEL, 'openai/gpt-6.1-sol');
-    assert.equal(configured.lab, 'openai/gpt-6-astra');
-    assert.equal(configured.lab_fallback, 'openai/gpt-6.1-sol');
-    assert.equal(configured.navigator, 'openai/gpt-5.6-sol');
-    assert.equal(configured.support, 'openai/gpt-4.1-mini');
+test('unconfirmed, paid and malformed private configurations fail closed despite a usable environment key', async () => {
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    for (const overrides of [{ free_account_confirmed: false }, { free_only: false }, { provider: 'avalai' },
+      { provider: 'custom' }, { version: 2 }, { encrypted_api_key: { version: 1, iv: 'bad', ciphertext: 'bad', tag: 'bad' } }]) {
+      const f = fixture(stored(overrides));
+      assert.equal(await avalaiClient(f), null);
+      assert.deepEqual(await configuredModels(f), unconfigured);
+    }
   });
 });
 
-test('gateway model remapping preserves SDK request options and does not mutate the caller payload', async t => {
+test('database lookup errors and encryption-key rotation never fall back to environment credentials', async () => {
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    const brokenDatabase = fixture(null, { message: 'private database details' });
+    assert.equal(await avalaiClient(brokenDatabase), null);
+    assert.deepEqual(await configuredModels(brokenDatabase), unconfigured);
+    const f = fixture(stored());
+    process.env.SESSION_SECRET = 'a-different-synthetic-encryption-secret-at-least-32-characters';
+    assert.equal(await avalaiClient(f), null);
+    assert.deepEqual(await configuredModels(f), unconfigured);
+  });
+});
+
+test('paid, unknown and absent model IDs are blocked before the SDK can send a request', async () => {
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    const modelClient = await avalaiClient(fixture());
+    await sdkCalls(modelClient, async requests => {
+      for (const model of ['openai/gpt-6-astra', 'google/gemini-3.8-flash', 'qwen/unknown', '', undefined]) {
+        assert.throws(() => modelClient.chat.completions.create({ model, messages: [] }), { code: 'FREE_MODEL_NOT_ALLOWED' });
+      }
+      assert.throws(() => modelClient.chat.completions.create(null), { code: 'FREE_MODEL_NOT_ALLOWED' });
+      assert.equal(requests.length, 0);
+    });
+  });
+});
+
+test('vision requests cap output and remove incompatible reasoning fields without modifying the caller payload', async () => {
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    const modelClient = await avalaiClient(fixture());
+    await sdkCalls(modelClient, async requests => {
+      const original = { model: LAB_PRIMARY_MODEL, messages: [{ role: 'user', content: [
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,c3ludGhldGlj' } }] }],
+        max_completion_tokens: 6000, reasoning_effort: 'high', include_reasoning: true, safety_identifier: 'synthetic-user-hash' };
+      await modelClient.chat.completions.create(original);
+      const sent = requests[0].body;
+      assert.equal(sent.model, LAB_PRIMARY_MODEL);
+      assert.equal(sent.max_completion_tokens, 2000);
+      assert.equal(sent.reasoning_effort, 'none');
+      assert.equal(sent.reasoning_format, 'hidden');
+      assert.equal(Object.hasOwn(sent, 'include_reasoning'), false);
+      assert.equal(Object.hasOwn(sent, 'safety_identifier'), false);
+      assert.equal(sent.user, 'synthetic-user-hash');
+      assert.deepEqual(sent.messages, original.messages);
+      assert.equal(original.max_completion_tokens, 6000);
+      assert.equal(original.reasoning_effort, 'high');
+      assert.equal(original.include_reasoning, true);
+      assert.equal(original.safety_identifier, 'synthetic-user-hash');
+      await modelClient.chat.completions.create({ model: LAB_PRIMARY_MODEL, messages: [], max_completion_tokens: 1500 });
+      assert.equal(requests[1].body.max_completion_tokens, 1500);
+    });
+  });
+});
+
+test('text requests enforce the free output budget and GPT-OSS compatible reasoning settings', async () => {
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    const modelClient = await avalaiClient(fixture());
+    await sdkCalls(modelClient, async requests => {
+      const original = { model: LAB_INTERPRETATION_MODEL, messages: [{ role: 'user', content: 'synthetic verified lab values' }],
+        max_completion_tokens: 10000, reasoning_format: 'raw', reasoning_effort: 'high', include_reasoning: true, user: 'existing-hash' };
+      await modelClient.chat.completions.create(original);
+      const sent = requests[0].body;
+      assert.equal(sent.max_completion_tokens, 3000);
+      assert.equal(sent.reasoning_effort, 'low');
+      assert.equal(sent.include_reasoning, false);
+      assert.equal(Object.hasOwn(sent, 'reasoning_format'), false);
+      assert.equal(sent.user, 'existing-hash');
+      assert.equal(original.reasoning_format, 'raw');
+      assert.equal(original.include_reasoning, true);
+      assert.equal(original.max_completion_tokens, 10000);
+      await modelClient.chat.completions.create({ model: LAB_INTERPRETATION_MODEL, messages: [], max_completion_tokens: 1200 });
+      assert.equal(requests[1].body.max_completion_tokens, 1200);
+    });
+  });
+});
+
+test('default budgets and nonstring safety identifiers produce documented request fields', async () => {
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    const modelClient = await avalaiClient(fixture());
+    await sdkCalls(modelClient, async requests => {
+      for (const model of [LAB_PRIMARY_MODEL, LAB_INTERPRETATION_MODEL]) {
+        await modelClient.chat.completions.create({ model, messages: [], safety_identifier: { private: 'synthetic' } });
+      }
+      assert.deepEqual(requests.map(request => request.body.max_completion_tokens), [2000, 3000]);
+      assert.ok(requests.every(request => !Object.hasOwn(request.body, 'safety_identifier')));
+      assert.ok(requests.every(request => !Object.hasOwn(request.body, 'user')));
+    });
+  });
+});
+
+test('extended timeouts, abort signals and request headers reach the SDK unchanged', async t => {
   const previousCreate = OpenAI.Chat.Completions.prototype.create;
   t.after(() => { OpenAI.Chat.Completions.prototype.create = previousCreate; });
   let captured;
   OpenAI.Chat.Completions.prototype.create = async function(payload, options) { captured = { payload, options }; return { choices: [] }; };
-  await withModels({}, async () => json({ data: [{ id: 'openai/gpt-6.1-sol' }] }), async models => {
-    const modelClient = await models.avalaiClient();
-    const original = { model: models.LAB_PRIMARY_MODEL, messages: [], reasoning_effort: 'low' };
-    const requestOptions = { timeout: 110000, signal: new AbortController().signal, headers: { 'x-lab-test': 'synthetic' } };
-    await modelClient.chat.completions.create(original, requestOptions);
-    assert.equal(captured.payload.model, 'openai/gpt-6.1-sol');
-    assert.equal(captured.payload.reasoning_effort, 'low');
-    assert.equal(captured.options, requestOptions, 'extended timeout and cancellation must reach the bound SDK method');
-    assert.equal(original.model, 'openai/gpt-6-astra');
-    assert.equal(original.reasoning_effort, 'low');
-  });
-});
-
-test('a catalog remap to legacy GPT-4.1 strips reasoning effort before the real SDK sends the request', async () => {
-  let sent;
-  await withModels({}, async (input, options) => {
-    const request = new Request(input, options);
-    if (request.url.endsWith('/models')) return json({ data: [{ id: 'openai/gpt-4.1' }] });
-    sent = await request.json();
-    return json({ id: 'test-completion', model: 'openai/gpt-4.1', choices: [{ message: { role: 'assistant', content: 'ok' } }] });
-  }, async models => {
-    const modelClient = await models.avalaiClient();
-    modelClient.fetch = globalThis.fetch;
-    const original = { model: models.LAB_PRIMARY_MODEL, messages: [{ role: 'user', content: 'synthetic' }], reasoning_effort: 'low' };
-    await modelClient.chat.completions.create(original, { timeout: 110000 });
-    assert.equal(sent.model, 'openai/gpt-4.1');
-    assert.equal(Object.hasOwn(sent, 'reasoning_effort'), false);
-    assert.equal(original.reasoning_effort, 'low');
-    assert.equal(original.model, 'openai/gpt-6-astra');
-  });
-});
-
-test('configured AvalAI credentials use the existing provider without a gateway catalog request', async () => {
-  await withModels({ AVALAI_API_KEY: 'test-avalai-token', AVALAI_BASE_URL: 'https://api.avalai.ir/v1' }, async () => { throw new Error('unexpected catalog request'); }, async models => {
-    const client = await models.avalaiClient();
-    assert.equal(client.baseURL, 'https://api.avalai.ir/v1');
-    assert.equal((await models.configuredModels()).provider, 'avalai');
+  await withConfiguration({ GROQ_API_KEY: environmentKey, FREE_AI_ACCOUNT_CONFIRMED: 'true' }, async () => {
+    const modelClient = await avalaiClient(fixture());
+    const options = { timeout: 80000, signal: new AbortController().signal, headers: { 'x-lab-test': 'synthetic' } };
+    await modelClient.chat.completions.create({ model: LAB_PRIMARY_MODEL, messages: [] }, options);
+    assert.equal(captured.options, options);
+    assert.equal(captured.payload.model, LAB_PRIMARY_MODEL);
   });
 });

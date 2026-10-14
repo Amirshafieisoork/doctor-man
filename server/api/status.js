@@ -1,6 +1,7 @@
 import { supabase, usingSupabaseProxy } from './_lib/db.js';
 import { configuredModels } from './_lib/ai-models.js';
 import { isSessionConfigured } from './_lib/session.js';
+import { privateAIEncryptionReady } from './_lib/private-ai-settings.js';
 
 export default async function handler(req,res){
   if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'});
@@ -15,7 +16,7 @@ export default async function handler(req,res){
     success:database,
     service:'drman',
     database:{ok:database,mode:usingSupabaseProxy?'private-edge-proxy':'direct-secret'},
-    ai:{configured:models.provider!=='unconfigured',provider:models.provider,models},
+    ai:{configured:models.provider!=='unconfigured',provider:models.provider,free_only:true,encryption_ready:privateAIEncryptionReady(),models},
     payments:{digipay_configured:missingDigiPayFields.length===0,missing_fields:missingDigiPayFields},
     admin:{configured:Boolean(process.env.ADMIN_PASSWORD)},
     sessions:{configured:isSessionConfigured()},

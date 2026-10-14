@@ -115,7 +115,7 @@ export default async function handler(req, res) {
   if (!session) return;
   if(!String(req.headers?.['content-type']||'').toLowerCase().startsWith('multipart/form-data;'))return res.status(415).json({success:false,error:'تصاویر باید به شکل فایل ارسال شوند'});
   const client = await avalaiClient();
-  if (!client) return res.status(503).json({ success: false, error: 'سرویس هوش مصنوعی هنوز تنظیم نشده است' });
+  if (!client) return res.status(503).json({ success: false, code:'FREE_AI_NOT_CONFIGURED', error: 'کلید سرویس هوش مصنوعی رایگان هنوز در تنظیمات مدیر ثبت نشده است.' });
 
   let storedPaths = [];
   let resultSaved = false;

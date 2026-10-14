@@ -7,7 +7,8 @@ import {createToken} from '../server/api/_lib/session.js';
 process.env.SUPABASE_URL='https://ticket-tests.invalid';
 process.env.SUPABASE_SECRET_KEY='test-only-database-key';
 process.env.SESSION_SECRET='test-only-session-secret-32-characters';
-process.env.AVALAI_API_KEY='test-only-model-key';
+process.env.FREE_AI_API_KEY='test-only-model-key';
+process.env.FREE_AI_ACCOUNT_CONFIRMED='true';
 const {supabase}=await import('../server/api/_lib/db.js');
 const {default:userTickets}=await import('../server/api/support-tickets.js');
 const {default:adminTickets}=await import('../server/api/admin-support-tickets.js');
@@ -27,7 +28,7 @@ function services(t,{aiEnabled=false,status='open',legacyUsage=0,ticketUsage=0,l
     const body=['GET','HEAD'].includes(req.method)?null:await req.json();
     state.dbCalls.push({name,method:req.method,body,query});
     if(name==='users')return json([{id:query.get('id')?.slice(3)||userId,status:state.status,session_version:state.sessionVersion,name:'نام',phone:'09123456789',plans:{id:'free-plan',active:true,support_daily_limit:limit}}]);
-    if(name==='app_settings')return json([{value:{support_chat:!aiDisabled}}]);
+    if(name==='app_settings')return query.get('key')==='eq.private_ai'?json([]):json([{value:{support_chat:!aiDisabled}}]);
     if(name==='auth_rate_events'){
       if(req.method==='HEAD')return new Response(null,{status:200,headers:{'Content-Range':`*/${rateCount}`}});
       if(req.method==='GET')return json([{created_at:new Date().toISOString()}]);

@@ -1,6 +1,5 @@
 import { validateLabResult } from './lab-validation.js';
-import { safeErrorMetadata } from './errors.js';
-import { LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './ai-models.js';
+import { LAB_INTERPRETATION_MODEL } from './ai-models.js';
 
 export const LAB_SCHEMA = {
   type: 'object',
@@ -52,7 +51,7 @@ function normalizeResult(value) {
   };
 }
 
-export async function callLabModel(client, model, content, safetyIdentifier, options = {}) {
+export async function callLabModel(client, model = LAB_INTERPRETATION_MODEL, content, safetyIdentifier, options = {}) {
   const payload = {
     model,
     messages: [
@@ -62,13 +61,14 @@ export async function callLabModel(client, model, content, safetyIdentifier, opt
       },
       { role: 'user', content }
     ],
-    max_completion_tokens: 6000,
-    ...(/(?:^|\/)gpt-6(?:[.-]|$)/.test(model) ? { reasoning_effort: 'low' } : {}),
+    max_completion_tokens: 3000,
+    reasoning_effort: 'low',
+    include_reasoning: false,
     response_format: {
       type: 'json_schema',
       json_schema: { name: 'drman_lab_analysis', strict: true, schema: LAB_SCHEMA }
     },
-    safety_identifier: safetyIdentifier
+    user: safetyIdentifier
   };
   return client.chat.completions.create(payload, { timeout: 110000, ...options });
 }
@@ -98,32 +98,17 @@ export function parseLabCompletion(response) {
 export function labErrorResponse(error, stage = 'provider') {
   const status = Number(error?.status);
   if (status === 401 || status === 403) return { status: 503, code: 'AI_AUTH_UNAVAILABLE', message: 'اتصال سرویس هوش مصنوعی نیاز به بررسی مدیر دارد. تصویر ذخیره‌شده را در پرونده سلامت می‌توانید ببینید.' };
-  if (status === 402) return { status: 503, code: 'AI_CREDIT_UNAVAILABLE', message: 'اعتبار سرویس هوش مصنوعی کافی نیست. مدیر باید اتصال سرویس را بررسی کند؛ تصویر شما در پرونده سلامت باقی می‌ماند.' };
-  if (status === 429) return { status: 503, code: 'AI_BUSY', message: 'سرویس هوش مصنوعی شلوغ است. کمی بعد دوباره تلاش کنید؛ تصویر شما در پرونده سلامت باقی می‌ماند.' };
+  if (status === 402) return { status: 503, code: 'FREE_ACCOUNT_UNAVAILABLE', message: 'تنظیمات حساب رایگان سرویس نیاز به بررسی مدیر دارد. تصویر ذخیره‌شده در پرونده سلامت در دسترس است.' };
+  if (status === 429) return { status: 503, code: 'FREE_RATE_LIMIT', message: 'سهمیه دقیقه‌ای یا روزانه سرویس رایگان پر شده است. بعداً دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت باقی می‌ماند.' };
+  if (error?.code === 'FREE_INPUT_LIMIT') return { status: 413, code: 'FREE_INPUT_LIMIT', message: 'این مجموعه برای تحلیل با سهمیه رایگان بزرگ است. برگه‌ها را در چند نوبت با صفحات کمتر تحلیل کنید؛ اصل تصاویر در پرونده سلامت ذخیره شده است.' };
   if (['APIConnectionTimeoutError', 'TimeoutError', 'AbortError'].includes(error?.name) || error?.code === 'AI_TIMEOUT') return { status: 504, code: 'AI_TIMEOUT', message: 'تفسیر بیشتر از زمان مجاز طول کشید. کمی بعد دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت در دسترس است.' };
   if (error?.code === 'AI_REFUSED') return { status: 422, code: 'AI_REFUSED', message: 'این تصویر توسط سرویس قابل تفسیر نبود. یک برگه آزمایش خوانا انتخاب کنید.' };
-  if (['AI_OUTPUT_TRUNCATED','AI_RESPONSE_EMPTY','AI_RESPONSE_INVALID'].includes(error?.code)) return { status: 502, code: 'AI_RESPONSE_INVALID', message: 'پاسخ کامل و قابل‌اعتماد از هوش مصنوعی دریافت نشد. دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت باقی می‌ماند.' };
+  if (['AI_OUTPUT_TRUNCATED','AI_RESPONSE_EMPTY','AI_RESPONSE_INVALID','AI_GROUNDING_FAILED'].includes(error?.code)) return { status: 502, code: 'AI_RESPONSE_INVALID', message: 'پاسخ کامل و قابل‌اعتماد از هوش مصنوعی دریافت نشد. دوباره تلاش کنید؛ تصویر ذخیره‌شده در پرونده سلامت باقی می‌ماند.' };
   if (stage === 'persist' || stage === 'storage') return { status: 503, code: 'ANALYSIS_SAVE_FAILED', message: 'ثبت نتیجه تحلیل انجام نشد. دوباره تلاش کنید؛ اصل تصویر ذخیره‌شده را در پرونده سلامت بررسی کنید.' };
   return { status: 503, code: 'AI_UNAVAILABLE', message: 'سرویس تحلیل موقتاً پاسخ نداد. کمی بعد دوباره تلاش کنید؛ اصل تصویر ذخیره‌شده در پرونده سلامت در دسترس است.' };
 }
 
-export async function analyzeLabImages(client, content, safetyIdentifier, models = [LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL]) {
-  const attempts = models.filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 2);
-  const deadline = Date.now() + 190000;
-  let lastError;
-  for (const [index, model] of attempts.entries()) {
-    try {
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) throw failure('AI_TIMEOUT');
-      const response = await callLabModel(client, model, content, safetyIdentifier, { timeout: Math.min(index === 0 ? 110000 : 80000, remaining), signal: AbortSignal.timeout(remaining) });
-      return { parsed: parseLabCompletion(response), model: response.model || model, requestId: response._request_id || null, usage: response.usage };
-    } catch (error) {
-      lastError = error;
-      console.error('lab model attempt failed', model, { ...safeErrorMetadata(error), classification: labErrorResponse(error).code });
-      // A second model cannot fix credentials or a depleted shared balance.
-      if ([401, 402, 403].includes(Number(error?.status))) break;
-    }
-  }
-  throw lastError || new Error('AI_ANALYSIS_FAILED');
+export async function analyzeLabImages(client, content, safetyIdentifier) {
+  const { analyzeFreeLabImages } = await import('./free-lab-ai.js');
+  return analyzeFreeLabImages(client, content, safetyIdentifier);
 }
-
