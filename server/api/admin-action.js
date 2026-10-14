@@ -1,6 +1,7 @@
 import { safeErrorMetadata } from './_lib/errors.js';
 import { requireAdmin } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
+import { erasePatientAccount } from './_lib/account-erasure.js';
 
 function text(v,max=1000){return v==null?'':String(v).trim().slice(0,max)}
 async function audit(action,type,id,metadata={}){try{await supabase.from('audit_logs').insert({actor_type:'admin',action,resource_type:type,resource_id:id,metadata})}catch{}}
@@ -13,51 +14,30 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ success: false, error: 'شناسه الزامی است' });
 
   try {
-    if (action === 'process-deletion') {
-      const { data: request, error: requestError } = await supabase.from('account_deletion_requests')
-        .select('id,user_id,status,users(name,phone,account_type)').eq('id',id).maybeSingle();
-      if(requestError) throw requestError;
-      if(!request) return res.status(404).json({success:false,error:'درخواست حذف پیدا نشد'});
-      if(!['requested','processing'].includes(request.status)) return res.status(409).json({success:false,error:'این درخواست قابل پردازش نیست'});
-      if(request.users?.account_type!=='patient') return res.status(409).json({success:false,error:'حساب حرفه‌ای باید به‌صورت دستی و حقوقی بررسی شود'});
-
-      // Claim and freeze the account before taking the private-file inventory.
-      // Cleanup failures stay in processing and may be retried by an admin.
-      if(request.status==='requested'){
-        const {data:claimed,error:claimError}=await supabase.from('account_deletion_requests')
-          .update({status:'processing'}).eq('id',id).eq('status','requested').select('id').maybeSingle();
-        if(claimError) throw claimError;
-        if(!claimed) return res.status(409).json({success:false,error:'وضعیت درخواست حذف تغییر کرده است؛ صفحه را تازه کنید'});
-      }
-      const {data:blocked,error:blockError}=await supabase.from('users').update({status:'blocked'})
-        .eq('id',request.user_id).eq('account_type','patient').select('id,status').maybeSingle();
-      if(blockError) throw blockError;
-      if(!blocked||blocked.status!=='blocked') throw new Error('ACCOUNT_ERASURE_FREEZE_NOT_CONFIRMED');
-
-      const { data: ps, error: patientsError } = await supabase.from('patients').select('id').eq('owner_user_id',request.user_id);
-      if(patientsError) throw patientsError;
-      const patientIds=(ps||[]).map(x=>x.id);
-      const [{data:docs,error:documentsError},{data:tests,error:testsError}]=await Promise.all([
-        patientIds.length?supabase.from('medical_documents').select('storage_path').in('patient_id',patientIds):Promise.resolve({data:[]}),
-        supabase.from('test_results').select('image_paths').eq('user_id',request.user_id)
-      ]);
-      if(documentsError) throw documentsError;
-      if(testsError) throw testsError;
-      const docPaths=(docs||[]).map(x=>x.storage_path).filter(Boolean);
-      const labPaths=(tests||[]).flatMap(x=>Array.isArray(x.image_paths)?x.image_paths:[]).filter(Boolean);
-      async function removeChunks(bucket,paths){
-        for(let i=0;i<paths.length;i+=100){
-          const {error}=await supabase.storage.from(bucket).remove(paths.slice(i,i+100));
-          if(error) throw error;
+    if (action === 'delete-user' || action === 'process-deletion') {
+      let requestId = id;
+      if (action === 'delete-user') {
+        const reason = text(req.body?.reason, 500);
+        if (!reason) return res.status(400).json({ success: false, error: 'دلیل حذف حساب لازم است' });
+        const { data: user, error: userError } = await supabase.from('users').select('id,name,phone,account_type,status').eq('id', id).maybeSingle();
+        if (userError) throw userError;
+        if (!user || user.phone?.startsWith('deleted-')) return res.status(404).json({ success: false, error: 'حساب پیدا نشد یا قبلاً حذف شده است' });
+        if (text(req.body?.confirm_phone, 40) !== user.phone) return res.status(400).json({ success: false, error: 'برای تأیید حذف، شماره موبایل همین حساب را دقیق وارد کنید' });
+        if (user.account_type !== 'patient') return res.status(409).json({ success: false, error: 'حذف حساب پزشک یا همکار نیاز به تعیین تکلیف سوابق حرفه‌ای دارد؛ می‌توانید حساب را مسدود کنید' });
+        const { data: open, error: openError } = await supabase.from('account_deletion_requests').select('id').eq('user_id', id).in('status',['requested','processing']).maybeSingle();
+        if (openError) throw openError;
+        if (open) requestId = open.id;
+        else {
+          const { data: request, error } = await supabase.from('account_deletion_requests').insert({ user_id: id, reason, admin_note: reason, status: 'requested' }).select('id').single();
+          if (error) throw error;
+          requestId = request.id;
         }
+        await audit('account.erasure_admin_requested','user',id,{request_id:requestId,reason});
       }
-      await removeChunks('medical-documents',docPaths);
-      await removeChunks('lab-images',labPaths);
-      const {data:result,error}=await supabase.rpc('process_patient_account_erasure',{p_request_id:id});
-      if(error) throw error;
-      if(result?.ok!==true) throw new Error('ACCOUNT_ERASURE_NOT_CONFIRMED');
-      await audit('account.erasure_processed','account_deletion_request',id,{user_id:request.user_id,documents_removed:docPaths.length,lab_images_removed:labPaths.length});
-      return res.status(200).json({success:true,result});
+      const erased = await erasePatientAccount(supabase, requestId);
+      if (erased.error) return res.status(erased.status).json({ success: false, error: erased.error });
+      await audit('account.erasure_processed','account_deletion_request',requestId,{user_id:erased.user_id,documents_removed:erased.documents_removed,lab_images_removed:erased.lab_images_removed});
+      return res.status(200).json({ success: true, result: erased.result, can_register_again: true });
     }
     if (action === 'reject-deletion') {
       const note=text(req.body?.note||'نیازمند بررسی دستی',1000);
@@ -80,18 +60,23 @@ export default async function handler(req, res) {
     }
     if (action === 'block-user' || action === 'unblock-user') {
       const status = action === 'block-user' ? 'blocked' : 'active';
+      const { data: user, error: lookupError } = await supabase.from('users').select('id,phone').eq('id',id).maybeSingle();
+      if(lookupError)throw lookupError;if(!user||user.phone?.startsWith('deleted-'))return res.status(404).json({success:false,error:'حساب پیدا نشد یا حذف شده است'});
       const { error } = await supabase.from('users').update({ status }).eq('id', id); if (error) throw error;
       await audit(`user.${status}`,'user',id); return res.status(200).json({ success: true, status });
     }
     if (action === 'set-plan') {
       const planId = String(req.body?.plan_id || ''); if (!planId) return res.status(400).json({ success: false, error: 'پلن انتخاب نشده است' });
-      const reason = text(req.body?.reason||'',500); if(reason.length<5)return res.status(400).json({success:false,error:'برای تغییر دستی پلن، دلیل حداقل ۵ حرفی لازم است'});
-      const { data: plan } = await supabase.from('plans').select('id,duration_days,active,name,slug,price').eq('id', planId).single();
+      const reason = text(req.body?.reason||'',500); if(!reason)return res.status(400).json({success:false,error:'برای تغییر دستی پلن، دلیل لازم است'});
+      const {data:user,error:userError}=await supabase.from('users').select('id,phone,plan_id,status').eq('id',id).maybeSingle();
+      if(userError)throw userError;if(!user||user.phone?.startsWith('deleted-'))return res.status(404).json({success:false,error:'کاربر پیدا نشد'});
+      const { data: plan, error: planError } = await supabase.from('plans').select('id,duration_days,active,name,slug,price').eq('id', planId).single();
+      if (planError) throw planError;
       if (!plan) return res.status(404).json({ success: false, error: 'پلن پیدا نشد' });
       if (!plan.active) return res.status(409).json({ success: false, error: 'پلن غیرفعال را نمی‌توان به کاربر اختصاص داد' });
       const now = new Date(), expires = new Date(now.getTime() + Number(plan.duration_days || 30) * 86400000);
       const { error } = await supabase.from('users').update({ plan_id: plan.id, plan_started_at: now.toISOString(), plan_expires_at: expires.toISOString() }).eq('id', id); if (error) throw error;
-      await audit('user.plan_manual_grant','user',id,{plan_id:plan.id,plan_name:plan.name,plan_slug:plan.slug,plan_price:plan.price,reason}); return res.status(200).json({ success: true });
+      await audit('user.plan_manual_grant','user',id,{plan_id:plan.id,plan_name:plan.name,plan_slug:plan.slug,plan_price:plan.price,previous_plan_id:user.plan_id,reason}); return res.status(200).json({ success: true });
     }
     if (action === 'mark-payment-failed') {
       const { error } = await supabase.from('payments').update({ status: 'failed' }).eq('id', id).neq('status', 'paid'); if (error) throw error;
@@ -99,7 +84,10 @@ export default async function handler(req, res) {
     }
     if (['approve-doctor','reject-doctor','suspend-doctor','publish-doctor','hide-doctor'].includes(action)) {
       let patch={updated_at:new Date().toISOString()};
-      if(action==='approve-doctor')patch={...patch,verification_status:'verified',public_profile:true};
+      if(action==='approve-doctor')return res.status(409).json({success:false,error:'تأیید پزشک فقط پس از بررسی تصویر مجوز و استعلام مستقل در بخش بررسی مجوز انجام می‌شود'});
+      const {data:existing,error:lookupError}=await supabase.from('doctor_profiles').select('id,verification_status').eq('id',id).maybeSingle();
+      if(lookupError)throw lookupError;if(!existing)return res.status(404).json({success:false,error:'پزشک پیدا نشد'});
+      if(action==='publish-doctor'&&existing.verification_status!=='verified')return res.status(409).json({success:false,error:'فقط پزشک تأییدشده قابل انتشار است'});
       if(action==='reject-doctor')patch={...patch,verification_status:'rejected',public_profile:false};
       if(action==='suspend-doctor')patch={...patch,verification_status:'suspended',public_profile:false};
       if(action==='publish-doctor')patch.public_profile=true;
@@ -114,14 +102,15 @@ export default async function handler(req, res) {
       await audit(`organization.${verified?'verified':'unverified'}`,'organization',id,{name:data.name}); return res.status(200).json({success:true,organization:data});
     }
     if (action === 'appointment-status') {
+      const reason=text(req.body?.reason,500);if(!reason)return res.status(400).json({success:false,error:'دلیل تغییر وضعیت نوبت لازم است'});
       const status=String(req.body?.status||''); if(!['requested','confirmed','completed','cancelled','no_show'].includes(status)) return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
       const patch={status,updated_at:new Date().toISOString()}; if(req.body?.cancellation_reason!==undefined)patch.cancellation_reason=text(req.body.cancellation_reason,1000);
       const {data,error}=await supabase.from('appointments').update(patch).eq('id',id).select('id,patient_id,doctor_id,status').single(); if(error)throw error;
-      await audit(`appointment.${status}`,'appointment',id); return res.status(200).json({success:true,appointment:data});
+      await audit(`appointment.${status}`,'appointment',id,{reason}); return res.status(200).json({success:true,appointment:data});
     }
     if (action === 'task-status') {
-      const status=String(req.body?.status||''); if(!['open','completed','cancelled'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
-      const {data,error}=await supabase.from('care_tasks').update({status,completed_at:status==='completed'?new Date().toISOString():null}).eq('id',id).select('*').single(); if(error)throw error;
+      const rawStatus=String(req.body?.status||''); const status=({completed:'done',cancelled:'dismissed'})[rawStatus]||rawStatus; if(!['open','done','dismissed'].includes(status))return res.status(400).json({success:false,error:'وضعیت نامعتبر است'});
+      const {data,error}=await supabase.from('care_tasks').update({status,completed_at:status==='done'?new Date().toISOString():null}).eq('id',id).select('*').single(); if(error)throw error;
       await audit(`care_task.${status}`,'care_task',id); return res.status(200).json({success:true,item:data});
     }
     if (action === 'order-status') {

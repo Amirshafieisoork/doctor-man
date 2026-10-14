@@ -57,9 +57,9 @@ test('revoked, expired and messages-only grants never issue a document URL',asyn
 });
 test('verified doctor document URL stays private and never outlives consent expiry',async()=>{
   const grantExpiry=new Date(Date.now()+90000).toISOString();
-  const calls=stubDatabase(table=>{
+  const calls=stubDatabase((table,ops)=>{
     if(table==='medical_documents')return {data:{id:'document',patient_id:'patient',storage_path:'private/path',title:'Shared document',mime_type:'application/pdf'}};
-    if(table==='patients')return {data:null};
+    if(table==='patients')return {data:ops.some(([op,field])=>op==='eq'&&field==='owner_user_id')?null:{owner_user_id:'patient-owner'}};
     if(table==='doctor_profiles')return {data:{id:'doctor',verification_status:'verified'}};
     if(table==='patient_access_grants')return {data:{id:'grant',status:'active',scope:['documents'],expires_at:grantExpiry}};
     return {data:[]};

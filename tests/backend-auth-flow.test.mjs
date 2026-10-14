@@ -28,7 +28,7 @@ function response() {
     setHeader(key, value) { this.headers[key] = value; }, getHeader(key) { return this.headers[key]; }
   };
 }
-function database(t, { recordingFailure = '', reserveFailure = false, countFailure = false, count = 0, rateEvents, expiryFailure = '', expiryValue } = {}) {
+function database(t, { recordingFailure = '', reserveFailure = false, countFailure = false, count = 0, rateEvents, expiryFailure = '', expiryValue, sessionVersion = 0 } = {}) {
   const calls = [];
   const client = createClient('https://auth-flow-tests.invalid', 'test-only-client-key', {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -59,7 +59,7 @@ function database(t, { recordingFailure = '', reserveFailure = false, countFailu
       if (table === 'plans') return json([{ id: 'free-plan', duration_days: 30 }]);
       if (table === 'users') {
         if (req.method === 'GET') return json(url.searchParams.get('select')?.includes('password')
-          ? [{ id: userId, phone, name: 'کاربر آزمایشی', status: 'active', password: passwordHash }] : []);
+          ? [{ id: userId, phone, name: 'کاربر آزمایشی', status: 'active', password: passwordHash, session_version: sessionVersion }] : []);
         if (req.method === 'POST') return json({ id: userId, phone, name: 'کاربر آزمایشی' }, 201);
       }
       throw new Error(`Unexpected fake request: ${req.method} ${table}`);
@@ -257,4 +257,12 @@ test('an unavailable count remains fail-closed without reserving an attempt or c
   const gate = await allowRate({ headers: {} }, { action: 'admin-login', subject: 'admin', limit: 5, windowMinutes: 30 });
   assert.equal(gate.allowed, false); assert.equal(gate.unavailable, true);
   assert.deepEqual(calls.map(call => call.method), ['HEAD']);
+});
+
+test('login after a reset signs the current session version without exposing private account fields',async t=>{
+  const {calls}=database(t,{sessionVersion:4});const res=await authenticate('login');
+  assertAuthenticated(res,'login');
+  assert.equal(getUserSession({headers:{cookie:res.headers['Set-Cookie']}}).ver,4);
+  assert.equal(res.body.user.session_version,undefined);
+  assert.match(calls.find(call=>call.table==='users').query.get('select'),/session_version/);
 });

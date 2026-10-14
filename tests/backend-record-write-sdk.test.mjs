@@ -64,7 +64,7 @@ function request(method, body) {
   return { method, body, headers: { cookie: 'drman_session=' + createToken({ sub: userId, role: 'user' }) } };
 }
 const cases = [
-  { name: 'family creation', handler: patients, method: 'POST', body: { relation: 'child', display_name: 'پرونده آزمون' }, table: 'patients', action: 'patient.created', status: 201 },
+  { name: 'family creation', handler: patients, method: 'POST', body: { relation: 'child', display_name: 'پرونده آزمون', sex: 'female' }, table: 'patients', action: 'patient.created', status: 201 },
   { name: 'family update', handler: patients, method: 'PATCH', body: { id: patientId, display_name: 'پرونده اصلاح‌شده' }, table: 'patients', action: 'patient.updated', status: 200 },
   { name: 'health creation', handler: healthEntry, method: 'POST', body: { type: 'condition', patient_id: patientId, name: entry.name }, table: 'patient_conditions', action: 'record.condition.created', status: 201 },
   { name: 'health update', handler: healthEntry, method: 'PATCH', body: { type: 'condition', patient_id: patientId, id: entryId, name: 'نام اصلاح‌شده' }, table: 'patient_conditions', action: 'record.condition.updated', status: 200 },

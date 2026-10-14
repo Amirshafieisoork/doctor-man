@@ -63,7 +63,7 @@ function pause() {
 function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThrows = false } = {}) {
   const saved = { from: supabase.from, storage: supabase.storage.from, rpc: supabase.rpc, create: OpenAI.Chat.Completions.prototype.create };
   t.after(() => { supabase.from = saved.from; supabase.storage.from = saved.storage; supabase.rpc = saved.rpc; OpenAI.Chat.Completions.prototype.create = saved.create; });
-  const state = { status: 'active', userExists: true, verificationError: false };
+  const state = { status: 'active', userExists: true, verificationError: false, supportTicket: null, supportMessages: [] };
   const calls = [], uploads = [], removals = [], rpcCalls = [];
   supabase.from = table => {
     const operations = [], query = {};
@@ -76,8 +76,11 @@ function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThr
       if (override !== undefined) return override;
       if (table === 'users') return state.verificationError ? { error: { code: 'ACCOUNT_CHECK_FAILURE' } }
         : { data: state.userExists ? { id: userId, status: state.status, plans: { active: true, name: 'آزمایشی', test_limit: 4, navigator_daily_limit: 3, support_daily_limit: 10 } } : null };
-      if (table === 'patients') return { data: { id: patientId, display_name: 'پرونده آزمایشی' } };
+      if (table === 'patients') return { data: { id: patientId, display_name: 'پرونده آزمایشی', sex: 'female' } };
       if (table === 'consent_records' && operation(operations, 'select')) return { data: { granted: true } };
+      if (table === 'support_tickets') return { data: state.supportTicket };
+      if (table === 'support_ticket_messages') return { data: state.supportMessages.slice().reverse() };
+      if (table === 'app_settings') return { data: { value: { support_chat: true } } };
       if (operation(operations, 'insert')) return { data: { id: 'saved-record', ...operation(operations, 'insert')[1] } };
       return { data: [], count: 0 };
     };
@@ -88,6 +91,18 @@ function services(t, { onAI, onUpload, onSign, onQuery, removalError, removalThr
   };
   supabase.rpc = async (name, args) => {
     rpcCalls.push({ name, args });
+    if (name === 'create_support_ticket') {
+      state.supportTicket = { id: '66666666-6666-4666-8666-666666666666', user_id: userId, title: args.p_title, category: args.p_category, status: 'waiting_admin', ai_enabled: true, tags: [] };
+      state.supportMessages.push({ sender_type: 'user', content: args.p_content });
+      return { data: state.supportTicket };
+    }
+    if (name === 'reserve_support_ai_reply') return { data: { reserved: true, reservation_id: reservationId, remaining_today: 9 } };
+    if (name === 'append_support_ticket_message') {
+      if (state.status !== 'active') return { data: { saved: false } };
+      state.supportMessages.push({ sender_type: args.p_sender_type, content: args.p_content });
+      return { data: { saved: true } };
+    }
+    if (name === 'release_support_ai_reservation') return { data: null };
     assert.equal(name, 'reserve_lab_analysis_quota');
     return { data: { allowed: true, reservation_id: reservationId, remaining: 3,
       expires_at: new Date(Date.now() + 900000).toISOString(), reserved_at: new Date().toISOString() } };
@@ -232,11 +247,14 @@ test('care-plan task lookup cannot finish with a write after account suspension'
   denied(res); assert.equal(writes(s.calls, 'care_tasks').length, 0);
 });
 
-test('suspension during support AI prevents both message and audit persistence', async t => {
+test('suspension during support AI retains the initial ticket but suppresses the late reply and response', async t => {
   const gate = pause(), s = services(t, { onAI: () => gate.wait() }), res = response();
   const running = support(request({ message: 'چطور پرونده بسازم؟' }), res);
   await gate.started; s.state.status = 'blocked'; gate.resume(); await running;
   denied(res); assert.equal(writes(s.calls, 'support_messages').length, 0);
+  assert.deepEqual(s.state.supportMessages.map(message => message.sender_type), ['user']);
+  assert.equal(s.state.supportMessages[0].content, 'چطور پرونده بسازم؟');
+  assert.ok(s.rpcCalls.some(call => call.name === 'release_support_ai_reservation'));
   assert.equal(writes(s.calls, 'audit_logs').length, 0);
 });
 
@@ -249,8 +267,9 @@ test('active accounts still persist documents, lab biomarkers, care plans and su
     const res = response(); await handler(req, res);
     assert.equal(res.statusCode, status); assert.equal(res.body.success, true); assert.equal(res.sent, 1);
   }
-  for (const table of ['medical_documents', 'test_results', 'lab_biomarkers', 'personalized_care_plans', 'support_messages']) {
+  for (const table of ['medical_documents', 'test_results', 'lab_biomarkers', 'personalized_care_plans']) {
     assert.ok(writes(s.calls, table).length > 0, `${table} must still persist normally`);
   }
+  assert.deepEqual(s.state.supportMessages.map(message => message.sender_type), ['user', 'assistant']);
   assert.equal(s.removals.length, 0); releasedReservation(s.calls);
 });

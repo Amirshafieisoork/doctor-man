@@ -1,18 +1,17 @@
 (() => {
   const MAX_PAGES = 4, MAX_INPUT = 4 * 1024 * 1024, PAGE_BUDGET = 900 * 1024;
   const $ = id => document.getElementById(id);
-  const files = [], previewUrls = [];
+  const files = [], originals = [], previewUrls = [], patientProfiles = new Map();
   let activePage = 0, account = null, accountFailed = false, busy = false, preparing = false;
   const fa = n => Number(n).toLocaleString('fa-IR');
-  const picker = $('picker'), slots = $('slots'), analyze = $('analyze'), consent = $('labConsent');
+  const picker = $('picker'), slots = $('slots'), analyze = $('analyze');
   function clear() { $('error').classList.remove('show'); $('result').classList.remove('show'); }
   function error(message) { $('error').textContent = message; $('error').classList.add('show'); }
   function updateButton() {
     analyze.classList.toggle('show', files.length > 0);
-    analyze.disabled = busy || preparing || !files.length || (Boolean(account) && !consent.checked);
+    analyze.disabled = busy || preparing || !files.length;
     analyze.textContent = busy ? 'در حال تفسیر…' : preparing ? 'در حال آماده‌سازی تصاویر…' : account ? 'تفسیر با هوش مصنوعی' : 'ورود و تفسیر آزمایش';
     picker.disabled = busy || preparing;
-    consent.disabled = busy;
   }
   function render() {
     previewUrls.splice(0).forEach(url => URL.revokeObjectURL(url));
@@ -25,7 +24,7 @@
       const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'remove';
       remove.textContent = '×'; remove.disabled = busy || preparing;
       remove.setAttribute('aria-label', 'حذف صفحه ' + fa(activePage + 1));
-      remove.onclick = () => { files.splice(activePage, 1); activePage = Math.max(0, Math.min(activePage, files.length - 1)); clear(); render(); };
+      remove.onclick = () => { files.splice(activePage, 1); originals.splice(activePage, 1); activePage = Math.max(0, Math.min(activePage, files.length - 1)); clear(); render(); };
       preview.append(img, remove); slots.append(preview);
     }
     const strip = document.createElement('div'); strip.className = 'lab-thumbnails';
@@ -71,7 +70,7 @@
         if (files.length >= MAX_PAGES) { error('حداکثر چهار صفحه از یک نوبت آزمایش را می‌توانید اضافه کنید.'); break; }
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { error('تصاویر JPG، PNG یا WebP را انتخاب کنید.'); continue; }
         if (file.size > MAX_INPUT) { error('حجم هر تصویر ورودی باید حداکثر ۴ مگابایت باشد.'); continue; }
-        try { files.push(await prepareImage(file)); } catch (e) { error(e.message || 'تصویر خوانده نشد؛ یک تصویر واضح دیگر انتخاب کنید.'); }
+        try { files.push(await prepareImage(file)); originals.push({file,archives:new Map()}); } catch (e) { error(e.message || 'تصویر خوانده نشد؛ یک تصویر واضح دیگر انتخاب کنید.'); }
       }
       activePage = Math.max(0, files.length - 1);
     } finally { preparing = false; render(); }
@@ -80,7 +79,25 @@
     const response = await fetch('/api/patients', { credentials: 'include' });
     if (!response.ok) throw Error('پرونده‌ها بارگذاری نشدند؛ صفحه را دوباره باز کنید.');
     const data = await response.json();
-    if (data.patients?.length) $('patient').replaceChildren(...data.patients.map(p => new Option(p.display_name + (p.relation === 'self' ? ' (من)' : ''), p.id)));
+    if (data.patients?.length) {
+      const previous=$('patient').value;patientProfiles.clear();data.patients.forEach(p=>patientProfiles.set(p.id,p));
+      $('patient').replaceChildren(...data.patients.map(p => new Option(p.display_name + (p.relation === 'self' ? ' (من)' : ''), p.id)));
+      if(patientProfiles.has(previous))$('patient').value=previous;
+      syncPatientGender();
+    }
+  }
+  function syncPatientGender(){const gender=patientProfiles.get($('patient').value)?.sex;$('gender').value=['female','male'].includes(gender)?gender:'';}
+  $('patient').addEventListener('change',syncPatientGender);
+  async function archiveSelectedFiles(patientId,signal){
+    for(let index=0;index<originals.length;index++){
+      const source=originals[index];if(source.archives.has(patientId))continue;
+      $('loading').textContent='در حال ثبت تصویر '+fa(index+1)+' از '+fa(originals.length)+' در پرونده سلامت…';
+      const form=new FormData();form.append('file',source.file);form.append('patient_id',patientId);form.append('document_type','lab');form.append('title',source.file.name||'برگه آزمایش');
+      const response=await fetch('/api/documents',{method:'POST',credentials:'include',body:form,signal});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.success||!data.document?.id)throw Error(data.error||'ثبت تصویر در پرونده انجام نشد؛ دوباره تلاش کنید.');
+      source.archives.set(patientId,data.document.id);
+    }
   }
   async function loadAccount() {
     accountFailed = false;
@@ -105,15 +122,20 @@
     if (accountFailed) await loadAccount();
     if (accountFailed) return error('حساب یا پرونده بارگذاری نشد؛ لطفاً کمی بعد دوباره تلاش کنید.');
     if (!account) { location.href = '/auth?next=' + encodeURIComponent('/#lab'); return; }
-    if (!consent.checked) return error('برای تفسیر، ابتدا رضایت پردازش تصاویر را تأیید کنید.');
     if (!$('age').reportValidity()) return;
+    if (!['female','male'].includes($('gender').value)) { $('gender').reportValidity(); return error('جنسیت را زن یا مرد انتخاب کنید.'); }
+    if (!$('patient').value) return error('ابتدا پرونده سلامت را انتخاب کنید.');
     if (files.reduce((sum, file) => sum + file.size, 0) > 4 * 1024 * 1024) return error('مجموع تصاویر بیش از حد مجاز است؛ تصاویر کم‌حجم‌تر انتخاب کنید.');
     clear(); busy = true; render(); $('loading').classList.add('show'); $('loading').setAttribute('aria-busy', 'true');
     const form = new FormData(); files.forEach(file => form.append('images', file));
     for (const name of ['patient_id', 'age', 'gender', 'reason']) form.append(name, $(name === 'patient_id' ? 'patient' : name).value);
     form.append('ai_consent', 'true');
-    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 65000);
+    const controller = new AbortController();let timeout;
     try {
+      timeout=setTimeout(()=>controller.abort(),65000);
+      await archiveSelectedFiles($('patient').value,controller.signal);
+      clearTimeout(timeout);timeout=setTimeout(()=>controller.abort(),65000);
+      $('loading').textContent='در حال خواندن صفحات آزمایش و بررسی مقادیر…';
       const response = await fetch('/api/analyze-lab', { method: 'POST', credentials: 'include', body: form, signal: controller.signal });
       const data = await response.json().catch(() => ({}));
       if (response.status === 401) { location.href = '/auth?next=' + encodeURIComponent('/#lab'); return; }
@@ -128,7 +150,6 @@
     } catch (e) { error(e.name === 'AbortError' ? 'پاسخ سرویس طول کشید. نتیجه را در پرونده سلامت بررسی کنید و سپس دوباره تلاش کنید.' : e.message); }
     finally { clearTimeout(timeout); busy = false; render(); $('loading').classList.remove('show'); $('loading').setAttribute('aria-busy', 'false'); }
   };
-  consent.onchange = updateButton;
   window.addEventListener('pagehide', () => previewUrls.forEach(url => URL.revokeObjectURL(url)));
   render();
   if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));

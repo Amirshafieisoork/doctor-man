@@ -59,7 +59,7 @@ test('home artwork follows the selected theme and keeps the dark hero background
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect.poll(() => hero.evaluate((img, selected) => img.complete && img.naturalWidth > 0 && img.currentSrc.endsWith(`hero-copyspace-signature-${selected}.webp`), theme)).toBe(true);
     await family.scrollIntoViewIfNeeded();
-    await expect.poll(() => family.evaluate((img, selected) => img.complete && img.naturalWidth > 0 && img.currentSrc.endsWith(`family-health-${selected}.webp`), theme)).toBe(true);
+    await expect.poll(() => family.evaluate((img, selected) => img.complete && img.naturalWidth > 0 && img.currentSrc.endsWith(`family-health-${selected}${selected === 'light' ? '-v2' : ''}.webp`), theme)).toBe(true);
   }
   await expectArtwork('dark');
   const backgroundBrightness = await hero.evaluate(img => {

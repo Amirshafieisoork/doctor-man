@@ -6,12 +6,13 @@ export default async function handler(req, res) {
   const session = getUserSession(req);
   if (!session) return res.status(200).json({ authenticated: false });
 
-  const { data, error } = await supabase.from('users').select('id,name,phone,status').eq('id', session.sub).maybeSingle();
+  const { data, error } = await supabase.from('users').select('id,name,phone,status,session_version').eq('id', session.sub).maybeSingle();
   if (error) return res.status(503).json({ authenticated: false, error: 'بررسی نشست موقتاً در دسترس نیست' });
-  if (!data || data.status !== 'active') {
+  const accountVersion=Number(data?.session_version??0),tokenVersion=session.ver??0;
+  if (!data || data.status !== 'active' || !Number.isSafeInteger(accountVersion) || accountVersion<0 || !Number.isSafeInteger(tokenVersion) || tokenVersion!==accountVersion) {
     clearUserSession(res);
     return res.status(200).json({ authenticated: false });
   }
-  const {status,...user}=data;
+  const {status,session_version,...user}=data;
   return res.status(200).json({ authenticated: true, user });
 }

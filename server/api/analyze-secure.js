@@ -221,7 +221,8 @@ export default async function handler(req, res) {
     if (enteredAge && (!/^\d{1,3}$/.test(enteredAge) || Number(enteredAge) < 0 || Number(enteredAge) > 120)) return res.status(400).json({ success: false, error: 'سن واردشده معتبر نیست' });
     const derivedAge = ageFromBirthDate(patient?.birth_date);
     const age = derivedAge ?? (enteredAge ? Number(enteredAge) : null);
-    const gender = String(patient?.sex || fields.gender || 'نامشخص').slice(0, 40);
+    const gender = ['female','male'].includes(patient?.sex) ? patient.sex : String(fields.gender || '').trim();
+    if(!['female','male'].includes(gender))return res.status(400).json({success:false,error:'برای تحلیل، جنسیت را انتخاب کنید: زن یا مرد'});
     const reason = String(fields.reason || '').trim().slice(0, 500);
 
     if (!(await requireUser(req, res))) return;

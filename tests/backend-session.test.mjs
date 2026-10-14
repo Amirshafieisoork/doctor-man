@@ -6,7 +6,7 @@ process.env.SESSION_SECRET='test-only-session-secret-32-characters';
 const userId='11111111-1111-4111-8111-111111111111';
 function req(token){return {headers:{cookie:`drman_session=${token}`}}}
 function response(){return {headers:{},statusCode:200,status(n){this.statusCode=n;return this},json(value){this.body=value;return this},setHeader(k,v){this.headers[k]=v},getHeader(k){return this.headers[k]}}}
-function database(data,error=null){return {from(table){assert.equal(table,'users');return {select(fields){assert.equal(fields,'id,status');return this},eq(field,id){assert.equal(field,'id');assert.equal(id,userId);return this},async maybeSingle(){return {data,error}}}}}}
+function database(data,error=null){return {from(table){assert.equal(table,'users');return {select(fields){assert.equal(fields,'id,status,session_version');return this},eq(field,id){assert.equal(field,'id');assert.equal(id,userId);return this},async maybeSingle(){return {data,error}}}}}}
 
 test('signed user session verifies and cannot become an admin session',()=>{
   const token=createToken({sub:userId,role:'user'});
@@ -60,3 +60,24 @@ test('production session cookies are HttpOnly, Secure and SameSite=Lax',()=>{
   const old=process.env.NODE_ENV;
   try{process.env.NODE_ENV='production';const res=response();setUserSession(res,{id:userId});assert.match(res.headers['Set-Cookie'],/HttpOnly; SameSite=Lax; Max-Age=604800; Secure$/)}finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old}
 });
+
+for(const oldPayload of [{sub:userId,role:'user'},{sub:userId,role:'user',ver:0}]){
+  test('password-reset version revokes an earlier signed cookie '+JSON.stringify(oldPayload),async()=>{
+    const res=response();
+    assert.equal(await requireUser(req(createToken(oldPayload)),res,database({id:userId,status:'active',session_version:1})),null);
+    assert.equal(res.statusCode,401);assert.equal(res.body.code,'SESSION_REVOKED');assert.match(res.headers['Set-Cookie'],/Max-Age=0/);
+  });
+}
+test('a login after password reset carries the current account version',async()=>{
+  const cookie=response();setUserSession(cookie,{id:userId,session_version:3});
+  const request={headers:{cookie:cookie.headers['Set-Cookie']}};const res=response();
+  assert.equal(getUserSession(request).ver,3);
+  assert.equal((await requireUser(request,res,database({id:userId,status:'active',session_version:3}))).sub,userId);
+});
+for(const version of [-1,1.5,'1']){
+  test('invalid signed session version fails closed '+JSON.stringify(version),async()=>{
+    const res=response();
+    assert.equal(await requireUser(req(createToken({sub:userId,role:'user',ver:version})),res,database({id:userId,status:'active',session_version:0})),null);
+    assert.equal(res.statusCode,401);
+  });
+}

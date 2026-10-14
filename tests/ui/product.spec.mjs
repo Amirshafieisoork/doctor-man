@@ -110,19 +110,25 @@ test('lab analysis routes visitors to login and never calls the analysis provide
 });
 
 test('signed-in lab quota errors are visible and leave the form usable', async ({ page }) => {
+  let archiveCalls=0;
   await page.route('**/api/account', route => json(route, 200, account));
-  await page.route('**/api/patients', route => json(route, 200, { success: true, patients: [{ id: 'test-patient', display_name: 'کاربر آزمون', relation: 'self' }] }));
+  await page.route('**/api/patients', route => json(route, 200, { success: true, patients: [{ id: 'test-patient', display_name: 'کاربر آزمون', relation: 'self',sex:'female' }] }));
+  await page.route('**/api/documents', async route=>{archiveCalls++;expect(route.request().postDataBuffer().toString()).toContain('filename="lab.png"');await json(route,201,{success:true,document:{id:'stored-lab-photo'}})});
   await page.route('**/api/analyze-lab', route => json(route, 402, { success: false, error: 'سهمیه تحلیل این دوره به پایان رسیده است.' }));
   await page.goto('/');
   await expect(page.locator('#welcome')).toContainText('کاربر آزمون');
   await page.locator('#picker').setInputFiles(image('lab.png'));
-  await expect(page.locator('#analyze')).toBeDisabled();
-  await page.locator('#labConsent').check();
+  await expect(page.locator('#analyze')).toBeEnabled();
+  await expect(page.locator('#labConsent')).toHaveCount(0);
   await page.locator('#analyze').click();
   await expect(page.locator('#error')).toContainText('سهمیه تحلیل');
   await expect(page.locator('#loading')).toBeHidden();
   await expect(page.locator('#analyze')).toBeEnabled();
   await expect(page.locator('.lab-thumbnail')).toHaveCount(1);
+  expect(archiveCalls).toBe(1);
+  await page.locator('#analyze').click();
+  await expect(page.locator('#error')).toContainText('سهمیه تحلیل');
+  expect(archiveCalls).toBe(1);
 });
 
 test('paid subscriptions stay disabled when the payment provider is unavailable', async ({ page }) => {
@@ -152,15 +158,22 @@ test('doctor directory separates an outage from the honest empty-network state',
   await expect(page.locator('#grid')).not.toContainText('هنوز پروفایل عمومی');
 });
 
-test('support failure recovers the send button and keeps the user message', async ({ page }) => {
-  await page.route('**/api/status', route => json(route, 200, { success: true, ai: { configured: true }, payments: { digipay_configured: false } }));
-  await page.route('**/api/support-chat', route => json(route, 503, { success: false, error: 'راهنما موقتاً در دسترس نیست؛ دوباره تلاش کنید' }));
+test('support AI failure leaves a saved ticket for human follow-up', async ({ page }) => {
+  const ticket = { id: '33333333-3333-4333-8333-333333333333', title: 'راهنمای پرونده', category: 'other', status: 'waiting_admin', ai_enabled: true, tags: [], created_at: '2026-10-14T08:00:00Z', updated_at: '2026-10-14T08:00:00Z' };
+  let saved = false;
+  await page.route('**/api/support-tickets**', route => {
+    if (route.request().method() === 'GET') return json(route, 200, { success: true, tickets: saved ? [ticket] : [] });
+    saved = true;
+    return json(route, 200, { success: true, ticket, pending_admin: true, ai_unavailable: true, messages: [{ id: 'user', sender_type: 'user', content: 'چطور پرونده سلامت بسازم؟', created_at: ticket.created_at }] });
+  });
   await page.goto('/support');
-  await page.locator('#input').fill('چطور پرونده سلامت بسازم؟');
-  await page.getByRole('button', { name: 'ارسال', exact: true }).click();
-  await expect(page.locator('.m.user')).toHaveText('چطور پرونده سلامت بسازم؟');
-  await expect(page.locator('.m.bot').last()).toContainText('موقتاً در دسترس نیست');
-  await expect(page.getByRole('button', { name: 'ارسال', exact: true })).toBeEnabled();
+  await page.getByLabel('موضوع درخواست').fill('راهنمای پرونده');
+  await page.getByLabel('پیام درخواست').fill('چطور پرونده سلامت بسازم؟');
+  await page.getByRole('button', { name: 'ثبت تیکت و دریافت پاسخ' }).click();
+  await expect(page.locator('.m.user')).toContainText('چطور پرونده سلامت بسازم؟');
+  await expect(page.locator('#meta')).toContainText('منتظر پیگیری مدیر');
+  await expect(page.getByRole('button', { name: 'ارسال پیام', exact: true })).toBeEnabled();
+  expect(saved).toBe(true);
 });
 
 test('unknown route provides a Persian 404 and a way back to the site', async ({ page }) => {
@@ -185,14 +198,13 @@ test('mobile menu and skip link are usable with the keyboard', async ({ page }) 
   await expect(page.locator('main').first()).toBeFocused();
 });
 
-test('unconfigured support provides a readable guide and prevents provider submission', async ({ page }) => {
-  let requests = 0;
-  await page.route('**/api/support-chat', async route => { requests++; await json(route, 500, {}); });
+test('unconfigured AI keeps the guide and human ticket registration available', async ({ page }) => {
+  await page.route('**/api/status', route => json(route, 200, { ai: { configured: false } }));
+  await page.route('**/api/support-tickets**', route => json(route, 200, { success: true, tickets: [] }));
   await page.goto('/support');
-  await expect(page.locator('#meta')).toContainText('فعلاً در دسترس نیست');
-  await expect(page.getByRole('button', { name: 'ارسال', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'ثبت تیکت و دریافت پاسخ' })).toBeEnabled();
+  await expect(page.getByLabel('پیام درخواست')).toBeVisible();
   await expect(page.getByRole('region', { name: 'راهنمای استفاده از دکتر من' })).toBeVisible();
-  expect(requests).toBe(0);
 });
 
 test('authentication return URLs reject external and backslash destinations', async ({ page }) => {
@@ -309,11 +321,16 @@ test('future appointment offers intake and cancellation then removes the cancell
   await expect(page.locator('#healthFeedback')).toContainText('نوبت لغو شد');
 });
 
-test('large lab image is reduced before consented upload and successful result links to the record', async ({ page }) => {
+test('large original lab photo is archived before reduced AI upload and the result links to its record', async ({ page }) => {
   await page.route('**/api/account', route => json(route, 200, account));
-  await page.route('**/api/patients', route => json(route, 200, { success: true, patients: [{ id: 'test-patient', display_name: 'کاربر آزمون', relation: 'self' }] }));
-  let requests = 0, payload;
+  await page.route('**/api/patients', route => json(route, 200, { success: true, patients: [{ id: 'test-patient', display_name: 'کاربر آزمون', relation: 'self', sex: 'male' }] }));
+  let requests = 0, payload, archivePayload;
+  await page.route('**/api/documents', async route => {
+    archivePayload = route.request().postDataBuffer();
+    await json(route, 201, { success: true, document: { id: 'original-large-photo' } });
+  });
   await page.route('**/api/analyze-lab', async route => {
+    expect(archivePayload).toBeTruthy();
     requests++; payload = route.request().postDataBuffer();
     await json(route, 200, { success: true, read_quality: 'good', analysis: 'پاسخ شبیه‌سازی‌شده برای آزمون رابط کاربری.' });
   });
@@ -335,14 +352,36 @@ test('large lab image is reduced before consented upload and successful result l
   expect(buffer.length).toBeGreaterThan(900 * 1024);
   await page.locator('#picker').setInputFiles({ name: 'large-lab.png', mimeType: 'image/png', buffer });
   await expect(page.locator('.lab-thumbnail')).toHaveCount(1);
-  await expect(page.locator('#analyze')).toBeDisabled();
+  await expect(page.locator('#analyze')).toBeEnabled();
   expect(requests).toBe(0);
-  await page.locator('#labConsent').check();
   await page.locator('#analyze').click();
   await expect(page.locator('#result')).toContainText('پاسخ شبیه‌سازی‌شده');
   expect(requests).toBe(1);
+  expect(archivePayload.toString('latin1')).toContain('filename="large-lab.png"');
+  expect(archivePayload.includes(buffer)).toBe(true);
   expect(payload.length).toBeLessThan(1024 * 1024);
   expect(payload.toString('latin1')).toMatch(/name="ai_consent"\r\n\r\ntrue/);
   expect(payload.toString('latin1')).toContain('Content-Type: image/jpeg');
   await expect(page.locator('#result').getByRole('link', { name: 'مشاهده در پرونده سلامت', exact: true })).toHaveAttribute('href', '/health');
+});
+
+test('missing sex and a failed archive prevent AI submission without losing the selected photo', async ({ page }) => {
+  await page.route('**/api/account', route => json(route, 200, account));
+  await page.route('**/api/patients', route => json(route, 200, { success: true, patients: [{ id: 'test-patient', display_name: 'کاربر آزمون', relation: 'self', sex: 'unknown' }] }));
+  let archiveCalls = 0, analysisCalls = 0;
+  await page.route('**/api/documents', async route => { archiveCalls++; await json(route, 503, { success: false, error: 'ذخیره تصویر انجام نشد' }); });
+  await page.route('**/api/analyze-lab', async route => { analysisCalls++; await json(route, 200, {}); });
+  await page.goto('/');
+  await expect(page.locator('#welcome')).toContainText('کاربر آزمون');
+  await page.locator('#picker').setInputFiles(image('retry-lab.png'));
+  await page.locator('#analyze').click();
+  await expect(page.locator('#error')).toContainText('جنسیت');
+  expect(archiveCalls).toBe(0);
+  await page.locator('#gender').selectOption('female');
+  await page.locator('#analyze').click();
+  await expect(page.locator('#error')).toContainText('ذخیره تصویر انجام نشد');
+  expect(archiveCalls).toBe(1);
+  expect(analysisCalls).toBe(0);
+  await expect(page.locator('.lab-thumbnail')).toHaveCount(1);
+  await expect(page.locator('#analyze')).toBeEnabled();
 });

@@ -29,9 +29,10 @@ export default async function handler(req,res){
   if(!requireAdmin(req,res)) return;
   try{
     if(req.method==='GET'){
-      const {data,error}=await supabase.from('app_settings').select('key,value,description,updated_at').order('key'); if(error)throw error;
-      const settings={}; for(const row of data||[]) settings[row.key]=row.value||{};
-      return res.status(200).json({success:true,settings,rows:data||[]});
+      const {data,error}=await supabase.from('app_settings').select('key,value,description,updated_at').in('key',[...KEYS]).order('key'); if(error)throw error;
+      const rows=(data||[]).filter(row=>KEYS.has(row.key));
+      const settings={}; for(const row of rows) settings[row.key]=row.value||{};
+      return res.status(200).json({success:true,settings,rows});
     }
     if(req.method==='PUT'){
       const key=String(req.body?.key||''); if(!KEYS.has(key))return res.status(400).json({success:false,error:'بخش تنظیمات معتبر نیست'});

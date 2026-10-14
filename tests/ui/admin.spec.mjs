@@ -115,13 +115,14 @@ test('rejected manual plan change restores the saved plan selection', async ({ p
   await signedIn(page);
   await page.locator('[data-page="users"]').click();
   await page.route('**/api/admin-action', route => json(route, 503, { error: 'تغییر پلن انجام نشد' }));
-  page.once('dialog', dialog => dialog.accept('دلیل آزمایشی تغییر پلن'));
   // Add an active alternate plan through the same dashboard response format.
   await page.route('**/api/admin-dashboard', route => json(route, 200, { ...dashboard, plans: [free, { ...plus, active: true }] }));
   await page.getByRole('button', { name: /بروزرسانی/ }).click();
   const selection = page.locator('#usersBody select');
   await selection.selectOption(plus.id);
-  await expect(page.locator('#toast')).toContainText('تغییر پلن انجام نشد');
+  await page.getByLabel('دلیل تغییر پلن', { exact: true }).fill('تست');
+  await page.getByRole('button', { name: 'ثبت تغییر پلن', exact: true }).click();
+  await expect(page.locator('#userPlanFeedback')).toContainText('تغییر پلن انجام نشد');
   await expect(selection).toHaveValue(free.id);
   await expect(selection).toBeEnabled();
 });

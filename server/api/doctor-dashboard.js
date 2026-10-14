@@ -9,6 +9,12 @@ export default async function handler(req, res) {
   const { data: doctor } = await supabase.from('doctor_profiles').select('*').eq('user_id', session.sub).maybeSingle();
   if (!doctor) return res.status(403).json({ success: false, error: 'پروفایل پزشک پیدا نشد' });
 
+  // The owner can follow their application and view their own private license,
+  // but a pending or suspended professional cannot retain clinical access.
+  if (doctor.verification_status !== 'verified') return res.status(200).json({
+    success: true, doctor, patients: [], appointments: [], messages: []
+  });
+
   const now = new Date().toISOString();
   await supabase.from('patient_access_grants').update({ status: 'expired' }).eq('doctor_id', doctor.id).eq('status', 'active').lt('expires_at', now);
 

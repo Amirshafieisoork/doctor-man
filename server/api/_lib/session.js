@@ -47,7 +47,7 @@ export function parseCookies(req) {
 }
 function cookieHeader(name,value,maxAge){const secure=process.env.NODE_ENV==='production'?'; Secure':'';return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;}
 function appendCookie(res,cookie){const current=res.getHeader('Set-Cookie');if(!current)return res.setHeader('Set-Cookie',cookie);const values=Array.isArray(current)?current:[String(current)];res.setHeader('Set-Cookie',[...values,cookie]);}
-export function setUserSession(res,user){appendCookie(res,cookieHeader(COOKIE_NAME,createToken({sub:String(user.id),role:'user'}),SESSION_MAX_AGE));}
+export function setUserSession(res,user){const version=Number(user.session_version??0);if(!Number.isSafeInteger(version)||version<0)throw new Error('Invalid account session version');appendCookie(res,cookieHeader(COOKIE_NAME,createToken({sub:String(user.id),role:'user',ver:version}),SESSION_MAX_AGE));}
 export function setAdminSession(res){appendCookie(res,cookieHeader(ADMIN_COOKIE_NAME,createToken({sub:'admin',role:'admin'},60*60*8),60*60*8));}
 export function clearUserSession(res){appendCookie(res,cookieHeader(COOKIE_NAME,'',0));}
 export function clearAdminSession(res){appendCookie(res,cookieHeader(ADMIN_COOKIE_NAME,'',0));}
@@ -58,11 +58,19 @@ export async function requireUser(req,res,database){
   if(!session){res.status(401).json({success:false,error:'ابتدا وارد حساب کاربری شوید'});return null}
   try{
     const db=database||(await import('./db.js')).supabase;
-    const {data:user,error}=await db.from('users').select('id,status').eq('id',session.sub).maybeSingle();
+    const {data:user,error}=await db.from('users').select('id,status,session_version').eq('id',session.sub).maybeSingle();
     if(error)throw error;
     if(!user||user.status!=='active'){
       clearUserSession(res);
       res.status(user?403:401).json({success:false,error:user?'حساب کاربری شما غیرفعال شده است':'نشست حساب کاربری معتبر نیست'});
+      return null;
+    }
+    // Legacy signed cookies belong to version zero. A password reset increments
+    // the account version and immediately revokes every earlier user session.
+    const accountVersion=Number(user.session_version??0),tokenVersion=session.ver??0;
+    if(!Number.isSafeInteger(accountVersion)||accountVersion<0||!Number.isSafeInteger(tokenVersion)||tokenVersion!==accountVersion){
+      clearUserSession(res);
+      res.status(401).json({success:false,code:'SESSION_REVOKED',error:'رمز حساب تغییر کرده است. دوباره وارد شوید.'});
       return null;
     }
     return session;

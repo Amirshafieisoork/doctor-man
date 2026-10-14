@@ -5,7 +5,7 @@ import { InputValidationError, numberField, birthDateField } from './_lib/valida
 import { readEntitlement, planLimit } from './_lib/entitlements.js';
 
 const RELATIONS=new Set(['self','child','parent','spouse','sibling','other']);
-const SEX=new Set(['female','male','other','unknown']);
+const SEX=new Set(['female','male']);
 const BLOOD=new Set(['A+','A-','B+','B-','AB+','AB-','O+','O-','unknown']);
 function clean(body={},partial=false,forcedRelation=null){
   const out={updated_at:new Date().toISOString()};
@@ -13,7 +13,10 @@ function clean(body={},partial=false,forcedRelation=null){
   else if(!partial||body.relation!==undefined)out.relation=RELATIONS.has(body.relation)?body.relation:'other';
   if(!partial||body.display_name!==undefined)out.display_name=String(body.display_name||'').trim().slice(0,120);
   if(!partial||body.birth_date!==undefined)out.birth_date=birthDateField(body.birth_date);
-  if(!partial||body.sex!==undefined)out.sex=body.sex&&SEX.has(body.sex)?body.sex:null;
+  if(!partial||body.sex!==undefined){
+    if(!SEX.has(body.sex))throw new InputValidationError('جنسیت را انتخاب کنید: زن یا مرد');
+    out.sex=body.sex;
+  }
   if(!partial||body.blood_type!==undefined)out.blood_type=body.blood_type&&BLOOD.has(body.blood_type)?body.blood_type:null;
   if(!partial||body.height_cm!==undefined)out.height_cm=numberField(body.height_cm,{label:'قد',min:20,max:260});
   if(!partial||body.national_code!==undefined)out.national_code=body.national_code?String(body.national_code).replace(/\D/g,'').slice(0,10):null;

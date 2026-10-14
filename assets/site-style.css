@@ -8,8 +8,9 @@ button,input,select,textarea{font-family:inherit!important}input,select,textarea
 .brand small{font-size:13px!important}.brand strong{font-size:24px!important}
 /* Keep the brand mark square and visible when header controls wrap. */
 header :is(.brand,.logo){display:inline-flex;align-items:center;gap:10px;line-height:1.3}
-header :is(.brand,.logo)>img[src="/assets/drman-mark-v5.webp"]{display:block;width:52px;height:52px;min-width:52px;flex:none;object-fit:contain;border-radius:10px}
-@media(max-width:700px){header :is(.brand,.logo)>img[src="/assets/drman-mark-v5.webp"]{width:44px;height:44px;min-width:44px}}
+header img:is([data-drman-brandmark],[src*="drman-mark-v5."],[src*="drman-mark-v6."]){display:block;width:52px;height:52px;min-width:52px;flex:none;object-fit:contain;border-radius:10px}
+html[data-theme="dark"] img[data-drman-brandmark]{background:transparent!important;border-color:transparent!important;border-radius:0!important;box-shadow:none!important;filter:none!important}
+@media(max-width:700px){header img:is([data-drman-brandmark],[src*="drman-mark-v5."],[src*="drman-mark-v6."]){width:44px;height:44px;min-width:44px}}
 header .brand strong{display:block;line-height:1.25}
 header .brand small{margin-top:2px;line-height:1.45}
 .brand-copy{text-align:right}
@@ -64,3 +65,13 @@ html[data-theme="dark"] :is(.box p,.box li,.scopeNote){color:#a3b6ca}
 @media(max-width:950px){.tabs{top:var(--drman-header-height,67px)!important}.navrow{height:auto!important;min-height:74px;gap:10px!important;padding-block:10px}.navrow>.actions{margin-inline-start:auto}}
 @media(max-width:700px){.theme-text{display:none}header{gap:10px;padding:12px 14px!important}.site-controls{gap:6px}.site-menu>summary{padding:7px 9px}.help-grid{grid-template-columns:1fr}.navrow>.actions{gap:6px}.navrow{min-height:68px}.navrow>.brand{flex:1}.intro h1{font-size:25px}}
 @media(max-width:700px){header nav.site-menu-panel{position:fixed;inset-inline-start:14px;inset-inline-end:14px;top:calc(var(--drman-header-height,68px) + 6px);width:calc(100vw - 28px);max-width:none}}
+
+/* A steady teal highlight makes interactive options clear to mouse and keyboard users. */
+html{--interaction-edge:#16aeb5;--interaction-ring:#00a6a429;--interaction-glow:#00a6a430}
+html[data-theme="dark"]{--interaction-edge:#67d7db;--interaction-ring:#67d7db38;--interaction-glow:#00c9cf38}
+html :is(button:not(:disabled),.btn:not([aria-disabled="true"]),a.feature,a.guideCard,a.service,a.doc,a.card,header nav a,header .actions>a,.site-menu>summary,[role="button"]:not([aria-disabled="true"])){transition:border-color .16s ease,box-shadow .16s ease;transform:none!important}
+html[data-theme] :is(button:not(:disabled),.btn:not([aria-disabled="true"]),a.feature,a.guideCard,a.service,a.doc,a.card,header nav a,header .actions>a,.site-menu>summary,[role="button"]:not([aria-disabled="true"])):focus-visible{border-color:var(--interaction-edge)!important;box-shadow:0 0 0 2px var(--interaction-ring),0 0 22px var(--interaction-glow)!important;outline:2px solid var(--interaction-edge)!important;outline-offset:3px!important;transform:none!important}
+@media(hover:hover){
+  html[data-theme] :is(button:not(:disabled),.btn:not([aria-disabled="true"]),a.feature,a.guideCard,a.service,a.doc,a.card,header nav a,header .actions>a,.site-menu>summary,[role="button"]:not([aria-disabled="true"])):hover{border-color:var(--interaction-edge)!important;box-shadow:0 0 0 2px var(--interaction-ring),0 0 22px var(--interaction-glow)!important;transform:none!important}
+}
+@media(prefers-reduced-motion:reduce){html :is(button,.btn,a.feature,a.guideCard,a.service,a.doc,a.card,header nav a,header .actions>a,.site-menu>summary,[role="button"]){transition:none!important}}

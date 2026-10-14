@@ -6,6 +6,7 @@ import { dateField, InputValidationError } from './_lib/validate.js';
 import { matchesFileType } from './_lib/uploads.js';
 import { documentAccess } from './_lib/document-access.js';
 import { safeErrorMetadata } from './_lib/errors.js';
+import { archiveFilename, activeArchiveOwner, ARCHIVE_TTL_SECONDS } from './_lib/medical-archive.js';
 
 export const config={api:{bodyParser:false}};
 const ALLOWED=new Set(['application/pdf','image/jpeg','image/png','image/webp']);
@@ -26,12 +27,24 @@ export default async function handler(req,res){
   if(!doc||!doc.storage_path)return res.status(404).json({success:false,error:'سند پیدا نشد'});
   const access=await documentAccess(supabase,session.sub,doc.patient_id);
   if(!access)return res.status(404).json({success:false,error:'سند پیدا نشد یا اجازه دسترسی فعال نیست'});
+  let ownerId=null;
+  if(access.actorType==='doctor'){
+   const {data:patient,error:patientError}=await supabase.from('patients').select('owner_user_id').eq('id',doc.patient_id).maybeSingle();
+   if(patientError)throw patientError;
+   ownerId=patient?.owner_user_id;
+   if(!ownerId||!(await activeArchiveOwner(supabase,ownerId)))return res.status(404).json({success:false,error:'سند پیدا نشد یا اجازه دسترسی فعال نیست'});
+  }
   if(!(await requireUser(req,res)))return;
-  const {data,error}=await supabase.storage.from('medical-documents').createSignedUrl(doc.storage_path,access.expiresIn);
+  const expiresIn=Math.min(ARCHIVE_TTL_SECONDS,ownerId?Math.max(1,access.expiresIn-5):access.expiresIn);
+  const {data,error}=await supabase.storage.from('medical-documents').createSignedUrl(doc.storage_path,expiresIn);
   if(error||!data?.signedUrl)return res.status(500).json({success:false,error:'لینک سند ساخته نشد'});
   if(!(await requireUser(req,res)))return;
+  if(ownerId){
+   const freshAccess=await documentAccess(supabase,session.sub,doc.patient_id);
+   if(!(await activeArchiveOwner(supabase,ownerId))||!freshAccess||freshAccess.grantId!==access.grantId||freshAccess.expiresIn<expiresIn)return res.status(404).json({success:false,error:'اجازه دسترسی سند دیگر فعال نیست'});
+  }
   await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:access.actorType,patient_id:doc.patient_id,action:access.actorType==='doctor'?'doctor.document_opened':'document.opened',resource_type:'medical_document',resource_id:id,metadata:access.grantId?{grant_id:access.grantId}:{}});
-  return res.status(200).json({success:true,url:data.signedUrl,title:doc.title,mime_type:doc.mime_type,expires_in:access.expiresIn});
+  return res.status(200).json({success:true,url:data.signedUrl,title:doc.title,mime_type:doc.mime_type,expires_in:expiresIn});
   }catch(error){console.error('document link access',safeErrorMetadata(error));return res.status(503).json({success:false,error:'بررسی دسترسی سند موقتاً در دسترس نیست'});}
  }
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
@@ -46,7 +59,8 @@ export default async function handler(req,res){
   const {error:uploadError}=await supabase.storage.from('medical-documents').upload(path,file.buffer,{contentType:file.mimeType,upsert:false});if(uploadError)throw uploadError;
   uploadedPath=path;
   if(!(await requireUser(req,res)))return;
-  const {data,error}=await supabase.from('medical_documents').insert({patient_id:patientId,uploaded_by_user_id:session.sub,document_type:type,title:String(fields.title||file.filename||'سند پزشکی').trim().slice(0,180),storage_path:path,mime_type:file.mimeType,document_date:documentDate}).select('id,document_type,title,document_date,created_at').single();
+  const originalFilename=archiveFilename(file.filename,file.mimeType);
+  const {data,error}=await supabase.from('medical_documents').insert({patient_id:patientId,uploaded_by_user_id:session.sub,document_type:type,title:String(fields.title||originalFilename||'سند پزشکی').trim().slice(0,180),storage_path:path,mime_type:file.mimeType,original_filename:originalFilename,size_bytes:file.buffer.length,document_date:documentDate}).select('id,document_type,title,mime_type,original_filename,size_bytes,document_date,created_at').single();
   if(error)throw error;
   documentSaved=true;
   if(!(await requireUser(req,res)))return;

@@ -1,5 +1,5 @@
-const CACHE='drman-public-v10';
-const PUBLIC=['/','/doctors','/pricing','/learn','/medical-methodology','/privacy','/terms','/doctor-onboarding','/manifest.webmanifest','/assets/drman-mark-v5.webp','/assets/theme-v1.css'];
+const CACHE='drman-public-v11';
+const PUBLIC=['/','/doctors','/pricing','/learn','/medical-methodology','/privacy','/terms','/doctor-onboarding','/manifest.webmanifest','/assets/drman-mark-v5.webp','/assets/drman-mark-v6.webp','/assets/family-health-light-v2.webp','/assets/theme-v1.css'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(PUBLIC)).catch(()=>null));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',event=>{

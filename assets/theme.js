@@ -1,18 +1,42 @@
 (() => {
   let saved;
   try { saved = localStorage.getItem('drman-theme'); } catch {}
+  const brandMarks = { light: '/assets/drman-mark-v5.webp', dark: '/assets/drman-mark-v6.webp' };
+  const logoSelector = 'img[data-drman-brandmark],img[src*="drman-mark-v5."],img[src*="drman-mark-v6."]';
+  const elements = (root, selector) => [
+    ...(root.matches?.(selector) ? [root] : []),
+    ...root.querySelectorAll(selector)
+  ];
+  const syncAssets = (root, value) => {
+    elements(root, 'source[data-theme-source]').forEach(source => {
+      const media = source.dataset.themeSource === value ? 'all' : 'not all';
+      if (source.media !== media) source.media = media;
+    });
+    elements(root, logoSelector).forEach(img => {
+      img.dataset.drmanBrandmark = '';
+      if (img.getAttribute('src') !== brandMarks[value]) img.src = brandMarks[value];
+    });
+  };
   const apply = value => {
     document.documentElement.dataset.theme = value;
-    document.querySelectorAll('source[data-theme-source]').forEach(source => {
-      source.media = source.dataset.themeSource === value ? 'all' : 'not all';
-    });
+    syncAssets(document, value);
     const themeColor = document.querySelector('meta[name="theme-color"]');
     if (themeColor) themeColor.content = value === 'dark' ? '#07111e' : '#f4fbff';
   };
   apply(['light', 'dark'].includes(saved) ? saved : 'dark');
 
-  document.addEventListener('DOMContentLoaded', () => {
+  const init = () => {
     apply(document.documentElement.dataset.theme);
+    // Server-rendered and later-inserted brand images use the same active theme.
+    new MutationObserver(records => {
+      const theme = document.documentElement.dataset.theme;
+      records.forEach(record => {
+        if (record.type === 'attributes') syncAssets(record.target, theme);
+        else record.addedNodes.forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) syncAssets(node, theme);
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'data-theme-source'] });
     const main = document.querySelector('main');
     if (main) {
       main.id ||= 'main-content';
@@ -170,5 +194,7 @@
       });
       sync();
     });
-  });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
 })();
