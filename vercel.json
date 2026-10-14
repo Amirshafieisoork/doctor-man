@@ -257,7 +257,7 @@
       "use": "@vercel/node",
       "config": {
         "includeFiles": "server/**",
-        "maxDuration": 60
+        "maxDuration": 300
       }
     },
     {

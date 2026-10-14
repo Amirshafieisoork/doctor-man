@@ -1,5 +1,6 @@
 (() => {
   const MAX_PAGES = 4, MAX_INPUT = 4 * 1024 * 1024, PAGE_BUDGET = 900 * 1024;
+  const ARCHIVE_TIMEOUT = 65000, ANALYSIS_TIMEOUT = 240000;
   const $ = id => document.getElementById(id);
   const files = [], originals = [], previewUrls = [], patientProfiles = new Map();
   let activePage = 0, account = null, accountFailed = false, busy = false, preparing = false;
@@ -95,6 +96,7 @@
       const form=new FormData();form.append('file',source.file);form.append('patient_id',patientId);form.append('document_type','lab');form.append('title',source.file.name||'برگه آزمایش');
       const response=await fetch('/api/documents',{method:'POST',credentials:'include',body:form,signal});
       const data=await response.json().catch(()=>({}));
+      if(response.status===401)throw Error('AUTH_REQUIRED');
       if(!response.ok||!data.success||!data.document?.id)throw Error(data.error||'ثبت تصویر در پرونده انجام نشد؛ دوباره تلاش کنید.');
       source.archives.set(patientId,data.document.id);
     }
@@ -118,28 +120,38 @@
   const accountReady = loadAccount();
   analyze.onclick = async () => {
     if (busy || preparing || !files.length) return;
-    await accountReady;
-    if (accountFailed) await loadAccount();
-    if (accountFailed) return error('حساب یا پرونده بارگذاری نشد؛ لطفاً کمی بعد دوباره تلاش کنید.');
-    if (!account) { location.href = '/auth?next=' + encodeURIComponent('/#lab'); return; }
-    if (!$('age').reportValidity()) return;
-    if (!['female','male'].includes($('gender').value)) { $('gender').reportValidity(); return error('جنسیت را زن یا مرد انتخاب کنید.'); }
-    if (!$('patient').value) return error('ابتدا پرونده سلامت را انتخاب کنید.');
-    if (files.reduce((sum, file) => sum + file.size, 0) > 4 * 1024 * 1024) return error('مجموع تصاویر بیش از حد مجاز است؛ تصاویر کم‌حجم‌تر انتخاب کنید.');
-    clear(); busy = true; render(); $('loading').classList.add('show'); $('loading').setAttribute('aria-busy', 'true');
-    const form = new FormData(); files.forEach(file => form.append('images', file));
-    for (const name of ['patient_id', 'age', 'gender', 'reason']) form.append(name, $(name === 'patient_id' ? 'patient' : name).value);
-    form.append('ai_consent', 'true');
-    const controller = new AbortController();let timeout;
+    // Lock before account loading yields, so rapid clicks cannot submit twice.
+    busy = true; render();
+    let timeout, stage = 'account', patientId = '';
     try {
-      timeout=setTimeout(()=>controller.abort(),65000);
-      await archiveSelectedFiles($('patient').value,controller.signal);
-      clearTimeout(timeout);timeout=setTimeout(()=>controller.abort(),65000);
+      await accountReady;
+      if (accountFailed) await loadAccount();
+      if (accountFailed) return error('حساب یا پرونده بارگذاری نشد؛ لطفاً کمی بعد دوباره تلاش کنید.');
+      if (!account) { location.href = '/auth?next=' + encodeURIComponent('/#lab'); return; }
+      if (!$('age').reportValidity()) return;
+      if (!['female','male'].includes($('gender').value)) { $('gender').reportValidity(); return error('جنسیت را زن یا مرد انتخاب کنید.'); }
+      patientId = $('patient').value;
+      if (!patientId) return error('ابتدا پرونده سلامت را انتخاب کنید.');
+      if (files.reduce((sum, file) => sum + file.size, 0) > 4 * 1024 * 1024) return error('مجموع تصاویر بیش از حد مجاز است؛ تصاویر کم‌حجم‌تر انتخاب کنید.');
+      clear(); render(); $('loading').classList.add('show'); $('loading').setAttribute('aria-busy', 'true');
+      const form = new FormData(); files.forEach(file => form.append('images', file));
+      form.append('patient_id', patientId);
+      for (const name of ['age', 'gender', 'reason']) form.append(name, $(name).value);
+      form.append('ai_consent', 'true');
+      stage = 'archive';
+      const archiveController = new AbortController();
+      timeout=setTimeout(()=>archiveController.abort(),ARCHIVE_TIMEOUT);
+      await archiveSelectedFiles(patientId,archiveController.signal);
+      clearTimeout(timeout);
+      stage = 'analysis';
+      const analysisController = new AbortController();
+      timeout=setTimeout(()=>analysisController.abort(),ANALYSIS_TIMEOUT);
       $('loading').textContent='در حال خواندن صفحات آزمایش و بررسی مقادیر…';
-      const response = await fetch('/api/analyze-lab', { method: 'POST', credentials: 'include', body: form, signal: controller.signal });
+      const response = await fetch('/api/analyze-lab', { method: 'POST', credentials: 'include', body: form, signal: analysisController.signal });
       const data = await response.json().catch(() => ({}));
       if (response.status === 401) { location.href = '/auth?next=' + encodeURIComponent('/#lab'); return; }
-      if (!response.ok || !data.success) throw Error(data.error || (response.status === 413 ? 'تصاویر بیش از حد مجاز هستند؛ نسخه کم‌حجم‌تر انتخاب کنید.' : 'تفسیر انجام نشد؛ دوباره تلاش کنید.'));
+      if (!response.ok || !data.success) throw Error(data.error || (response.status === 413 ? 'تصاویر بیش از حد مجاز هستند؛ نسخه کم‌حجم‌تر انتخاب کنید.' : response.status === 504 ? 'پاسخ تحلیل طول کشید؛ نتیجه را در پرونده سلامت بررسی کنید و سپس دوباره تلاش کنید.' : 'تفسیر انجام نشد؛ دوباره تلاش کنید.'));
+      clearTimeout(timeout); timeout = undefined;
       const result = $('result'); result.replaceChildren();
       const meta = document.createElement('div'); meta.className = 'resultMeta';
       meta.textContent = ({ good: 'کیفیت خواندن مناسب', partial: 'بخشی از برگه خوانا نیست', poor: 'کیفیت تصویر کافی نیست' }[data.read_quality] || 'نتیجه تفسیر');
@@ -147,7 +159,16 @@
       const history = document.createElement('a'); history.className = 'btn'; history.href = '/health'; history.textContent = 'مشاهده در پرونده سلامت';
       result.append(meta, text, history); result.classList.add('show'); result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       await loadAccount();
-    } catch (e) { error(e.name === 'AbortError' ? 'پاسخ سرویس طول کشید. نتیجه را در پرونده سلامت بررسی کنید و سپس دوباره تلاش کنید.' : e.message); }
+    } catch (e) {
+      if(e.message==='AUTH_REQUIRED'){location.href='/auth?next='+encodeURIComponent('/#lab');return;}
+      let message=e.name==='AbortError'
+        ? stage==='archive' ? 'ذخیره تصویر طول کشید. پرونده سلامت را بررسی کنید و سپس دوباره تلاش کنید.' : 'تحلیل طول کشید. نتیجه را در پرونده سلامت بررسی کنید و سپس دوباره تلاش کنید.'
+        : e.name==='TypeError' ? 'ارتباط با سرویس برقرار نشد؛ دوباره تلاش کنید.' : e.message;
+      const archived=patientId&&originals.some(source=>source.archives.has(patientId));
+      if(archived)message+=' تصویرهای ثبت‌شده در پرونده سلامت شما موجودند.';
+      error(message);
+      if(archived){const history=document.createElement('a');history.className='btn';history.href='/health';history.textContent='مشاهده تصاویر در پرونده سلامت';$('error').append(document.createTextNode(' '),history);}
+    }
     finally { clearTimeout(timeout); busy = false; render(); $('loading').classList.remove('show'); $('loading').setAttribute('aria-busy', 'false'); }
   };
   window.addEventListener('pagehide', () => previewUrls.forEach(url => URL.revokeObjectURL(url)));

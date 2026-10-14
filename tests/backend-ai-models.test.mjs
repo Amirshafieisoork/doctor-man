@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import OpenAI from 'openai';
 
 const configurationKeys = [
   'AVALAI_API_KEY', 'AVALAI_BASE_URL', 'AI_GATEWAY_API_KEY',
@@ -94,7 +95,7 @@ test('an unavailable explicit model fails closed instead of silently ignoring co
 
 test('shared primary and fallback aliases resolve to the same actual model', async () => {
   const calls = [];
-  await withModels({ GATEWAY_LAB_MODEL: 'openai/gpt-5.6-terra' }, async (input, options) => {
+  await withModels({ GATEWAY_LAB_MODEL: 'openai/gpt-5.6-terra', GATEWAY_LAB_FALLBACK_MODEL: 'openai/gpt-5.6-terra' }, async (input, options) => {
     const request = new Request(input, options);
     if (request.url.endsWith('/models')) return json({ data: [{ id: 'openai/gpt-5.6-terra' }, { id: 'openai/gpt-4.1' }] });
     calls.push((await request.json()).model);
@@ -108,6 +109,55 @@ test('shared primary and fallback aliases resolve to the same actual model', asy
     await client.chat.completions.create({ model: models.LAB_PRIMARY_MODEL, messages: [] });
   });
   assert.deepEqual(calls, ['openai/gpt-5.6-terra']);
+});
+
+test('available Astra and Sol take priority over older vision models regardless of catalog order', async () => {
+  await withModels({}, async () => json({ data: ['openai/gpt-4.1', 'openai/gpt-5.6-sol', 'openai/gpt-6.1-sol', 'openai/gpt-6-astra', 'openai/gpt-4.1-mini'].map(id => ({ id })) }), async models => {
+    const configured = await models.configuredModels();
+    assert.equal(models.LAB_PRIMARY_MODEL, 'openai/gpt-6-astra');
+    assert.equal(models.LAB_FALLBACK_MODEL, 'openai/gpt-6.1-sol');
+    assert.equal(configured.lab, 'openai/gpt-6-astra');
+    assert.equal(configured.lab_fallback, 'openai/gpt-6.1-sol');
+    assert.equal(configured.navigator, 'openai/gpt-5.6-sol');
+    assert.equal(configured.support, 'openai/gpt-4.1-mini');
+  });
+});
+
+test('gateway model remapping preserves SDK request options and does not mutate the caller payload', async t => {
+  const previousCreate = OpenAI.Chat.Completions.prototype.create;
+  t.after(() => { OpenAI.Chat.Completions.prototype.create = previousCreate; });
+  let captured;
+  OpenAI.Chat.Completions.prototype.create = async function(payload, options) { captured = { payload, options }; return { choices: [] }; };
+  await withModels({}, async () => json({ data: [{ id: 'openai/gpt-6.1-sol' }] }), async models => {
+    const modelClient = await models.avalaiClient();
+    const original = { model: models.LAB_PRIMARY_MODEL, messages: [], reasoning_effort: 'low' };
+    const requestOptions = { timeout: 110000, signal: new AbortController().signal, headers: { 'x-lab-test': 'synthetic' } };
+    await modelClient.chat.completions.create(original, requestOptions);
+    assert.equal(captured.payload.model, 'openai/gpt-6.1-sol');
+    assert.equal(captured.payload.reasoning_effort, 'low');
+    assert.equal(captured.options, requestOptions, 'extended timeout and cancellation must reach the bound SDK method');
+    assert.equal(original.model, 'openai/gpt-6-astra');
+    assert.equal(original.reasoning_effort, 'low');
+  });
+});
+
+test('a catalog remap to legacy GPT-4.1 strips reasoning effort before the real SDK sends the request', async () => {
+  let sent;
+  await withModels({}, async (input, options) => {
+    const request = new Request(input, options);
+    if (request.url.endsWith('/models')) return json({ data: [{ id: 'openai/gpt-4.1' }] });
+    sent = await request.json();
+    return json({ id: 'test-completion', model: 'openai/gpt-4.1', choices: [{ message: { role: 'assistant', content: 'ok' } }] });
+  }, async models => {
+    const modelClient = await models.avalaiClient();
+    modelClient.fetch = globalThis.fetch;
+    const original = { model: models.LAB_PRIMARY_MODEL, messages: [{ role: 'user', content: 'synthetic' }], reasoning_effort: 'low' };
+    await modelClient.chat.completions.create(original, { timeout: 110000 });
+    assert.equal(sent.model, 'openai/gpt-4.1');
+    assert.equal(Object.hasOwn(sent, 'reasoning_effort'), false);
+    assert.equal(original.reasoning_effort, 'low');
+    assert.equal(original.model, 'openai/gpt-6-astra');
+  });
 });
 
 test('configured AvalAI credentials use the existing provider without a gateway catalog request', async () => {

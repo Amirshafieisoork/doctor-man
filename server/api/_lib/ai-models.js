@@ -13,12 +13,12 @@ function selected(avalaiModel, gatewayModel) {
 }
 
 export const LAB_PRIMARY_MODEL = selected(
-  process.env.LAB_MODEL || 'gpt-6.1-sol',
-  process.env.GATEWAY_LAB_MODEL || 'openai/gpt-5.6-sol'
+  process.env.LAB_MODEL || 'gpt-6-astra',
+  process.env.GATEWAY_LAB_MODEL || 'openai/gpt-6-astra'
 );
 export const LAB_FALLBACK_MODEL = selected(
-  process.env.LAB_FALLBACK_MODEL || 'gpt-5.6-sol',
-  process.env.GATEWAY_LAB_FALLBACK_MODEL || 'openai/gpt-5.6-terra'
+  process.env.LAB_FALLBACK_MODEL || 'gpt-6.1-sol',
+  process.env.GATEWAY_LAB_FALLBACK_MODEL || 'openai/gpt-6.1-sol'
 );
 
 export const HEALTH_NAVIGATOR_MODEL = selected(
@@ -75,11 +75,11 @@ async function resolvedGatewayModels(token) {
   };
   // Candidate names are only used after the current model catalog confirms
   // availability. The lab choices support image input and structured output.
-  const lab = choose(process.env.GATEWAY_LAB_MODEL, [LAB_PRIMARY_MODEL, 'openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-4.1']);
+  const lab = choose(process.env.GATEWAY_LAB_MODEL, [LAB_PRIMARY_MODEL, 'openai/gpt-6.1-sol', 'openai/gpt-5.6-sol', 'openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-4.1']);
   // A second model is useful, but its absence must not disable an available
   // primary. Using the primary last also keeps shared legacy model aliases
   // consistent when an administrator explicitly chooses the same model.
-  const fallback = choose(process.env.GATEWAY_LAB_FALLBACK_MODEL, [LAB_FALLBACK_MODEL, 'openai/gpt-4.1', 'openai/gpt-5.2', lab]);
+  const fallback = choose(process.env.GATEWAY_LAB_FALLBACK_MODEL, [LAB_FALLBACK_MODEL, 'openai/gpt-5.6-sol', 'openai/gpt-4.1', 'openai/gpt-5.2', lab]);
   const navigator = choose(process.env.GATEWAY_HEALTH_NAVIGATOR_MODEL, [HEALTH_NAVIGATOR_MODEL, lab]);
   const navigatorFallback = choose(process.env.GATEWAY_HEALTH_NAVIGATOR_FALLBACK_MODEL, [HEALTH_NAVIGATOR_FALLBACK_MODEL, fallback]);
   const support = choose(process.env.GATEWAY_SUPPORT_MODEL, [SUPPORT_MODEL, 'openai/gpt-4.1-mini', 'openai/gpt-5-mini', lab]);
@@ -104,7 +104,12 @@ export async function avalaiClient() {
       [HEALTH_NAVIGATOR_MODEL, models.navigator], [HEALTH_NAVIGATOR_FALLBACK_MODEL, models.navigator_fallback],
       [SUPPORT_MODEL, models.support], [SUPPORT_FALLBACK_MODEL, models.support_fallback]
     ]);
-    client.chat.completions.create = (body, requestOptions) => create({ ...body, model: mapping.get(body.model) || body.model }, requestOptions);
+    client.chat.completions.create = (body, requestOptions) => {
+      const payload = { ...body, model: mapping.get(body.model) || body.model };
+      // Older vision-only models do not accept reasoning effort.
+      if (!/^openai\/gpt-[56](?:[.-]|$)/.test(payload.model)) delete payload.reasoning_effort;
+      return create(payload, requestOptions);
+    };
     return client;
   }
   return null;

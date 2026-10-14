@@ -15,7 +15,7 @@
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
-    "vercel-build": "node scripts/digipay-auth-probe.mjs",
+    "vercel-build": "node scripts/build-probes.mjs",
     "test": "node --test tests/*.test.mjs",
     "check": "node scripts/check.mjs && node scripts/build-article-sanitizer.mjs --check",
     "build:article-sanitizer": "node scripts/build-article-sanitizer.mjs",

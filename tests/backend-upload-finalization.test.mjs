@@ -173,7 +173,8 @@ test('failed account revalidation after lab upload fails closed, removes the obj
 test('partial lab upload failure cleans only successful objects and always releases quota', async t => {
   const s = services(t, { onUpload: n => n === 2 ? { error: new Error('upload failed') } : undefined }), res = response();
   await analyze(multipart('lab', 2), res);
-  denied(res, 500); assert.deepEqual(s.removals, [{ bucket: 'lab-images', paths: [s.uploads[0].path] }]);
+  denied(res, 503); assert.equal(res.body.code, 'ANALYSIS_SAVE_FAILED');
+  assert.deepEqual(s.removals, [{ bucket: 'lab-images', paths: [s.uploads[0].path] }]);
   assert.equal(writes(s.calls, 'test_results').length, 0); releasedReservation(s.calls);
 });
 
@@ -182,7 +183,8 @@ for (const removalThrows of [false, true]) {
     const s = services(t, { removalThrows, removalError: { code: 'STORAGE_ERROR' },
       onQuery: table => { if (table === 'test_results') throw new Error('private persistence details'); } }), res = response();
     await analyze(multipart('lab'), res);
-    denied(res, 500); assert.deepEqual(s.removals[0].paths, [s.uploads[0].path]); releasedReservation(s.calls);
+    denied(res, 503); assert.equal(res.body.code, 'ANALYSIS_SAVE_FAILED');
+    assert.deepEqual(s.removals[0].paths, [s.uploads[0].path]); releasedReservation(s.calls);
     assert.doesNotMatch(res.body.error, /private|STORAGE_ERROR/);
   });
 }

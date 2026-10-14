@@ -3,8 +3,8 @@ import Busboy from 'busboy';
 import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
-import { avalaiClient, LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL } from './_lib/ai-models.js';
-import { validateLabResult } from './_lib/lab-validation.js';
+import { avalaiClient } from './_lib/ai-models.js';
+import { analyzeLabImages, labErrorResponse } from './_lib/lab-ai.js';
 import { saveBiomarkers } from './_lib/biomarkers.js';
 import { readEntitlement, planLimit } from './_lib/entitlements.js';
 import { reserveLabAnalysisQuota, releaseLabAnalysisQuota } from './_lib/ai-quota.js';
@@ -16,40 +16,8 @@ const MAX_IMAGES = 4;
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 4 * 1024 * 1024;
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const AI_VERSION = 'lab-v4-validated-2026-10';
+const AI_VERSION = 'lab-v5-vision-validated-2026-10';
 
-const LAB_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  properties: {
-    status: { type: 'string', enum: ['normal', 'warning', 'danger'] },
-    status_reason: { type: 'string' },
-    confidence: { type: 'number', minimum: 0, maximum: 1 },
-    read_quality: { type: 'string', enum: ['good', 'partial', 'poor'] },
-    summary: { type: 'string' },
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          name: { type: 'string' },
-          value: { type: 'string' },
-          unit: { type: 'string' },
-          reference_range: { type: 'string' },
-          flag: { type: 'string', enum: ['normal', 'low', 'high', 'critical', 'unknown'] },
-          explanation: { type: 'string' }
-        },
-        required: ['name', 'value', 'unit', 'reference_range', 'flag', 'explanation']
-      }
-    },
-    abnormal_items: { type: 'array', items: { type: 'string' } },
-    next_steps: { type: 'array', items: { type: 'string' } },
-    when_to_seek_care: { type: 'string' },
-    full_text: { type: 'string' }
-  },
-  required: ['status', 'status_reason', 'confidence', 'read_quality', 'summary', 'items', 'abnormal_items', 'next_steps', 'when_to_seek_care', 'full_text']
-};
 
 function parseForm(req) {
   return new Promise((resolve, reject) => {
@@ -140,61 +108,6 @@ async function uploadPrivateImages(userId, images, verifyActive) {
   }
 }
 
-function normalizeResult(value) {
-  if (!value || typeof value !== 'object') return null;
-  const status = ['normal', 'warning', 'danger'].includes(value.status) ? value.status : 'warning';
-  const confidence = Math.max(0, Math.min(1, Number(value.confidence ?? 0.5)));
-  return {
-    ...value,
-    status,
-    confidence,
-    status_reason: String(value.status_reason || '').slice(0, 1200),
-    summary: String(value.summary || '').slice(0, 4000),
-    full_text: String(value.full_text || '').slice(0, 30000),
-    items: Array.isArray(value.items) ? value.items.slice(0, 120) : [],
-    abnormal_items: Array.isArray(value.abnormal_items) ? value.abnormal_items.slice(0, 60) : [],
-    next_steps: Array.isArray(value.next_steps) ? value.next_steps.slice(0, 20) : []
-  };
-}
-
-async function callLabModel(client, model, content, safetyIdentifier) {
-  const payload = {
-    model,
-    messages: [
-      {
-        role: 'system',
-        content: `تو موتور تفسیر آموزشی آزمایش DrMan هستی. اول فقط آنچه واقعاً از برگه قابل خواندن است استخراج کن، سپس تفسیر آموزشی و محافظه‌کارانه ارائه بده.\n\nقواعد ایمنی:\n- تشخیص قطعی، نسخه، تغییر دارو یا دوز، یا تضمین پزشکی ممنوع است.\n- هیچ عدد، نام آزمایش، واحد یا محدوده مرجع ناخوانا را حدس نزن.\n- محدوده مرجع چاپ‌شده روی همان برگه بر دانش عمومی مقدم است.\n- status=danger فقط وقتی مجاز است که داده خوانا، به‌طور واضح بسیار غیرطبیعی/بحرانی باشد یا برگه خودش علامت critical داشته باشد؛ صرفاً براساس احتمال یا علائم مبهم danger نده.\n- برای نتیجه‌ای که با علائم شدید، بارداری، کودک، سالمند یا بیماری زمینه‌ای حساس می‌شود، به ارزیابی پزشک ارجاع بده.\n- مکمل، گیاه دارویی یا داروی خاص تجویز نکن.\n- اگر کیفیت تصویر ناکافی است، read_quality را partial/poor بگذار و محدودیت را واضح بنویس.\n- full_text فارسی، ساده، ساختاریافته و شامل خلاصه، موارد مهم، قدم بعدی و زمان مراجعه باشد.\n- نتیجه آموزشی است و جای تشخیص یا درمان پزشک را نمی‌گیرد.`
-      },
-      { role: 'user', content }
-    ],
-    max_completion_tokens: 4500,
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'drman_lab_analysis', strict: true, schema: LAB_SCHEMA }
-    },
-    safety_identifier: safetyIdentifier
-  };
-  return client.chat.completions.create(payload);
-}
-
-async function analyze(client, content, safetyIdentifier) {
-  const attempts = [LAB_PRIMARY_MODEL, LAB_FALLBACK_MODEL].filter((v, i, a) => v && a.indexOf(v) === i);
-  let lastError;
-  for (const model of attempts) {
-    try {
-      const response = await callLabModel(client, model, content, safetyIdentifier);
-      const raw = response.choices?.[0]?.message?.content || '';
-      const parsed = normalizeResult(JSON.parse(raw));
-      if (!parsed) throw new Error('INVALID_AI_JSON');
-      const validated = validateLabResult(parsed);
-      return { parsed: validated, model: response.model || model, requestId: response._request_id || null };
-    } catch (error) {
-      lastError = error;
-      console.error('lab model attempt failed', model, safeErrorMetadata(error));
-    }
-  }
-  throw lastError || new Error('AI_ANALYSIS_FAILED');
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -208,6 +121,7 @@ export default async function handler(req, res) {
   let resultSaved = false;
   let reservation=null;
   let selectedPlan=null;
+  let stage='input';
   try {
     const entitlement = await getEntitlement(session.sub);
     selectedPlan=entitlement.plan;
@@ -236,9 +150,11 @@ export default async function handler(req, res) {
       ...images.map(img => ({ type: 'image_url', image_url: { url: `data:${img.mimeType};base64,${img.buffer.toString('base64')}`, detail: 'high' } }))
     ];
     const safetyIdentifier = crypto.createHash('sha256').update(`drman:${session.sub}`).digest('hex').slice(0, 32);
-    const { parsed, model, requestId } = await analyze(client, content, safetyIdentifier);
+    stage='provider';
+    const { parsed, model, requestId } = await analyzeLabImages(client, content, safetyIdentifier);
 
     if (!(await requireUser(req, res))) return;
+    stage='storage';
     const uploaded = await uploadPrivateImages(session.sub, images, () => requireUser(req, res));
     if (!uploaded) return;
     storedPaths = uploaded;
@@ -260,6 +176,7 @@ export default async function handler(req, res) {
       image_paths: storedPaths,
       created_at:reservation.reservedAt
     };
+    stage='persist';
     const { data: saved, error: saveError } = await supabase.from('test_results').insert(insert).select('id').single();
     if (saveError) throw saveError;
     resultSaved = true;
@@ -293,13 +210,14 @@ export default async function handler(req, res) {
       remaining: remainingAfter
     });
   } catch (error) {
-    console.error('analyze-secure',safeErrorMetadata(error));
+    console.error('analyze-secure',{...safeErrorMetadata(error),stage,classification:labErrorResponse(error,stage).code});
     if (error.message === 'INVALID_IMAGE') return res.status(400).json({ success: false, error: 'حداکثر ۴ تصویر معتبر JPG، PNG یا WebP با حجم مجموع تا ۴ مگابایت مجاز است' });
     if (error.message === 'PATIENT_NOT_FOUND') return res.status(404).json({ success: false, error: 'پرونده انتخاب‌شده معتبر نیست' });
     if (error.message === 'QUOTA_EXCEEDED') return res.status(402).json({ success: false, error: 'سهمیه تحلیل این ماه شما تمام شده است. برای ادامه پلن خود را ارتقا دهید.', code: 'QUOTA_EXCEEDED', plan: selectedPlan?.name });
     if (error.message === 'QUOTA_UNAVAILABLE') return res.status(503).json({success:false,error:'بررسی سهمیه تحلیل موقتاً در دسترس نیست. دوباره تلاش کنید.'});
     if (error.message === 'USER_BLOCKED') return res.status(403).json({ success: false, error: 'حساب کاربری شما غیرفعال شده است' });
-    return res.status(500).json({ success: false, error: 'تحلیل آزمایش انجام نشد. تصویر واضح‌تر ارسال کنید یا دوباره تلاش کنید.' });
+    const failure=labErrorResponse(error,stage);
+    return res.status(failure.status).json({success:false,code:failure.code,error:failure.message});
   }finally{
     if (!resultSaved) await removePrivateImages(storedPaths);
     if(reservation)await releaseLabAnalysisQuota(supabase,session.sub,reservation.reservationId).catch(error=>console.error('lab quota release',safeErrorMetadata(error)));
