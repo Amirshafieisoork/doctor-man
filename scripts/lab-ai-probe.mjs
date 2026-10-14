@@ -17,6 +17,17 @@ if (enabled) {
     report({ stage: 'configuration', provider: models.provider, primary: models.lab, fallback: models.lab_fallback });
     const client = await avalaiClient();
     assert.ok(client);
+    // This client is used exclusively with the two synthetic fixtures below.
+    // Capture synthetic output to locate a rejected response; never log keys,
+    // request headers, or responses from patient requests.
+    const create = client.chat.completions.create.bind(client.chat.completions);
+    client.chat.completions.create = async (body, options) => {
+      const response = await create(body, options);
+      report({ stage: 'synthetic_response', schema: body.response_format?.json_schema?.name,
+        model: response.model, finish_reason: response.choices?.[0]?.finish_reason,
+        content: response.choices?.[0]?.message?.content?.slice(0, 24000) });
+      return response;
+    };
     const run = async (name, file) => {
       const bytes = await readFile(new URL('../tests/fixtures/' + file, import.meta.url));
       const start = Date.now();

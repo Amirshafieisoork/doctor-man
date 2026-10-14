@@ -71,7 +71,7 @@ export function createAdminAITestHandler({ getClient = avalaiClient, analyze = a
         elapsed_ms: Math.max(0, Date.now() - started)
       });
     } catch (error) {
-      console.error('admin-ai-test', safeErrorMetadata(error));
+      console.error('admin-ai-test', { ...safeErrorMetadata(error), classification: labErrorResponse(error).code });
       if (error?.message === 'AI_TEST_FIXTURE_UNAVAILABLE' || error?.code === 'ENOENT') {
         return res.status(503).json({ success: false, code: 'AI_TEST_FIXTURE_UNAVAILABLE', error: 'تصویر ساختگی آزمون روی سرور آماده نیست؛ تنظیمات انتشار باید بررسی شود.' });
       }
