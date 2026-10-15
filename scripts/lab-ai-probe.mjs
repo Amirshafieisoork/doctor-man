@@ -27,11 +27,8 @@ if (enabled) {
       let response;
       try { response = await create(body, options); }
       catch (error) {
-        // This explicitly gated client processes synthetic fixtures only.
-        const redact = value => String(value || '').replace(/(?:gsk_|sk-)[A-Za-z0-9_-]+/g, '[redacted]');
         report({ stage: 'synthetic_request_rejected', schema: body.response_format?.json_schema?.name,
-          model: body.model, ...safeErrorMetadata(error), classification: labErrorResponse(error).code,
-          diagnostic: redact(error?.error?.message).slice(0, 2500), generation: redact(error?.error?.failed_generation).slice(0, 9000) });
+          model: body.model, ...safeErrorMetadata(error), classification: labErrorResponse(error).code });
         throw error;
       }
       report({ stage: 'synthetic_response', schema: body.response_format?.json_schema?.name,
@@ -55,7 +52,7 @@ if (enabled) {
       const result = await analyzeLabImages(...args);
       report({ stage: 'synthetic_report', section_count: result.parsed.sections?.length || 0 });
       for (const section of result.parsed.sections || []) report({ stage: 'synthetic_section', id: section.section_id,
-        words: countPersianWords(section.content), excerpt: section.content.slice(0, 650) });
+        words: countPersianWords(section.content) });
       return result;
     } });
     let ownerStatus, ownerBody;

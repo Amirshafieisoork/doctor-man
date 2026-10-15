@@ -90,12 +90,13 @@ test('owner runs the synthetic connection test without sending the saved key or 
   let requests = 0;
   await page.route('**/api/admin-ai-test', route => {
     requests++; expect(route.request().method()).toBe('POST'); expect(route.request().postDataJSON()).toEqual({});
-    return json(route, 200, { success: true, free_only: true, samples_checked: 4, checks_passed: 6, checks_total: 6, elapsed_ms: 1200 });
+    return json(route, 200, { success: true, free_only: true, samples_checked: 4, checks_passed: 6, checks_total: 6, report_sections: 9, report_words: 480, elapsed_ms: 1200 });
   });
   await page.goto('/admin#ai-settings');
   await expect(page.locator('#testPrivateAI')).toBeEnabled();
   await page.locator('#testPrivateAI').click();
   await expect(page.locator('#privateAITestFeedback')).toContainText('آزمون موفق بود');
+  await expect(page.locator('#privateAITestFeedback')).toContainText('گزارش ۹‌بخشی با ۴۸۰ کلمه تولید شد');
   expect(requests).toBe(1); await expect(page.locator('#privateAIKey')).toHaveValue('');
 });
 test('a free connection failure remains visible and permits a fresh test', async ({ page }) => {
