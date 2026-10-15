@@ -1,0 +1,88 @@
+import { bmiGuidance, hasPregnancyContext, measurement } from './bmi.js';
+
+const selectedPatient = () => patients.find(patient => patient.id === currentPatient) || {};
+const localNumber = value => Number(value).toLocaleString('fa-IR', { maximumFractionDigits: 1 });
+function guidance(weight, height) {
+  const patient = selectedPatient();
+  return bmiGuidance({ weightKg: weight, heightCm: height, birthDate: patient.birth_date, pregnancy: hasPregnancyContext(patient, record || {}) });
+}
+function appendGuidance(container, result, { preview = false } = {}) {
+  const heading = document.createElement('strong');
+  heading.textContent = result.bmi == null ? result.title : 'شاخص تناسب قد و وزن (BMI): ' + localNumber(result.bmi);
+  container.append(heading);
+  if (result.bmi != null) {
+    const title = document.createElement('p'); title.textContent = result.title; container.append(title);
+  }
+  if (preview) {
+    if (result.category === 'incomplete' || result.category === 'age-needed' || result.category === 'child' || result.category === 'infant' || result.category === 'pregnancy') {
+      const note = document.createElement('p'); note.textContent = result.advice[0]; container.append(note);
+    }
+    return;
+  }
+  if (result.range) {
+    const range = document.createElement('p'); range.className = 'bmi-range';
+    range.textContent = 'بازه تقریبی وزن برای این قد در بزرگسالان: ' + localNumber(result.range.min) + ' تا ' + localNumber(result.range.max) + ' کیلوگرم؛ هدف شخصی وزن ممکن است متفاوت باشد.';
+    container.append(range);
+  }
+  const list = document.createElement('ul');
+  for (const advice of result.advice) { const item = document.createElement('li'); item.textContent = advice; list.append(item); }
+  container.append(list);
+}
+function renderBodySummary() {
+  const container = document.getElementById('bodySummary');
+  if (!container) return;
+  container.replaceChildren();
+  if (!record || recordPatientId !== currentPatient) { container.hidden = true; return; }
+  container.hidden = false;
+  const patient = selectedPatient();
+  const measured = [...(record.vitals || [])].filter(item => measurement(item.weight_kg, .2, 500) != null).sort((a, b) => new Date(b.measured_at || 0) - new Date(a.measured_at || 0))[0];
+  const values = document.createElement('p'); values.className = 'body-measurements';
+  values.textContent = 'قد: ' + (patient.height_cm != null ? localNumber(patient.height_cm) + ' سانتی‌متر' : 'ثبت نشده') + ' · آخرین وزن: ' + (measured ? localNumber(measured.weight_kg) + ' کیلوگرم' : 'ثبت نشده');
+  container.append(values);
+  if (measured?.measured_at) { const date = document.createElement('p'); date.className = 'body-measurement-date'; date.textContent = 'تاریخ وزن: ' + fmt(measured.measured_at) + '؛ محاسبه بر اساس آخرین قد ثبت‌شده است.'; container.append(date); }
+  const summary = document.createElement('div'); summary.className = 'bmi-summary';
+  appendGuidance(summary, guidance(measured?.weight_kg, patient.height_cm)); container.append(summary);
+}
+function updateLiveBMI() {
+  const container = document.getElementById('liveBmi'); if (!container) return;
+  container.replaceChildren();
+  const weight = document.querySelector('#dynamicFields [name="weight_kg"]')?.value;
+  const height = document.querySelector('#dynamicFields [name="height_cm"]')?.value;
+  appendGuidance(container, guidance(weight, height), { preview: true });
+}
+function prepareFields() {
+  if ($('entryType').value !== 'vital') return;
+  const height = document.querySelector('#dynamicFields [name="height_cm"]');
+  if (height) height.value = selectedPatient().height_cm ?? '';
+  $('dynamicFields').querySelectorAll('[name="weight_kg"],[name="height_cm"]').forEach(input => input.addEventListener('input', updateLiveBMI));
+  updateLiveBMI();
+}
+const baseRenderFields = renderFields;
+renderFields = function() { baseRenderFields(); prepareFields(); };
+const baseRender = render;
+render = function() { baseRender(); renderBodySummary(); };
+
+window.DrManVitals = {
+  afterEdit() { if ($('entryType').value === 'vital') { const height = document.querySelector('#dynamicFields [name="height_cm"]'); if (height) height.value = selectedPatient().height_cm ?? ''; updateLiveBMI(); } },
+  async prepareSave(body, { patientId, version, editing }) {
+    if (body.type !== 'vital') return {};
+    const inputHeight = body.height_cm;
+    delete body.height_cm; // Height belongs to patients, never to patient_vitals.
+    const height = measurement(inputHeight, 20, 260);
+    if (inputHeight !== '' && inputHeight != null && height == null) throw Error('قد را به سانتی‌متر و بین ۲۰ تا ۲۶۰ وارد کنید.');
+    if (body.systolic !== '' && body.diastolic !== '' && Number(body.systolic) <= Number(body.diastolic)) throw Error('فشار بالا (عدد بزرگ‌تر) باید از فشار پایین بیشتر باشد.');
+    const measures = ['weight_kg', 'systolic', 'diastolic', 'heart_rate', 'oxygen_saturation', 'temperature_c', 'glucose_mg_dl'];
+    const hasMeasures = measures.some(key => body[key] !== '' && body[key] != null);
+    const patient = patients.find(item => item.id === patientId);
+    const changed = height != null && height !== measurement(patient?.height_cm, 20, 260);
+    if (!editing && !hasMeasures && !changed) throw Error('وزن یا یکی از اندازه‌گیری‌ها را وارد کنید؛ برای تغییر قد هم می‌توانید از مشخصات پرونده استفاده کنید.');
+    if (!changed) return {};
+    const response = await api('/api/patients', { method: 'PATCH', body: JSON.stringify({ id: patientId, height_cm: height }) });
+    if (patient) Object.assign(patient, { height_cm: height }, response.patient || {});
+    if (!selectedRecordIs(patientId, version)) return { stale: true, savedHeight: true };
+    renderPatientSex(); renderBodySummary(); dispatchHealthRecord('drman:health-profile-updated');
+    return { savedHeight: true, skipEntry: !editing && !hasMeasures };
+  }
+};
+document.addEventListener('drman:health-profile-updated', renderBodySummary);
+renderBodySummary();

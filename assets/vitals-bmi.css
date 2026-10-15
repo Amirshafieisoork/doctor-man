@@ -1,0 +1,18 @@
+.patient-details{align-items:end;gap:10px;margin-top:18px}
+.patient-details label{min-width:130px;flex:1;font-size:12px!important;color:var(--text,var(--t))}
+.patient-details input,.patient-details select{width:100%;min-height:43px}
+.patient-details #patientSexStatus{flex-basis:100%;font-size:12px}
+.body-summary{border-bottom:1px solid var(--border,var(--b));padding:0 0 14px;margin-bottom:12px;color:var(--text,var(--t));font-size:13px;line-height:1.9}
+.body-summary[hidden]{display:none}
+.body-summary p{margin:5px 0}.body-summary ul{margin:8px 0;padding-right:19px}.body-summary li+li{margin-top:6px}
+.body-measurements{font-weight:700}.body-measurement-date{font-size:11px;color:var(--muted,var(--d))}
+.bmi-summary>strong,.bmi-preview>strong{display:block;font-size:15px;color:var(--text,var(--t))}
+.bmi-range{font-size:12px}
+.bmi-preview{padding:12px 14px;border:1px solid var(--border,var(--b));border-radius:12px;background:var(--surface,var(--s2));color:var(--text,var(--t));line-height:1.8;font-size:12px}
+.bmi-preview p{margin:5px 0}
+#dynamicFields label{font-size:12px!important;line-height:1.8;color:var(--text,var(--t))}
+#dynamicFields label small{font-size:11px;color:var(--muted,var(--d));font-weight:400}
+#dynamicFields input::placeholder{opacity:1;color:var(--muted,var(--d))}
+@media(max-width:600px){.patient-details label{flex-basis:calc(50% - 10px);min-width:0}.body-summary{font-size:12px}}
+
+#vitals .tiny{font-size:12px;line-height:1.9}

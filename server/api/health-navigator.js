@@ -4,6 +4,7 @@ import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { readEntitlement, planLimit } from './_lib/entitlements.js';
 import { avalaiClient, HEALTH_NAVIGATOR_MODEL, HEALTH_NAVIGATOR_FALLBACK_MODEL } from './_lib/ai-models.js';
+import { automaticOverview } from './_lib/health-overview.js';
 
 function dayStart(){const d=new Date();d.setUTCHours(0,0,0,0);return d.toISOString();}
 async function latestConsent(userId,patientId){const {data}=await supabase.from('consent_records').select('granted,granted_at').eq('user_id',userId).eq('patient_id',patientId).eq('consent_type','ai_processing').order('granted_at',{ascending:false}).limit(1).maybeSingle();return data?.granted===true;}
@@ -23,6 +24,21 @@ function renderAnswer(x){const lines=['برداشت کلی',String(x.overall||'�
 export default async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
   const session=await requireUser(req,res);if(!session)return;
+  if(req.body?.mode==='overview'){
+    const patientId=String(req.body?.patient_id||'').trim();
+    if(!patientId)return res.status(400).json({success:false,error:'پرونده سلامت لازم است'});
+    try{
+      // A no-response session check lets the helper abandon an in-flight model
+      // call safely; the final normal guard emits the appropriate auth error.
+      const silent={status(){return this},json(){return this},getHeader(){},setHeader(){}};
+      const result=await automaticOverview({database:supabase,userId:session.sub,patientId,sessionVersion:session.ver??0,
+        getClient:()=>avalaiClient(),getDailyLimit:async()=>planLimit((await readEntitlement(supabase,session.sub)).plan,'navigator_daily_limit'),
+        verifySession:async()=>Boolean(await requireUser(req,silent))});
+      if(!(await requireUser(req,res)))return;
+      res.setHeader('Cache-Control','private, no-store');
+      return res.status(result.status).json(result.body);
+    }catch(error){console.error('health-overview',safeErrorMetadata(error));return res.status(503).json({success:false,error:'جمع‌بندی پرونده موقتاً آماده نشد؛ اطلاعات پرونده همچنان در دسترس است.'})}
+  }
   const client=await avalaiClient();if(!client)return res.status(503).json({success:false,error:'راهنمای هوشمند هنوز تنظیم نشده است'});
   const body=req.body||{},patientId=String(body.patient_id||''),question=String(body.question||'').trim().slice(0,2500);if(!question)return res.status(400).json({success:false,error:'سؤال را وارد کنید'});
   try{

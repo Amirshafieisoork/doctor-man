@@ -12,7 +12,7 @@ async function page(query = {}) { const res = { statusCode: 200, headers: {}, se
 const guide = { slug: 'mri-visit-checklist', title: 'راهنمای ام‌آر‌آی', summary: 'تصویربرداری و مدارک', content_type: 'guide', category: 'تصویربرداری', status: 'published', risk_level: 'low', review_level: 'editorial', doctor_profiles: null };
 const article = { ...guide, slug: 'lab-article', title: 'خواندن CBC', category: 'آزمایش', content_type: 'article' };
 test('learn clearly labels articles and guides with working content type filters', async t => {
-  database(t, [guide, article]); const list = await page(); assert.match(list.html, /<h1>مقالات و راهنماهای سلامت<\/h1>/); assert.match(list.html, /name="kind"/); assert.match(list.html, /خواندن راهنما/); assert.match(list.html, /خواندن مقاله/);
+  database(t, [guide, article]); const list = await page(); assert.match(list.html, /<h1>مقالات و راهنمای سلامت<\/h1>/); assert.match(list.html, /name="kind"/); assert.match(list.html, /href="\/learn">مقالات و راهنما<\/a>/); assert.doesNotMatch(list.html, /مقالات و راهنماها/); assert.match(list.html, /خواندن راهنما/); assert.match(list.html, /خواندن مقاله/);
   const guides = await page({ kind: 'guide' }); assert.match(guides.html, /href="\/learn\/mri-visit-checklist"/); assert.doesNotMatch(guides.html, /href="\/learn\/lab-article"/);
   const articles = await page({ kind: 'article' }); assert.doesNotMatch(articles.html, /href="\/learn\/mri-visit-checklist"/); assert.match(articles.html, /href="\/learn\/lab-article"/);
 });
@@ -23,7 +23,7 @@ test('Persian spelling normalization combines search with category and guide fil
 });
 test('filtered empty results help recover and escape the original search safely', async t => {
   database(t, [guide]); const result = await page({ q: '\"><script>unsafe()</script>' });
-  assert.match(result.html, /عبارت کوتاه‌تر یا دسته دیگری/); assert.match(result.html, /دیدن همه مقالات و راهنماها/); assert.doesNotMatch(result.html, /<script>unsafe/);
+  assert.match(result.html, /عبارت کوتاه‌تر یا دسته دیگری/); assert.match(result.html, /دیدن همه مقالات و راهنما/); assert.doesNotMatch(result.html, /<script>unsafe/);
 });
 test('public guides disclose AI assistance and editorial review without inventing a physician', async t => {
   database(t, { ...guide, author_name: 'تحریریه دکتر من', ai_assisted: true, evidence_updated_at: '2026-10-13', next_review_at: '2027-04-13', body_html: '<h2>راهنما</h2><p>اصل سند را نگه دارید.</p><script>unsafe()</script>', source_links: [{ title: 'MedlinePlus', url: 'https://medlineplus.gov/lab-tests/complete-blood-count-cbc/' }] });

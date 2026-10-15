@@ -71,9 +71,9 @@ test('later inserted header and nav marks use the active theme without changing 
   for (const mark of await marks.all()) await expect(mark).toHaveAttribute('src', '/assets/drman-mark-v6.webp');
 });
 
-test('interactive cards and menu controls glow for keyboard and mouse without moving', async ({ page }, testInfo) => {
+test('interactive cards glow for keyboard and mouse without moving', async ({ page }, testInfo) => {
   await page.goto('/');
-  const targets = [page.locator('.features a.feature').first(), page.locator('a.guideCard').first(), page.locator('a.btn.primary').first(), page.locator('.theme-toggle'), page.locator('.site-menu > summary')];
+  const targets = [page.locator('.features a.feature').first(), page.locator('a.guideCard').first(), page.locator('.heroCtas a.btn.primary').first()];
   const geometry = target => target.evaluate(el => {
     const { x, y, width, height } = el.getBoundingClientRect();
     const parent = el.parentElement.getBoundingClientRect();

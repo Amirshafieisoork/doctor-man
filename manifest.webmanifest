@@ -4,15 +4,16 @@
   "description": "تفسیر آموزشی آزمایش، پرونده سلامت، پیگیری روندها و راهنمای هوشمند سلامت",
   "lang": "fa",
   "dir": "rtl",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#050d1a",
   "theme_color": "#050d1a",
   "icons": [
-    {"src":"/assets/drman-icon-v5-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
-    {"src":"/assets/drman-icon-v5-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
-    {"src":"/assets/drman-icon-v5-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+    {"src":"/assets/drman-icon-v7-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/assets/drman-icon-v7-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"/assets/drman-icon-v7-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
   ],
   "categories": ["medical","health","productivity"],
   "shortcuts": [

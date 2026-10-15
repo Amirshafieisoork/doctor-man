@@ -3,6 +3,7 @@ import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { encounterLinks } from './_lib/clinical-links.js';
 import { timestampField, InputValidationError } from './_lib/validate.js';
+import { readPrescriptionRegistration } from './_lib/patient-registration.js';
 
 function text(v,max=3000){return v==null?null:String(v).trim().slice(0,max)}
 function bool(v){return v===true||v==='true'||v===1||v==='1'}
@@ -55,6 +56,8 @@ export default async function handler(req,res){
       const encounterId=String(body.encounter_id||'').trim();if(!encounterId)return res.status(400).json({success:false,error:'نسخه باید به یک ویزیت کامل و تأییدشده متصل باشد'});
       const {data:enc}=await supabase.from('encounters').select('*').eq('id',encounterId).eq('patient_id',patientId).eq('doctor_id',doctor.id).maybeSingle();
       if(!readyForPrescription(enc))return res.status(409).json({success:false,error:'ارزیابی بالینی این ویزیت برای نسخه‌نویسی کامل نیست. شرح حال، هویت، داروها، حساسیت‌ها، علائم هشدار و معاینه/ارزیابی را تکمیل کنید'});
+      const registration=await readPrescriptionRegistration(supabase,patientId);
+      if(!registration.prescription_ready)return res.status(409).json({success:false,code:'PRESCRIPTION_REGISTRATION_REQUIRED',missing:registration.missing,error:registration.insurance_conflict?'وضعیت بیمه متناقض است: بیمه پایه و «بدون بیمه» هم‌زمان ثبت شده‌اند. بیمار باید بیمه قبلی را اصلاح کند یا گزینه «بدون بیمه» را بردارد. ثبت ارزیابی و مراقبت همچنان امکان‌پذیر است.':'برای صدور نسخه، '+registration.missing.join(' و ')+' را در پرونده بیمار تکمیل کنید. ثبت ارزیابی و مراقبت بیمار همچنان امکان‌پذیر است.'});
       const items=Array.isArray(body.items)?body.items.slice(0,30).map(x=>({medication_name:text(x.medication_name,180),dose:text(x.dose,120),frequency:text(x.frequency,120),duration:text(x.duration,120),instructions:text(x.instructions,800)})).filter(x=>x.medication_name):[];
       if(!items.length)return res.status(400).json({success:false,error:'حداقل یک دارو لازم است'});
       const {data:rx,error}=await supabase.from('prescriptions').insert({patient_id:patientId,doctor_id:doctor.id,encounter_id:encounterId,issued_at:new Date().toISOString(),notes:text(body.notes,2000),clinical_basis:text(body.clinical_basis,2500),status:'active'}).select('*').single();if(error)throw error;
@@ -78,6 +81,7 @@ export default async function handler(req,res){
   }catch(error){
     if(error instanceof InputValidationError)return res.status(400).json({success:false,error:error.message});
     console.error('clinical-workspace',safeErrorMetadata(error));
+    if(/PRESCRIPTION_PATIENT_REGISTRATION_REQUIRED/.test(String(error?.message||'')))return res.status(409).json({success:false,code:'PRESCRIPTION_REGISTRATION_REQUIRED',error:'برای صدور نسخه، کد ملی معتبر و بیمه پایه با اعتبار فعلی را در پرونده تکمیل کنید.'});
     const m=String(error?.message||'');if(/PRESCRIPTION_REQUIRES|CLINICAL_|PATIENT_IDENTITY|PHYSICAL_EXAM|REMOTE_ASSESSMENT|TELEHEALTH_/.test(m))return res.status(409).json({success:false,error:'نسخه بدون ارزیابی بالینی کامل و تأیید پزشک قابل ثبت نیست'});
     return res.status(500).json({success:false,error:'ثبت اطلاعات بالینی انجام نشد'});
   }

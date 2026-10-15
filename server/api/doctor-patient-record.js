@@ -1,5 +1,6 @@
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
+import { prescriptionRegistration } from './_lib/patient-registration.js';
 async function doctorForUser(userId){const {data}=await supabase.from('doctor_profiles').select('id,full_name,specialty,verification_status').eq('user_id',userId).maybeSingle();return data}
 function has(scope,key){return Array.isArray(scope)&&scope.includes(key)}
 function prescribingReady(e){const core=[e.chief_complaint,e.history_of_present_illness,e.assessment,e.plan].every(v=>String(v||'').trim());const safe=e.patient_identity_verified&&e.medications_reviewed&&e.allergies_reviewed&&e.red_flags_reviewed&&e.clinician_attested;const assess=e.encounter_type==='in_person'?e.clinical_exam_completed:['video','phone','follow_up'].includes(e.encounter_type)?(e.telehealth_appropriate&&e.telehealth_consent_confirmed&&String(e.remote_assessment_notes||'').trim()):Boolean(e.clinical_exam_completed||String(e.remote_assessment_notes||'').trim());return Boolean(core&&safe&&assess)}
@@ -11,8 +12,11 @@ export default async function handler(req,res){
  const patientFields=['id','display_name'];
  if(has(grant.scope,'summary')||has(grant.scope,'clinical_history'))patientFields.push('birth_date','sex','blood_type','height_cm');
  if(has(grant.scope,'clinical_history'))patientFields.push('notes');
+ const registrationAllowed=has(grant.scope,'clinical_history')||has(grant.scope,'clinical_write');
+ if(registrationAllowed)patientFields.push('national_code');
  const {data:patient}=await supabase.from('patients').select(patientFields.join(',')).eq('id',patientId).maybeSingle();if(!patient)return res.status(404).json({success:false,error:'پرونده پیدا نشد'});
  const output={patient,scope:grant.scope,permissions:{messages:has(grant.scope,'messages'),clinical_write:has(grant.scope,'clinical_write')}};const jobs=[];
+ if(registrationAllowed)jobs.push(supabase.from('patient_insurances').select('id,provider_name,coverage_type,policy_number,plan_name,valid_from,valid_until,is_primary').eq('patient_id',patientId).order('is_primary',{ascending:false}).then(result=>{if(result.error)throw result.error;output.insurances=result.data||[];output.registration=prescriptionRegistration(patient,output.insurances)}));
  if(has(grant.scope,'summary'))jobs.push(Promise.all([supabase.from('patient_conditions').select('id',{count:'exact',head:true}).eq('patient_id',patientId).eq('status','active'),supabase.from('patient_allergies').select('id',{count:'exact',head:true}).eq('patient_id',patientId),supabase.from('patient_medications').select('id',{count:'exact',head:true}).eq('patient_id',patientId).eq('status','active'),supabase.from('care_tasks').select('id',{count:'exact',head:true}).eq('patient_id',patientId).eq('status','open')]).then(([a,b,c,d])=>{output.summary={active_conditions:a.count||0,allergies:b.count||0,active_medications:c.count||0,open_tasks:d.count||0}}));
  if(has(grant.scope,'conditions'))jobs.push(supabase.from('patient_conditions').select('*').eq('patient_id',patientId).order('created_at',{ascending:false}).then(r=>{output.conditions=r.data||[]}));
  if(has(grant.scope,'allergies'))jobs.push(supabase.from('patient_allergies').select('*').eq('patient_id',patientId).order('created_at',{ascending:false}).then(r=>{output.allergies=r.data||[]}));

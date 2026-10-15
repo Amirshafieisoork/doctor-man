@@ -1,10 +1,10 @@
 :root{
   --bg:#f6f9fd!important;--surface:#ffffff!important;--surface2:#f2f7fc!important;--surface3:#eaf3fb!important;
   --accent:#1267df!important;--green:#0dbb8a!important;--yellow:#d89a1c!important;--red:#e05267!important;
-  --text:#10243e!important;--dim:#6f839c!important;--border:#dce8f3!important;
+  --text:#10243e!important;--dim:#526681!important;--border:#dce8f3!important;
   --s:#ffffff!important;--s2:#f2f7fc!important;--s3:#eaf3fb!important;
   --a:#1267df!important;--g:#0dbb8a!important;--y:#d89a1c!important;--r:#e05267!important;
-  --t:#10243e!important;--d:#6f839c!important;--b:#dce8f3!important
+  --t:#10243e!important;--d:#526681!important;--b:#dce8f3!important
 }
 html{color-scheme:light;scroll-behavior:smooth}
 body{
@@ -33,7 +33,7 @@ header{
   color:#10243e!important;
   box-shadow:0 10px 28px rgba(31,72,118,.05)!important
 }
-.muted,.hint,.sub,.text,.tiny,small{color:#6f839c!important}
+.muted,.hint,.sub,.text,.tiny,small{color:#526681!important}
 input,select,textarea{
   background:#f8fbfe!important;color:#10243e!important;
   border:1px solid #d9e6f1!important;border-radius:12px!important;

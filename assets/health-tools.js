@@ -70,6 +70,7 @@ function editEntry(type,entry) {
     if(input.type==='datetime-local'&&value){const date=new Date(value);value=new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16);}
     input.value=value;
   }
+  window.DrManVitals?.afterEdit();
 }
 saveEntry = async function() {
   const box=$('dynamicFields');
@@ -77,14 +78,18 @@ saveEntry = async function() {
   if(!recordReady())return feedback('ابتدا پرونده انتخاب‌شده را بارگذاری کنید.',true);
   if($('addModal').dataset.patientId!==currentPatient)return feedback('پرونده تغییر کرده؛ فرم را دوباره باز کنید.',true);
   const patientId=currentPatient,version=recordLoadVersion, body={type:$('entryType').value,patient_id:patientId};
-  if(editingEntry){if(editingEntry.patientId!==patientId)return feedback('پرونده تغییر کرده؛ فرم را دوباره باز کنید',true);body.id=editingEntry.id;}
+  const editing=editingEntry;
+  if(editing){if(editing.patientId!==patientId)return feedback('پرونده تغییر کرده؛ فرم را دوباره باز کنید',true);body.id=editing.id;}
   box.querySelectorAll('[name]').forEach(input=>body[input.name]=input.type==='datetime-local'&&input.value?new Date(input.value).toISOString():input.value);
   const button=$('addModal').querySelector('button.primary');button.disabled=true;
+  let preparation={};
   try {
-    await api('/api/health-entry',{method:editingEntry?'PATCH':'POST',body:JSON.stringify(body)});
+    preparation=await window.DrManVitals?.prepareSave(body,{patientId,version,editing:!!editing})||{};
+    if(preparation.stale)return;
+    if(!preparation.skipEntry)await api('/api/health-entry',{method:editing?'PATCH':'POST',body:JSON.stringify(body)});
     if(!selectedRecordIs(patientId,version))return;
     closeModal('addModal');editingEntry=null;await loadRecord();if(patientId===currentPatient)feedback('اطلاعات سلامت ذخیره شد.');
-  }catch(error){if(selectedRecordIs(patientId,version))feedback(error.message,true);}finally{if($('addModal').dataset.patientId===patientId)button.disabled=false;}
+  }catch(error){if(selectedRecordIs(patientId,version))feedback((preparation.savedHeight?'قد ثبت شد؛ ذخیره بقیه اندازه‌گیری‌ها انجام نشد. ':'')+error.message,true);}finally{if($('addModal').dataset.patientId===patientId)button.disabled=false;}
 };
 async function deleteEntry(type,entry) {
   if(!recordReady())return;

@@ -11,18 +11,21 @@
     "@vercel/oidc": "4.0.0",
     "busboy": "1.6.0",
     "openai": "4.104.0",
+    "qrcode": "1.5.4",
     "sanitize-html": "2.18.0"
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
     "vercel-build": "node scripts/build-probes.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node scripts/check.mjs && node scripts/build-article-sanitizer.mjs --check",
+    "check": "node scripts/check.mjs && node scripts/build-article-sanitizer.mjs --check && node scripts/build-emergency-qr.mjs --check",
     "build:article-sanitizer": "node scripts/build-article-sanitizer.mjs",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "build:emergency-qr": "node scripts/build-emergency-qr.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
-    "esbuild": "0.27.0"
+    "esbuild": "0.27.0",
+    "jsqr": "1.4.0"
   }
 }

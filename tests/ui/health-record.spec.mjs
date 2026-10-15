@@ -93,6 +93,7 @@ test('a pending Navigator answer cannot appear in another family member record',
   const answer = deferred(), done = deferred(); let asked = 0, submitted;
   await page.route('**/api/health-record**', route => json(route, 200, { record: {} }));
   await page.route('**/api/health-navigator', async route => {
+    if(route.request().postDataJSON()?.mode==='overview')return json(route,200,{success:true,source:'local',state:'consent_not_granted',overview:{overall:'جمع‌بندی ساختگی پرونده برای آزمون رابط کاربری',next_steps:[],nutrition:[],movement:[],questions_for_doctor:[],data_limits:[]}});
     asked++; submitted = route.request().postDataJSON(); await answer.promise;
     await json(route, 200, { answer: 'پاسخ خصوصی پرونده اول', remaining_today: 1 }); done.resolve();
   });

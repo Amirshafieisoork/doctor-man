@@ -12,7 +12,7 @@ test('forgot password normalizes Persian phone numbers and honestly queues suppo
   await expect(page.getByRole('tablist')).toBeHidden();
   await expect(page.getByLabel('شماره موبایل حساب')).toHaveValue('+۹۸ (۹۱۲) ۳۴۵-۶۷۸۹');
   await page.getByRole('button',{name:'ثبت درخواست بازیابی'}).click();
-  expect(submitted).toEqual({phone:'09123456789'});
+  await expect.poll(()=>submitted).toEqual({phone:'09123456789'});
   await expect(page.locator('#msg')).toContainText('برای پشتیبانی ثبت شد');
   await expect(page.getByRole('button',{name:'ثبت درخواست بازیابی'})).toBeEnabled();
   await page.getByRole('button',{name:'بازگشت به ورود'}).click();
@@ -32,7 +32,7 @@ test('one-use reset links are removed from the address bar, require matching pas
   await expect(page.locator('#msg')).toContainText('یکسان نیست');expect(submitted).toHaveLength(0);
   await page.getByLabel('تکرار رمز جدید').fill('new-test-password');
   await page.getByRole('button',{name:'ذخیره رمز جدید'}).click();
-  expect(submitted).toEqual([{token,password:'new-test-password'}]);
+  await expect.poll(()=>submitted).toEqual([{token,password:'new-test-password'}]);
   await expect(page.getByRole('tab',{name:'ورود',exact:true})).toHaveAttribute('aria-selected','true');
   await expect(page.locator('#msg')).toContainText('با رمز جدید وارد');
   await expect(page.locator('#lw')).toHaveValue('');await expect(page).toHaveURL(/\/auth$/);
