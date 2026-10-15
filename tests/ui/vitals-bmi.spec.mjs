@@ -92,7 +92,7 @@ test('profile saves blood group, birth date and height for the selected family m
   });
   await page.goto('/health'); await expect(page.locator('#patientSexSave')).toBeEnabled();
   await page.locator('#patientSelect').selectOption('bmi-child'); await expect(page.locator('#patientSexSave')).toBeEnabled();
-  await page.locator('#patientBloodType').selectOption('O-'); await page.locator('#patientBirthDate').fill('2016-04-02'); await page.locator('#patientHeight').fill('112');
+  await page.locator('#patientBloodType').selectOption('O-'); await page.locator('#patientBirthDate').fill('۱۳۹۵/۰۱/۱۴'); await page.locator('#patientHeight').fill('112');
   await page.locator('#patientSexSave').click(); await expect(page.locator('#patientSexStatus')).toContainText('ثبت شد');
   expect(submitted).toEqual({ id: 'bmi-child', sex: 'female', birth_date: '2016-04-02', height_cm: 112, blood_type: 'O-' });
   await page.locator('#patientSelect').selectOption('bmi-self'); await expect(page.locator('#patientBloodType')).toHaveValue('A+'); await expect(page.locator('#patientHeight')).toHaveValue('170');

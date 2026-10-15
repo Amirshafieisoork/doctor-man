@@ -243,6 +243,13 @@
       "dest": "/terms.html"
     },
     {
+      "src": "/favicon.ico",
+      "dest": "/assets/drman-favicon-v8.ico",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
       "handle": "filesystem"
     },
     {

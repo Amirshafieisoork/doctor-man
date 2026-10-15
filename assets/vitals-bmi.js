@@ -6,6 +6,51 @@ function guidance(weight, height) {
   const patient = selectedPatient();
   return bmiGuidance({ weightKg: weight, heightCm: height, birthDate: patient.birth_date, pregnancy: hasPregnancyContext(patient, record || {}) });
 }
+function latestMeasurement(key, min, max) {
+  return [...(record?.vitals || [])]
+    .filter(item => measurement(item[key], min, max) != null)
+    .sort((a, b) => new Date(b.measured_at || 0) - new Date(a.measured_at || 0))[0];
+}
+let profileBaseline = { patientId: null, weight: null, glucose: null };
+function updateProfileBMI() {
+  const container = document.getElementById('profileBmi');
+  if (!container) return;
+  container.replaceChildren();
+  if (!record || recordPatientId !== currentPatient) { container.hidden = true; return; }
+  container.hidden = false;
+  const result = guidance($('patientWeight').value, $('patientHeight').value);
+  appendGuidance(container, result, { preview: true });
+  if (!['incomplete', 'age-needed', 'child', 'infant', 'pregnancy'].includes(result.category)) {
+    const note = document.createElement('p'); note.textContent = result.advice[0]; container.append(note);
+  }
+}
+function renderProfile() {
+  const ready = !!record && recordPatientId === currentPatient;
+  const weight = ready ? latestMeasurement('weight_kg', .2, 500) : null;
+  const glucose = ready ? latestMeasurement('glucose_mg_dl', 1, 1500) : null;
+  profileBaseline = { patientId: ready ? currentPatient : null, weight: weight?.weight_kg ?? null, glucose: glucose?.glucose_mg_dl ?? null };
+  $('patientWeight').value = weight?.weight_kg ?? '';
+  $('patientGlucose').value = glucose?.glucose_mg_dl ?? '';
+  $('patientWeightDate').textContent = weight?.measured_at ? 'آخرین ثبت: ' + fmt(weight.measured_at) : 'وزن جدید به تاریخچه افزوده می‌شود.';
+  $('patientGlucoseDate').textContent = glucose?.measured_at ? 'آخرین ثبت: ' + fmt(glucose.measured_at) : 'قند جدید به تاریخچه افزوده می‌شود.';
+  updateProfileBMI();
+}
+function profileChanges() {
+  if (profileBaseline.patientId !== currentPatient) throw Error('ابتدا پرونده انتخاب‌شده را بارگذاری کنید.');
+  const changes = {};
+  for (const [id, key, baseline, min, max] of [
+    ['patientWeight', 'weight_kg', profileBaseline.weight, .2, 500],
+    ['patientGlucose', 'glucose_mg_dl', profileBaseline.glucose, 1, 1500]
+  ]) {
+    const raw = $(id).value;
+    // Clearing a quick field never deletes a saved measurement or its history.
+    if (raw === '') continue;
+    const value = measurement(raw, min, max);
+    if (value == null) throw Error('وزن و قند خون را با عدد و واحد نوشته‌شده وارد کنید.');
+    if (value !== measurement(baseline, min, max)) changes[key] = value;
+  }
+  return Object.keys(changes).length ? changes : null;
+}
 function appendGuidance(container, result, { preview = false } = {}) {
   const heading = document.createElement('strong');
   heading.textContent = result.bmi == null ? result.title : 'شاخص تناسب قد و وزن (BMI): ' + localNumber(result.bmi);
@@ -35,7 +80,7 @@ function renderBodySummary() {
   if (!record || recordPatientId !== currentPatient) { container.hidden = true; return; }
   container.hidden = false;
   const patient = selectedPatient();
-  const measured = [...(record.vitals || [])].filter(item => measurement(item.weight_kg, .2, 500) != null).sort((a, b) => new Date(b.measured_at || 0) - new Date(a.measured_at || 0))[0];
+  const measured = latestMeasurement('weight_kg', .2, 500);
   const values = document.createElement('p'); values.className = 'body-measurements';
   values.textContent = 'قد: ' + (patient.height_cm != null ? localNumber(patient.height_cm) + ' سانتی‌متر' : 'ثبت نشده') + ' · آخرین وزن: ' + (measured ? localNumber(measured.weight_kg) + ' کیلوگرم' : 'ثبت نشده');
   container.append(values);
@@ -63,6 +108,8 @@ const baseRender = render;
 render = function() { baseRender(); renderBodySummary(); };
 
 window.DrManVitals = {
+  renderProfile,
+  profileChanges,
   afterEdit() { if ($('entryType').value === 'vital') { const height = document.querySelector('#dynamicFields [name="height_cm"]'); if (height) height.value = selectedPatient().height_cm ?? ''; updateLiveBMI(); } },
   async prepareSave(body, { patientId, version, editing }) {
     if (body.type !== 'vital') return {};
@@ -85,4 +132,7 @@ window.DrManVitals = {
   }
 };
 document.addEventListener('drman:health-profile-updated', renderBodySummary);
+for (const id of ['patientWeight', 'patientHeight']) $(id).addEventListener('input', updateProfileBMI);
+for (const id of ['patientBirthDate', 'fBirth']) $(id).addEventListener('input', event => event.target.setCustomValidity(''));
+renderProfile();
 renderBodySummary();
