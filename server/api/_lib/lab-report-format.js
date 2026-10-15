@@ -31,14 +31,14 @@ export const LAB_REPORT_SECTIONS_SCHEMA = immutable({
   }
 });
 
-export const LAB_REPORT_SECTIONS_PROMPT = `Write nine substantive sections in Persian: aim for 600–900 useful words, minimum 450. Return sections [{section_id,content}], IDs 1–9 once each. Do not repeat headings; the server adds these titles:
+export const LAB_REPORT_SECTIONS_PROMPT = `Write nine substantive sections in Persian: aim for 650–900 useful words, minimum 450. Return sections [{section_id,content}], IDs 1–9 once each. Do not repeat headings; the server adds these titles:
 ${LAB_REPORT_SECTIONS.map(section => `${section.id}: ${section.title}`).join('\n')}
 1: Summarize readable findings and missing clinical context.
 2: Explain each row and its printed range; unreadable rows stay uninterpreted. Keep items.explanation to one sentence; detail belongs here.
 3: Explain abnormalities, possible non-diagnostic reasons and follow-up; never invent an abnormality.
 4: Separate routine follow-up from urgent symptoms; mild abnormalities alone do not imply emergency.
-5: Give practical eat-more/eat-less actions with Iranian food examples, grounded in readable findings. No restrictive diet or fluid target without clinical context.
-6: Suggest feasible activity, sleep and stress actions; qualify exercise for unknown symptoms or limitations.
+5: Give practical eat-more/eat-less actions with Iranian food examples, grounded in readable findings. Do not assume iron deficiency, prescribe iron, or present diet as anemia treatment. Avoid liver when pregnancy status is unknown. No restrictive diet or fluid target without context.
+6: Suggest gradual walking, sleep and stress actions. Exercise supports fitness; never claim it raises hemoglobin or cures anemia. Pause with concerning symptoms and seek clinical review; qualify exercise for unknown symptoms or limitations.
 7: Discuss limited herbal/complementary evidence and medication interactions; culinary herbs are allowed. Never prescribe a medicinal herb, supplement, drug or therapeutic dose, or replace medical care. Explain when to ask a physician/pharmacist.
 8: Say when to review results and which relevant clinician to start with; avoid unnecessary specialist lists.
 9: Give grounded encouragement and a concrete next-step plan.

@@ -41,6 +41,12 @@ function sdk(respond) {
   return { client, calls };
 }
 function pageIds(payload) { return payload.response_format.json_schema.schema.properties.pages.items.properties.p.enum; }
+function interpreterSourceRows(payload) {
+  const source = payload.messages[1].content;
+  const start = source.lastIndexOf('\n{"pages":');
+  assert.ok(start >= 0, 'the interpreter receives the complete serialized source pages');
+  return JSON.parse(source.slice(start + 1)).pages.flatMap(page => page.rows);
+}
 function normalResponse(payload) { return payload.model === FREE_LAB_OCR_MODEL ? extraction(pageIds(payload)) : report(); }
 test('a printed critical marker must survive interpretation and cannot be silently repaired into ordinary high', async () => {
   const source = row(1, { n: 'Potassium', v: '7.1', r: '3.5-5.1', f: 'critical' });
@@ -209,9 +215,9 @@ test('the abnormal list is never requested from the model and is derived from au
     row(5, { n: 'Potassium', v: '7.1', u: 'mmol/L', r: '3.5-5.1', f: 'critical' })
   ];
   const interpreted = report(rows, { status: 'danger' });
-  interpreted.items[1].flag = 'normal'; // The printed range validates this as high.
+  interpreted.items[1].flag = 'high'; // Honor the prepared printed-range classification.
   interpreted.items[2].flag = 'high'; // An unreadable value must stay unknown.
-  interpreted.items[3].flag = 'high'; // The printed range validates this as normal.
+  interpreted.items[3].flag = 'normal'; // Honor the prepared printed-range classification.
   const before = structuredClone(interpreted);
   const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
     ? { pages: [{ p: 1, read_quality: 'partial', rows }] } : interpreted));
@@ -232,6 +238,98 @@ test('an interpreter cannot return an abnormal list of any type in place of the 
     const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL ? extraction([1]) : interpreted));
     await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_RESPONSE_INVALID' });
   }
+});
+
+test('readable numeric results without printed markers receive prepared flags while preserving the original fields', async () => {
+  const rows = [
+    row(1, { n: 'LDL Cholesterol', v: '162', r: '<100', f: 'unknown' }),
+    row(2, { n: 'Triglycerides', v: '140', r: '<150', f: 'unknown' }),
+    row(3, { n: 'Creatinine', v: '0.9', r: '0.6 - 1.1', f: 'unknown' })
+  ];
+  const interpreted = report(rows, { status: 'warning' });
+  interpreted.items[0].flag = 'high'; interpreted.items[1].flag = 'normal'; interpreted.items[2].flag = 'normal';
+  const original = structuredClone(rows);
+  const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows }] } : interpreted));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.deepEqual(result.parsed.items.map(item => item.flag), ['high', 'normal', 'normal']);
+  assert.deepEqual(result.parsed.abnormal_items, ['LDL Cholesterol']);
+  const prepared = interpreterSourceRows(calls[1].payload);
+  assert.deepEqual(prepared.map(row => row.f), ['high', 'normal', 'normal']);
+  assert.deepEqual(prepared.map(({ n, v, u, r }) => ({ n, v, u, r })), rows.map(({ n, v, u, r }) => ({ n, v, u, r })));
+  assert.deepEqual(rows, original, 'preparing absent flags never mutates the original OCR output');
+});
+
+test('source preparation leaves comparator values and qualified reference ranges unknown', async () => {
+  const rows = [
+    row(1, { n: 'Qualified demographic', v: '13', r: 'Male 14-18; Female 12-16', f: 'unknown' }),
+    row(2, { n: 'Comparator result', v: '<5', r: '5-10', f: 'unknown' }),
+    row(3, { n: 'Multiple references', v: '12', r: '10-15; 20-30', f: 'unknown' }),
+    row(4, { n: 'Unit-qualified range', v: '90', r: '70-100 mg/dL', f: 'unknown' }),
+    row(5, { n: 'Age-qualified range', v: '90', r: 'Age 18-65: 70-100', f: 'unknown' })
+  ];
+  const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows }] } : report(rows)));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.deepEqual(interpreterSourceRows(calls[1].payload).map(row => row.f), rows.map(() => 'unknown'));
+  assert.deepEqual(result.parsed.items.map(item => item.flag), rows.map(() => 'unknown'));
+  assert.deepEqual(result.parsed.abnormal_items, []);
+});
+
+test('consistent printed markers are preserved and explicit critical markers are never inferred from their numeric range', async () => {
+  const rows = [
+    row(1, { n: 'Explicit high', v: '162', r: '<100', f: 'high' }),
+    row(2, { n: 'Explicit low', v: '69', r: '70-100', f: 'low' }),
+    row(3, { n: 'Explicit critical', v: '90', r: '70-100', f: 'critical' }),
+    row(4, { n: 'Explicit normal', v: '90', r: '70-100', f: 'normal' })
+  ];
+  const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows }] } : report(rows, { status: 'danger' })));
+  const result = await analyzeFreeLabImages(client, content(), 'synthetic');
+  assert.deepEqual(interpreterSourceRows(calls[1].payload).map(row => row.f), ['high', 'low', 'critical', 'normal']);
+  assert.deepEqual(result.parsed.items.map(item => item.flag), ['high', 'low', 'critical', 'normal']);
+});
+
+test('a printed marker that conflicts with its unambiguous numeric reference fails before a narrative can retain contradictory prose', async () => {
+  for (const source of [
+    row(1, { v: '90', r: '70-100', f: 'high' }),
+    row(1, { v: '90', r: '70-100', f: 'low' }),
+    row(1, { v: '120', r: '70-100', f: 'normal' }),
+    row(1, { v: '100', r: '<100', f: 'normal' }),
+    row(1, { v: '100', r: '≤100', f: 'high' })
+  ]) {
+    const { client, calls } = sdk(payload => answer(payload, { pages: [{ p: 1, read_quality: 'good', rows: [source] }] }));
+    await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_GROUNDING_FAILED' });
+    assert.equal(calls.length, 1, 'conflicting source evidence must never reach the interpreter');
+  }
+});
+
+test('an interpretation that contradicts a readable printed marker is rejected before normalization can retain stale prose', async () => {
+  for (const [source, flag] of [
+    [row(1, { v: '90', r: '70-100', f: 'normal' }), 'high'],
+    [row(1, { v: '120', r: '70-100', f: 'high' }), 'low'],
+    [row(1, { v: '120', r: '70-100', f: 'high' }), 'unknown'],
+    [row(1, { v: '60', r: '70-100', f: 'low' }), 'normal'],
+    [row(1, { v: 'Positive', r: 'See clinical context', f: 'high' }), 'normal']
+  ]) {
+    const interpreted = report([source], { status: 'warning' });
+    interpreted.items[0].flag = flag;
+    interpreted.items[0].explanation = 'توضیح ساختگی ناسازگار با علامت چاپ‌شده';
+    const before = structuredClone(interpreted);
+    const { client, calls } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+      ? { pages: [{ p: 1, read_quality: 'good', rows: [source] }] } : interpreted));
+    await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_GROUNDING_FAILED' });
+    assert.equal(calls.length, 2, 'the rejected result must not trigger a repair or fallback request');
+    assert.deepEqual(interpreted, before, 'conflicting response data must never be silently rewritten');
+  }
+});
+
+test('a normal narrative cannot hide a numeric abnormality derived from a single printed bound', async () => {
+  const source = row(1, { n: 'Synthetic cholesterol', v: '162', r: '<100', f: 'unknown' });
+  const interpreted = report([source]); interpreted.items[0].flag = 'unknown';
+  const { client } = sdk(payload => answer(payload, payload.model === FREE_LAB_OCR_MODEL
+    ? { pages: [{ p: 1, read_quality: 'good', rows: [source] }] } : interpreted));
+  await assert.rejects(analyzeFreeLabImages(client, content(), 'synthetic'), { code: 'AI_GROUNDING_FAILED' });
 });
 
 test('incomplete or mistyped interpreter report fields are rejected before source rows are assembled', async () => {

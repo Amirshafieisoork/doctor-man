@@ -7,8 +7,25 @@ function firstNumber(value){
 }
 function simpleRange(value){
   const s=numericText(value).replace(/[–—]/g,'-');
-  const m=s.match(/^([-+]?\d+(?:\.\d+)?)\s*(?:-|تا|to)\s*([-+]?\d+(?:\.\d+)?)$/i);
+  const m=s.match(/^([-+]?(?:\d+(?:\.\d+)?|\.\d+))\s*(?:-|تا|to)\s*([-+]?(?:\d+(?:\.\d+)?|\.\d+))$/i);
   if(!m)return null;const low=Number(m[1]),high=Number(m[2]);if(!Number.isFinite(low)||!Number.isFinite(high)||low>high)return null;return{low,high};
+}
+export function inferPrintedRangeFlag(value,referenceRange){
+  const number=firstNumber(value);
+  if(number==null)return null;
+  const range=simpleRange(referenceRange);
+  if(range)return number<range.low?'low':number>range.high?'high':'normal';
+  // Only a whole, unqualified printed criterion is enough to classify a row.
+  // Demographic tables, multiple intervals, censored values and contextual
+  // labels stay unknown rather than selecting a convenient number from them.
+  const bound=numericText(referenceRange).match(/^(<=|>=|<|>|≤|≥)\s*([-+]?(?:\d+(?:\.\d+)?|\.\d+))$/u);
+  if(!bound)return null;
+  const limit=Number(bound[2]);
+  if(!Number.isFinite(limit))return null;
+  if(bound[1]==='<')return number<limit?'normal':'high';
+  if(bound[1]==='<='||bound[1]==='≤')return number<=limit?'normal':'high';
+  if(bound[1]==='>')return number>limit?'normal':'low';
+  return number>=limit?'normal':'low';
 }
 export function validateLabResult(input){
   const result={...input,items:Array.isArray(input?.items)?input.items.map(x=>({...x})):[]};
