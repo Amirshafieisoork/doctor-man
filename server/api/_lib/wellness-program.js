@@ -117,15 +117,15 @@ export function wellnessSchema(kind) {
   const properties = kind === 'nutrition' ? { ...commonProperties, weight_goal:{type:'string'},weekly_menu:{type:'array',items:{type:'object',additionalProperties:false,properties:Object.fromEntries(['day','breakfast','lunch','dinner','snacks'].map(key=>[key,{type:'string'}])),required:['day','breakfast','lunch','dinner','snacks']}},shopping_list:strings,habits:strings } : { ...commonProperties,...Object.fromEntries(['morning_steps','evening_steps','weekly_steps','hair_steps','avoid'].map(key=>[key,strings])),patch_test:{type:'string'} };
   return { type:'object',additionalProperties:false,properties,required:Object.keys(properties) };
 }
-function validOutputText(value) { return validGroundedText(value,1200) && !/[\d۰-۹٠-٩]+\s*(?:کالری|کیلوکالری|کیلوگرم|کیلو(?:\s|$)|kcal\b)/i.test(value); }
+function validOutputText(value,min=5) { return validGroundedText(value,1200,min) && !/[\d۰-۹٠-٩]+\s*(?:کالری|کیلوکالری|کیلوگرم|کیلو(?:\s|$)|kcal\b)/i.test(value); }
 export function parseWellnessProgram(completion, kind, pack) {
   const choice=completion?.choices?.[0]; if(choice?.finish_reason!=='stop'||choice.message?.refusal)throw Error('WELLNESS_INCOMPLETE');
   const raw=JSON.parse(choice.message?.content||'{}'),schema=wellnessSchema(kind),output={};
   for(const [key,definition]of Object.entries(schema.properties)) {
     if(key==='source_ids'){if(!Array.isArray(raw[key])||raw[key].length<1||raw[key].length>6)throw Error('WELLNESS_INVALID_SOURCES');resolveMedicalSources(raw[key],pack);output[key]=[...new Set(raw[key])];continue;}
-    if(key==='weekly_menu'){if(!Array.isArray(raw[key])||raw[key].length!==3||raw[key].some(row=>!row||['day','breakfast','lunch','dinner','snacks'].some(field=>!validOutputText(row[field]))))throw Error('WELLNESS_INVALID_MENU');output[key]=raw[key].map(row=>Object.fromEntries(['day','breakfast','lunch','dinner','snacks'].map(field=>[field,row[field].trim()])));continue;}
-    if(definition.type==='string'){if(!validOutputText(raw[key]))throw Error('WELLNESS_INVALID_TEXT');output[key]=raw[key].trim();continue;}
-    if(!Array.isArray(raw[key])||raw[key].length>(key==='shopping_list'?12:8)||((key!=='data_limits')&&!raw[key].length)||raw[key].some(item=>!validOutputText(item)))throw Error('WELLNESS_INVALID_LIST');output[key]=raw[key].map(item=>item.trim());
+    if(key==='weekly_menu'){if(!Array.isArray(raw[key])||raw[key].length!==3||raw[key].some(row=>!row||['day','breakfast','lunch','dinner','snacks'].some(field=>!validOutputText(row[field],2))))throw Error('WELLNESS_INVALID_MENU');output[key]=raw[key].map(row=>Object.fromEntries(['day','breakfast','lunch','dinner','snacks'].map(field=>[field,row[field].trim()])));continue;}
+    if(definition.type==='string'){if(!validOutputText(raw[key]))throw Error('WELLNESS_INVALID_TEXT_'+key.toUpperCase());output[key]=raw[key].trim();continue;}
+    if(!Array.isArray(raw[key])||raw[key].length>(key==='shopping_list'?12:8)||((key!=='data_limits')&&!raw[key].length)||raw[key].some(item=>!validOutputText(item,key==='shopping_list'?2:5)))throw Error('WELLNESS_INVALID_LIST_'+key.toUpperCase());output[key]=raw[key].map(item=>item.trim());
   }
   return output;
 }

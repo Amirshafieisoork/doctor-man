@@ -55,7 +55,7 @@ export function medicalEvidencePrompt(pack){
 ${JSON.stringify((pack?.topics||[]).map(({id,label,facts})=>({id,label,facts})))}`;
 }
 const unsafeText=/(?:https?:\/\/|www\.|doi\s*:|pubmed|clinicaltrials|مقاله.{0,12}(?:۲۰[۰-۹]{2}|20[0-9]{2}|ثابت|نشان)|مطالعه(?:‌|\s)+(?:جدید|سال)|تحقیق(?:ات)?(?:\s|‌)+(?:جدید|نشان\s+داده)|درمان\s+قطعی|تضمین\s+(?:می|درمان)|قطعاً\s+(?:مبتلا|دارید)|(?:شروع|قطع)\s+کن(?:ید)?|دوز.{0,20}(?:دوبرابر|دو برابر|افزایش\s+ده|کاهش\s+ده)|[\d۰-۹]+\s*(?:mg\b|mcg\b|میلی.?گرم|میکروگرم|قرص|کپسول)|\b(?:sk-|gsk_)[A-Za-z0-9_-]{8,})/i;
-export function validGroundedText(value,max=6500){return typeof value==='string'&&value.trim().length>=5&&value.length<=max&&!unsafeText.test(normalize(value).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)))&&/[\u0600-\u06ff]/.test(value)}
+export function validGroundedText(value,max=6500,min=5){return typeof value==='string'&&value.trim().length>=min&&value.length<=max&&!unsafeText.test(normalize(value).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)))&&/[\u0600-\u06ff]/.test(value)}
 export function medicalEvidenceFallback(pack,{unknown=false}={}){
  const topics=pack?.topics||[],sources=resolveMedicalSources(topics.map(entry=>entry.id),pack);
  const answer=unknown||!topics.length?'برای این موضوع منبع اختصاصیِ بررسی‌شده در دسترس این دستیار نیست؛ نمی‌توانم ادعای پزشکی قابل‌اتکا، تشخیص یا درمان شخصی ارائه کنم. نام دقیق آزمایش یا موضوع و پرسش مشخص را بگویید؛ برای تصمیم درمانی با پزشک یا داروساز مشورت کنید.':topics.map(entry=>`${entry.label}\n${entry.facts.map(fact=>'• '+fact).join('\n')}`).join('\n\n')+'\n\nاین نکات آموزش عمومی‌اند؛ برای نتیجه شخصی، علائم، واحد و بازه مرجع آزمایش و سابقه باید با پزشک بررسی شوند.';
