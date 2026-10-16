@@ -112,7 +112,7 @@ export function localWellnessProgram(kind, record, answers, pack = wellnessEvide
     patch_test: limited ? 'فعلاً محصول تازه را بدون هماهنگی با درمانگر امتحان نکنید. آزمون خانگی جای تشخیص حساسیت نیست.' : 'محصول تازه را طبق برچسب روی قسمت کوچکی از پوست سالم امتحان کنید و هفت تا ده روز واکنش را ببینید؛ با قرمزی، خارش یا تورم مصرف را ادامه ندهید. این کار جای تست حساسیت پزشکی نیست.' };
 }
 
-const strings = { type: 'array', items: { type: 'string' } }, commonProperties = { title:{type:'string'},summary:{type:'string'},based_on:strings,precautions:strings,follow_up:strings,seek_care:strings,data_limits:strings,source_ids:strings };
+const strings = { type: 'array', items: { type: 'string' } }, commonProperties = { title:{type:'string'},summary:{type:'string'},precautions:strings,follow_up:strings,seek_care:strings,data_limits:strings,source_ids:strings };
 export function wellnessSchema(kind) {
   const properties = kind === 'nutrition' ? { ...commonProperties, weekly_menu:{type:'array',items:{type:'object',additionalProperties:false,properties:Object.fromEntries(['day','breakfast','lunch','dinner','snacks'].map(key=>[key,{type:'string'}])),required:['day','breakfast','lunch','dinner','snacks']}},shopping_list:strings,habits:strings } : { ...commonProperties,...Object.fromEntries(['morning_steps','evening_steps','weekly_steps','hair_steps','avoid'].map(key=>[key,strings])),patch_test:{type:'string'} };
   return { type:'object',additionalProperties:false,properties,required:Object.keys(properties) };
@@ -130,7 +130,7 @@ export function parseWellnessProgram(completion, kind, pack) {
   return output;
 }
 export function wellnessMessages(kind, record, answers, pack) {
-  return [{role:'system',content:medicalEvidencePrompt(pack)+`\nراهنمای آموزشی ${kind==='nutrition'?'تغذیه':'پوست و مو'} هستی، پزشک فرد نیستی. فارسی ساده؛ تاریخ فقط شمسی. مثال عملی، حساسیت، سلیقه، بودجه و محدودیت پزشکی را رعایت کند. کالری، وزن هدف، دارو، مکمل، گیاه، رتینوئید، استروئید و تغییر درمان نده. وزن دلخواه ترجیح است نه هدف تأییدشده. زیر۲۰سال، سن نامعلوم، بارداری/احتمال آن، کلیه/قلب، کم‌وزنی یا اختلال خوردن، منوی اختصاصی و کاهش وزن نگیرند؛ برنامه درمانگر مقدم است. وعده حذف نشود؛ ناشتایی/رژیم افراطی نده. در کلیه آب/پروتئین/پتاسیم/فسفر تغییر نده. هشدار فوری مقدم بر روتین است.
+  return [{role:'system',content:medicalEvidencePrompt(pack)+`\nراهنمای آموزشی ${kind==='nutrition'?'تغذیه':'پوست و مو'} هستی، پزشک فرد نیستی. فارسی ساده؛ تاریخ فقط شمسی. سن، قد و وزن را در پاسخ تکرار نکن؛ صفحه آنها را مستقیم از پرونده نمایش می‌دهد و بخش مبنای برنامه را سرور می‌سازد. مثال عملی، حساسیت، سلیقه، بودجه و محدودیت پزشکی را رعایت کند. کالری، وزن هدف، دارو، مکمل، گیاه، رتینوئید، استروئید و تغییر درمان نده. وزن دلخواه ترجیح است نه هدف تأییدشده. زیر۲۰سال، سن نامعلوم، بارداری/احتمال آن، کلیه/قلب، کم‌وزنی یا اختلال خوردن، منوی اختصاصی و کاهش وزن نگیرند؛ برنامه درمانگر مقدم است. وعده حذف نشود؛ ناشتایی/رژیم افراطی نده. در کلیه آب/پروتئین/پتاسیم/فسفر تغییر نده. هشدار فوری مقدم بر روتین است.
 ${kind==='nutrition'?'weekly_menu دقیقاً سه روز، هرکدام day/breakfast/lunch/dinner/snacks کوتاه. shopping_list حداکثر دوازده قلم مواد اولیهٔ همان غذاها، با نام فارسی ساده و بدون مقدار مصرف. habits سه قدم عملی؛ وزن هدف یا عدد وزن ننویس؛ توضیح هدف را سرور از انتخاب فرد تنظیم می‌کند.':'morning_steps/evening_steps مراقبت ملایم کم‌مرحله، بدون مادهٔ حساسیت‌زا؛ weekly_steps پایش واکنش؛ hair_steps مراقبت ملایم و علت‌یابی ریزش. avoid محرک‌ها؛ patch_test آزمون محدود طبق برچسب، جای تست پزشکی نیست. کودک محصول تازه نگیرد.'}`},{role:'user',content:JSON.stringify({clinical_record:wellnessClinicalRecord(record),questionnaire:answers})}];
 }
 const MAX_OUTPUT_TOKENS=3000;
@@ -145,7 +145,7 @@ function guardProgram(kind,record,answers,program,pack) {
   const protectedFallback=incompatibleFood||unapprovedAdvice||unsafeSkin||(kind==='nutrition'&&context.vulnerable)||(kind==='skin_hair'&&(context.urgent||context.risk.child||context.risk.ageUnknown));
   if(protectedFallback)return {program:localWellnessProgram(kind,record,answers,pack),protectedFallback:true};
   const local=localWellnessProgram(kind,record,answers,pack);
-  return {program:{...program,...(kind==='nutrition'?{weight_goal:local.weight_goal}:{}),precautions:[...new Set([...local.precautions,...program.precautions])].slice(0,8)},protectedFallback:false};
+  return {program:{...program,based_on:local.based_on,...(kind==='nutrition'?{weight_goal:local.weight_goal}:{}),precautions:[...new Set([...local.precautions,...program.precautions])].slice(0,8)},protectedFallback:false};
 }
 export async function generateWellnessProgram(client,kind,record,answers,userId,pack=wellnessEvidence(kind,record,answers)) {
   const completion=await client.chat.completions.create({model:HEALTH_NAVIGATOR_MODEL,messages:wellnessMessages(kind,record,answers,pack),max_completion_tokens:MAX_OUTPUT_TOKENS,response_format:{type:'json_schema',json_schema:{name:'drman_wellness_'+kind,strict:true,schema:wellnessSchema(kind)}},safety_identifier:crypto.createHash('sha256').update('wellness:'+userId).digest('hex').slice(0,32)},{timeout:45000});
