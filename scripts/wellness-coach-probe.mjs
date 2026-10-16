@@ -41,5 +41,5 @@ if(enabled.length){
    assert.doesNotMatch(meals.replace(/تخم[\s\u200c]*مرغ/g,''),/بادام|مرغ|گوشت|ماهی|قارچ/);
   }else for(const field of ['morning_steps','evening_steps','weekly_steps','hair_steps','avoid'])assert.ok(result.program[field].length>=1,field);
   report({stage:'complete',passed:true,kind,model:result.model,elapsed_ms:Date.now()-started,section_count:Object.keys(result.program).length,approved_source_count:result.program.source_ids.length,request_estimate:wellnessRequestEstimate(kind,record,answers)});
- }catch(error){report({stage:'failed',passed:false,...safeErrorMetadata(error)});process.exitCode=1;}
+ }catch(error){report({stage:'failed',passed:false,...safeErrorMetadata(error),...(typeof error?.message==='string'&&/^WELLNESS_[A-Z_]+$/.test(error.message)?{validation_code:error.message}:{}),...(error?.code==='ERR_ASSERTION'?{assertion:true}:{} )});process.exitCode=1;}
 }

@@ -20,4 +20,6 @@
 #drmanAiChatDialog [data-chat-consent]{border:1px solid var(--b,#dce8f3);padding:12px;border-radius:12px;font-size:12px;line-height:1.9}
 #drmanAiChatDialog [hidden]{display:none!important}
 @media(max-width:500px){#drmanAiChatButton{inset-inline-start:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));font-size:13px!important;padding:11px 17px!important}#drmanAiChatDialog{inset-inline-start:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:16px;max-height:calc(100dvh - 96px)}}
-@media print{#drmanAiChatButton,#drmanAiChatDialog{display:none!important}}
+body:has(>#drmanAiChatButton){padding-bottom:calc(94px + env(safe-area-inset-bottom,0px))!important}
+html:has(#drmanAiChatButton){scroll-padding-bottom:calc(94px + env(safe-area-inset-bottom,0px))}
+@media print{#drmanAiChatButton,#drmanAiChatDialog{display:none!important}body:has(>#drmanAiChatButton){padding-bottom:0!important}}
