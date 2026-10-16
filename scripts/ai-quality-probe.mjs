@@ -45,7 +45,7 @@ if(enabled){
    }
    report({stage:'input',kind,commit:expected,question:fixture.question,history:fixture.history,topic_ids:pack.topics.map(topic=>topic.id)});
    if(!pack.supported){report({stage:'answer',kind,source:'local',...medicalEvidenceFallback(pack,{unknown:true})});}
-   else{const result=await runNavigator(client,navigatorMessages(fixture.record,fixture.question,fixture.history,pack),'synthetic-content-review',pack);report({stage:'answer',kind,model:result.model,source:'ai',answer:renderNavigatorAnswer(result.parsed),sources:result.sources,elapsed_ms:Date.now()-start});}
+   else{try{const result=await runNavigator(client,navigatorMessages(fixture.record,fixture.question,fixture.history,pack),'synthetic-content-review',pack);report({stage:'answer',kind,model:result.model,source:'ai',answer:renderNavigatorAnswer(result.parsed),sources:result.sources,elapsed_ms:Date.now()-start});}catch(error){report({stage:'generation_rejected',kind,...safeErrorMetadata(error),...(typeof error?.message==='string'&&/^[A-Z][A-Z_]{3,100}$/.test(error.message)?{classification:error.message}:{})});report({stage:'answer',kind,source:'local',...medicalEvidenceFallback(pack),elapsed_ms:Date.now()-start});}}
   }
  }catch(error){report({stage:'failed',...safeErrorMetadata(error),...(typeof error?.message==='string'&&/^[A-Z][A-Z_]{3,100}$/.test(error.message)?{classification:error.message}:{})});process.exitCode=1;}
 }
