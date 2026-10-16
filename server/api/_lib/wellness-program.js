@@ -143,14 +143,15 @@ function guardProgram(kind,record,answers,program,pack) {
   const unapprovedAdvice=foodSteps.some(text=>/(?:حذف\s*(?:کنید|شود|کن)|ناشتا\s*بمانید|روزه\s*بگیرید|رژیم\s*(?:سخت|افراطی)|فستینگ)/.test(text)||(/دارو|مکمل|دمنوش|گیاه\s*درمانی|دارویی/.test(text)&&/(?:^|\s)(?:کنید|کن|بخورید|بزنید|بگیرید)(?:[\s.!،]|$)/.test(text)));
   const unsafeSkin=kind==='skin_hair'&&[...program.morning_steps,...program.evening_steps,...program.weekly_steps,...program.hair_steps,program.patch_test].some(text=>/ماینوکسیدیل|فیناستراید|رتینو|رتینول|ترتینو|استروئید|کورتون|هیدروکینون|minoxidil|finasteride|retino|tretinoin|steroid|hydroquinone|اسید.{0,12}(?:سالیسیلیک|گلیکولیک)/i.test(text)||!allowedFood(text,allAllergies,''));
   const protectedFallback=incompatibleFood||unapprovedAdvice||unsafeSkin||(kind==='nutrition'&&context.vulnerable)||(kind==='skin_hair'&&(context.urgent||context.risk.child||context.risk.ageUnknown));
-  if(protectedFallback)return {program:localWellnessProgram(kind,record,answers,pack),protectedFallback:true};
+  const guardReasons=Object.entries({incompatible_food:incompatibleFood,unapproved_advice:unapprovedAdvice,unsafe_skin:unsafeSkin,clinical_context:kind==='nutrition'&&context.vulnerable,skin_context:kind==='skin_hair'&&(context.urgent||context.risk.child||context.risk.ageUnknown)}).filter(([,value])=>value).map(([key])=>key);
+  if(protectedFallback)return {program:localWellnessProgram(kind,record,answers,pack),protectedFallback:true,guardReasons};
   const local=localWellnessProgram(kind,record,answers,pack);
   return {program:{...program,based_on:local.based_on,...(kind==='nutrition'?{weight_goal:local.weight_goal}:{}),precautions:[...new Set([...local.precautions,...program.precautions])].slice(0,8)},protectedFallback:false};
 }
 export async function generateWellnessProgram(client,kind,record,answers,userId,pack=wellnessEvidence(kind,record,answers)) {
   const completion=await client.chat.completions.create({model:HEALTH_NAVIGATOR_MODEL,messages:wellnessMessages(kind,record,answers,pack),max_completion_tokens:MAX_OUTPUT_TOKENS,response_format:{type:'json_schema',json_schema:{name:'drman_wellness_'+kind,strict:true,schema:wellnessSchema(kind)}},safety_identifier:crypto.createHash('sha256').update('wellness:'+userId).digest('hex').slice(0,32)},{timeout:45000});
-  const {program,protectedFallback}=guardProgram(kind,record,answers,parseWellnessProgram(completion,kind,pack),pack);
-  return {program,model:protectedFallback?null:HEALTH_NAVIGATOR_MODEL,source:protectedFallback?'local':'ai'};
+  const {program,protectedFallback,guardReasons=[]}=guardProgram(kind,record,answers,parseWellnessProgram(completion,kind,pack),pack);
+  return {program,model:protectedFallback?null:HEALTH_NAVIGATOR_MODEL,source:protectedFallback?'local':'ai',guard_reasons:guardReasons};
 }
 export async function wellnessCoach({database,userId,patientId,kind,method='GET',answers:input,sessionVersion=0,getClient,verifySession,getDailyLimit=async()=>3,now=()=>Date.now()}) {
   if(!WELLNESS_KINDS.includes(kind))return{status:400,body:{success:false,error:'نوع برنامه معتبر نیست.'}};

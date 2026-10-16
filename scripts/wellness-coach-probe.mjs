@@ -36,6 +36,7 @@ if(enabled.length){
   const client=await avalaiClient();assert.ok(client);const create=client.chat.completions.create.bind(client.chat.completions);
   client.chat.completions.create=async(body,options)=>{assert.equal(body.model,HEALTH_NAVIGATOR_MODEL);try{const response=await create(body,options);let lengths={};try{const value=JSON.parse(response.choices?.[0]?.message?.content||'{}');lengths=Object.fromEntries(Object.keys(wellnessSchema(kind).properties).filter(key=>Array.isArray(value[key])).map(key=>[key,value[key].length]));}catch{}report({stage:'synthetic_response',kind,model:response.model,finish_reason:response.choices?.[0]?.finish_reason,array_lengths:lengths});return response;}catch(error){report({stage:'provider_diagnostic',kind,...safeErrorMetadata(error),...providerDiagnostic(error,kind)});throw error;}};
   const started=Date.now(),result=await generateWellnessProgram(client,kind,record,answers,'drman-synthetic-wellness-test');
+  report({stage:'clinical_guard',kind,source:result.source,guard_reasons:result.guard_reasons});
   assert.equal(result.source,'ai','Response must pass grounded output and clinical guards');assert.equal(result.model,HEALTH_NAVIGATOR_MODEL);assert.ok(result.program.source_ids.length>0);
   if(kind==='nutrition'){
    assert.equal(result.program.weekly_menu.length,3);assert.ok(result.program.shopping_list.length>0);assert.ok(result.program.habits.length>=2);
