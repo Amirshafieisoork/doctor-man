@@ -4,18 +4,20 @@
 import assert from 'node:assert/strict';
 import { avalaiClient,configuredModels,HEALTH_NAVIGATOR_MODEL } from '../server/api/_lib/ai-models.js';
 import { overviewRecord } from '../server/api/_lib/health-overview.js';
-import { generateWellnessProgram,wellnessAnswers,wellnessRequestEstimate } from '../server/api/_lib/wellness-program.js';
+import { generateWellnessProgram,wellnessAnswers,wellnessRequestEstimate,wellnessSchema } from '../server/api/_lib/wellness-program.js';
 import { safeErrorMetadata } from '../server/api/_lib/errors.js';
 
 const sha=process.env.VERCEL_GIT_COMMIT_SHA||'';
 const flags={nutrition:process.env.DRMAN_WELLNESS_NUTRITION_PROBE,skin_hair:process.env.DRMAN_WELLNESS_SKIN_HAIR_PROBE};
 const enabled=Object.keys(flags).filter(kind=>/^[a-f0-9]{40}$/.test(flags[kind]||'')&&flags[kind]===sha);
 const report=value=>console.log('DRMAN_WELLNESS_PROBE '+JSON.stringify(value));
-function providerDiagnostic(error){
+function providerDiagnostic(error,kind){
  const knownCodes=new Set(['json_validate_failed','invalid_request_error','rate_limit_exceeded','context_length_exceeded','schema_validation_error','tool_use_failed']);
  const code=error?.code||error?.error?.code, message=String(error?.message||'').toLowerCase();
  const category=/failed to generate json|json validation|json_validate/.test(message)?'json_generation':/schema/.test(message)?'schema':/max_completion_tokens|maximum.*token|too many tokens|request too large/.test(message)?'token_limit':/rate.limit/.test(message)?'rate_limit':'other';
- return{category,...(knownCodes.has(code)?{provider_code:code}:{}),failed_generation_chars:typeof error?.error?.failed_generation==='string'?error.error.failed_generation.length:0};
+ const generation=error?.error?.failed_generation;let structure=[];
+ try{const parsed=JSON.parse(generation);function inspect(schema,value,path){if(structure.length>=12)return;const type=Array.isArray(value)?'array':value===null?'null':typeof value;if(type!==schema.type){structure.push(path+':wrong_type');return;}if(schema.type==='object'){for(const key of schema.required||[])if(!Object.hasOwn(value,key))structure.push(path+'.'+key+':missing');if(Object.keys(value).some(key=>!Object.hasOwn(schema.properties,key)))structure.push(path+':extra_fields');for(const [key,child]of Object.entries(schema.properties))if(Object.hasOwn(value,key))inspect(child,value[key],path+'.'+key);}if(schema.type==='array')value.slice(0,4).forEach((item,index)=>inspect(schema.items,item,path+'['+index+']'));}inspect(wellnessSchema(kind),parsed,'program');}catch{structure=['invalid_json'];}
+ return{category,...(knownCodes.has(code)?{provider_code:code}:{}),failed_generation_chars:typeof generation==='string'?generation.length:0,schema_deviations:structure};
 }
 export function syntheticWellnessFixture(kind){
  const measuredAt=new Date().toISOString();
@@ -32,7 +34,7 @@ if(enabled.length){
   const kind=enabled[0],models=await configuredModels();assert.equal(models.provider,'groq-free');assert.equal(models.free_only,true);assert.equal(models.navigator,HEALTH_NAVIGATOR_MODEL);
   const{record,answers}=syntheticWellnessFixture(kind);assert.ok(wellnessRequestEstimate(kind,record,answers)<=7800,'Synthetic request must fit normal Free allowance');
   const client=await avalaiClient();assert.ok(client);const create=client.chat.completions.create.bind(client.chat.completions);
-  client.chat.completions.create=async(body,options)=>{assert.equal(body.model,HEALTH_NAVIGATOR_MODEL);try{const response=await create(body,options);report({stage:'synthetic_response',kind,model:response.model,finish_reason:response.choices?.[0]?.finish_reason});return response;}catch(error){report({stage:'provider_diagnostic',kind,...safeErrorMetadata(error),...providerDiagnostic(error)});throw error;}};
+  client.chat.completions.create=async(body,options)=>{assert.equal(body.model,HEALTH_NAVIGATOR_MODEL);try{const response=await create(body,options);report({stage:'synthetic_response',kind,model:response.model,finish_reason:response.choices?.[0]?.finish_reason});return response;}catch(error){report({stage:'provider_diagnostic',kind,...safeErrorMetadata(error),...providerDiagnostic(error,kind)});throw error;}};
   const started=Date.now(),result=await generateWellnessProgram(client,kind,record,answers,'drman-synthetic-wellness-test');
   assert.equal(result.source,'ai','Response must pass grounded output and clinical guards');assert.equal(result.model,HEALTH_NAVIGATOR_MODEL);assert.ok(result.program.source_ids.length>0);
   if(kind==='nutrition'){
