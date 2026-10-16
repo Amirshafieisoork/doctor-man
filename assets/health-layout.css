@@ -1,0 +1,68 @@
+/* A single, predictable reading order for every family record. */
+body .wrap{padding-block:24px 72px}
+body .top{grid-template-columns:minmax(0,1fr);gap:14px}
+.health-profile{min-width:0;padding:24px!important}
+.health-profile h1{font-size:25px!important;margin:0 0 6px!important}
+.health-profile>.muted{margin:0 0 18px}
+.patientbar{align-items:end;gap:10px!important;padding-bottom:20px;border-bottom:1px solid var(--border,var(--b))}
+.patient-selector{display:grid;gap:6px;min-width:200px;flex:1;color:var(--text,var(--t));font-size:12px;font-weight:700}
+.patientbar .patient-selector select{width:100%;min-width:0!important;margin:0}
+.patientbar button{min-height:46px}
+.patient-details{display:grid!important;grid-template-columns:1fr;gap:18px!important;align-items:stretch!important;margin-top:20px!important}
+.profile-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;min-width:0;border:0;border-radius:0;padding:0;margin:0}
+.profile-fields legend{float:none;width:100%;grid-column:1/-1;margin-bottom:12px;padding:0;font-size:15px;font-weight:800;color:var(--text,var(--t))}
+.patient-details .profile-fields label{display:flex;flex-direction:column;justify-content:flex-start;gap:7px;min-width:0;line-height:1.8;font-size:12px!important;flex:none}
+.patient-details .profile-fields input,.patient-details .profile-fields select{min-width:0;min-height:48px;margin:0}
+.patient-details .measurement-fields{grid-template-columns:repeat(3,minmax(0,1fr));padding-top:16px;border-top:1px solid var(--border,var(--b))}
+.measurement-fields .profile-bmi,.measurement-fields .all-measurements{grid-column:1/-1;margin:0}
+.profile-save{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:4px}
+.profile-save #patientSexStatus{flex-basis:auto;flex:1}
+.profile-save button{min-height:46px}
+.health-stats{padding:8px!important}
+.health-stats .stats{grid-template-columns:repeat(4,minmax(0,1fr));padding:0!important;gap:8px!important}
+.health-stats .stat{box-shadow:none!important;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px!important;min-height:62px}
+.health-stats .stat b{font-size:23px!important}
+body .tabs{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px!important;overflow:visible;flex-wrap:wrap;position:static!important;padding:10px!important;margin:20px 0!important}
+body .tabs .tab{white-space:normal;min-height:46px;padding:9px 12px;font-size:13px!important;line-height:1.7;text-align:center}
+.page>.grid{align-items:stretch;gap:16px!important}
+.page .card{min-width:0;padding:18px!important}
+.page .card h2{min-height:42px;line-height:1.8;margin-bottom:12px!important;font-size:16px!important}
+.page .card h2 button{flex:0 0 auto;min-width:42px;min-height:42px}
+.page .card .list{gap:10px}
+.page .card .item{font-size:13px;line-height:1.9;min-width:0;overflow-wrap:anywhere}
+.health-tests-card>p{line-height:1.9}
+.health-lab-dialog{width:min(860px,calc(100% - 24px));max-height:92vh;padding:24px;border:1px solid var(--border,var(--b));border-radius:22px;background:var(--surface,var(--s));color:var(--text,var(--t));overflow:auto}
+.health-lab-dialog::backdrop{background:rgba(0,10,25,.7);backdrop-filter:blur(5px)}
+.health-lab-heading{display:flex;align-items:start;justify-content:space-between;gap:16px;border-bottom:1px solid var(--border,var(--b));padding-bottom:14px;margin-bottom:16px}
+.health-lab-heading h2{margin:0;font-size:20px}
+.health-lab-heading p{margin:7px 0 0;font-size:13px}
+.health-lab-account{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12px;padding:12px;border:1px solid var(--border,var(--b));border-radius:12px;margin-bottom:16px}
+.health-lab-form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.health-lab-form label{display:grid;gap:6px;font-size:13px;min-width:0;color:var(--text,var(--t))}
+.health-lab-form small{font-size:11px;line-height:1.8}
+.health-lab-form input,.health-lab-form select{min-width:0;width:100%;min-height:48px}
+.health-lab-upload{margin-top:18px;padding:16px;border:1px dashed var(--border,var(--b));border-radius:14px}
+.health-lab-count{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px}
+.health-lab-dialog .state{display:none;line-height:2;padding:14px;margin-top:14px;border-radius:12px;overflow-wrap:anywhere}
+.health-lab-dialog .state.show{display:block}
+.health-lab-dialog .health-lab-analyze{display:none;min-height:48px;width:100%;margin-top:16px}
+.health-lab-dialog .health-lab-analyze.show{display:block}
+.health-lab-loading,.health-lab-result{background:var(--surface2,var(--s2));color:var(--text,var(--t));border:1px solid var(--border,var(--b))}
+.health-lab-error{background:var(--surface2,var(--s2));color:var(--red,var(--r));border:1px solid currentColor}
+.health-lab-dialog .lab-report-section{padding:12px 0;border-bottom:1px solid var(--border,var(--b))}
+.health-lab-dialog .lab-report-section h3{font-size:15px;margin:0 0 6px;line-height:1.8}
+.health-lab-dialog .lab-report-section p{margin:0;white-space:pre-wrap;line-height:2}
+.health-lab-dialog .resultMeta{font-size:12px;margin-bottom:10px;color:var(--dim,var(--d))}
+.health-lab-dialog .lab-preview .remove{position:absolute;top:8px;left:8px;padding:0;border-radius:50%!important}
+.health-lab-dialog .lab-result-history{display:inline-flex;margin-top:14px}
+.health-lab-dialog [hidden]{display:none!important}
+@media(max-width:950px){.profile-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.page>.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.page .wide,.page .two{grid-column:1/-1}}
+@media(max-width:600px){body .wrap{padding:16px 10px 60px}.health-profile{padding:17px!important}.health-profile h1{font-size:22px!important}.patientbar{display:grid!important;grid-template-columns:1fr 1fr;gap:9px!important}.patient-selector{grid-column:1/-1;min-width:0}.patientbar button{width:100%;padding:9px!important;font-size:12px!important}.patient-details .profile-fields{gap:12px}.patient-details .measurement-fields{grid-template-columns:1fr 1fr}.measurement-fields>label:last-of-type{grid-column:1/-1}.profile-save{display:grid}.profile-save #patientSexStatus{min-width:0}.health-stats .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.health-stats .stat{gap:8px;justify-content:start;padding-inline:12px!important}body .tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px!important;padding:8px!important}body .tabs .tab{font-size:12px!important;padding:8px 5px;min-height:46px}.page>.grid{grid-template-columns:1fr}.page .wide,.page .two{grid-column:auto}.health-lab-dialog{padding:16px;max-height:94vh}.health-lab-heading h2{font-size:18px}.health-lab-form{gap:12px}.health-lab-form .full{grid-column:1/-1}.health-lab-upload{padding:12px}.health-lab-dialog .lab-preview{height:220px}}
+/* A full-width measurements row keeps long weight guidance from creating tall
+   empty neighboring cards; the following rows start at the same baseline. */
+.health-measurements-card #vitals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.health-measurements-card #vitals>.empty{grid-column:1/-1}
+@media(max-width:600px){.health-measurements-card #vitals{grid-template-columns:1fr}}
+.profile-fields #patientBloodType{direction:ltr;text-align:right}
+.health-measurements-card #vitals>:only-child{grid-column:1/-1}
+@media(max-width:600px){.patientbar button:last-child{grid-column:1/-1}}

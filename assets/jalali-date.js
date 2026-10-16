@@ -22,7 +22,7 @@
     // Numeric phone keyboards may not expose a slash key.
     const normalized = digits(value).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1/$2/$3');
     const match = normalized.match(/^(\d{4})\s*[/.\-]\s*(\d{1,2})\s*[/.\-]\s*(\d{1,2})$/);
-    if (!match) throw Error('تاریخ تولد را شمسی، به شکل ۱۳۷۰/۰۱/۱۵ وارد کنید.');
+    if (!match) throw Error('تاریخ را شمسی، به شکل ۱۴۰۵/۰۱/۱۵ وارد کنید.');
     const target = match.slice(1).map(Number), [year, month, day] = target;
     if (year < 1200 || year > 1500 || month < 1 || month > 12 || day < 1 || day > 31) throw Error('تاریخ شمسی معتبر نیست.');
     // A Persian year lies within these Gregorian years. Binary search actual
@@ -53,5 +53,32 @@
     try { return birthDate(input.value); }
     catch (error) { input.setCustomValidity(error.message); input.reportValidity(); return undefined; }
   }
-  globalThis.DrManJalali = Object.freeze({ digits, format, toGregorian, birthDate, readInput });
+  const persianDigits = value => String(value ?? '').replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
+  function localDate(value = new Date()) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+  }
+  function localDateTime(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    return localDate(date) + 'T' + [date.getHours(), date.getMinutes()].map(part => String(part).padStart(2, '0')).join(':');
+  }
+  function toLocalDateTime(dateValue, timeValue) {
+    const date = toGregorian(dateValue), time = digits(timeValue);
+    if (!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?$/.test(time)) throw Error('ساعت را به شکل ۱۴:۳۰ وارد کنید.');
+    // A local datetime intentionally keeps the browser's existing timezone.
+    // Callers convert it to UTC using new Date(value).toISOString(), as before.
+    const value = date + 'T' + time, instant = new Date(value);
+    if (!Number.isFinite(instant.getTime()) || localDate(instant) !== date || instant.getHours() !== Number(time.slice(0, 2)) || instant.getMinutes() !== Number(time.slice(3, 5))) throw Error('این ساعت در منطقهٔ زمانی شما معتبر نیست.');
+    return value;
+  }
+  function display(value, { time = false, timeZone = 'Asia/Tehran' } = {}) {
+    if (!value) return '—';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return format(value) ? persianDigits(format(value)) : '—';
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: '2-digit', day: '2-digit', ...(time ? { hour: '2-digit', minute: '2-digit' } : {}), timeZone }).format(date);
+  }
+  globalThis.DrManJalali = Object.freeze({ digits, persianDigits, format, toGregorian, birthDate, readInput, localDate, localDateTime, toLocalDateTime, display });
 })();

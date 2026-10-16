@@ -1,4 +1,5 @@
 import { requireUser } from './_lib/session.js';
+import { diagnosticOrderWithPreparation } from './_lib/lab-preparation.js';
 import { supabase } from './_lib/db.js';
 import { safeErrorMetadata } from './_lib/errors.js';
 import { archiveFilesFromRows, ARCHIVE_PAGE_SIZE } from './_lib/medical-archive.js';
@@ -37,5 +38,5 @@ export default async function handler(req,res){
   const publicTests=(tests.data||[]).map(({image_paths,user_id,...row})=>({...row,image_count:archiveFilesFromRows([],[{...row,image_paths,user_id}],[patient]).length}));
   if(!(await requireUser(req,res)))return;
   await supabase.from('audit_logs').insert({actor_user_id:session.sub,actor_type:'user',patient_id:pid,action:'record.viewed',resource_type:'patient',resource_id:pid});
-  return res.status(200).json({success:true,patient,record:{conditions:conditions.data||[],allergies:allergies.data||[],medications:medications.data||[],vaccinations:vaccinations.data||[],vitals:vitals.data||[],tasks:tasks.data||[],documents:publicDocuments,archive_files:archive.slice(0,ARCHIVE_PAGE_SIZE),archive_next_offset:archive.length>ARCHIVE_PAGE_SIZE?ARCHIVE_PAGE_SIZE:null,appointments:appointments.data||[],encounters:encounters.data||[],visit_intakes:intakes.data||[],insurances:insurances.data||[],tests:publicTests,doctor_access:access.data||[],procedures:procedures.data||[],family_history:familyHistory.data||[],screenings:screenings.data||[],prescriptions:prescriptions.data||[],diagnostic_orders:orders.data||[],diagnostic_reports:reports.data||[],messages:messages.data||[]}})
+  return res.status(200).json({success:true,patient,record:{conditions:conditions.data||[],allergies:allergies.data||[],medications:medications.data||[],vaccinations:vaccinations.data||[],vitals:vitals.data||[],tasks:tasks.data||[],documents:publicDocuments,archive_files:archive.slice(0,ARCHIVE_PAGE_SIZE),archive_next_offset:archive.length>ARCHIVE_PAGE_SIZE?ARCHIVE_PAGE_SIZE:null,appointments:appointments.data||[],encounters:encounters.data||[],visit_intakes:intakes.data||[],insurances:insurances.data||[],tests:publicTests,doctor_access:access.data||[],procedures:procedures.data||[],family_history:familyHistory.data||[],screenings:screenings.data||[],prescriptions:prescriptions.data||[],diagnostic_orders:(orders.data||[]).map(diagnosticOrderWithPreparation),diagnostic_reports:reports.data||[],messages:messages.data||[]}})
 }

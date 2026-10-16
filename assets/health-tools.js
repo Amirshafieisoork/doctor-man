@@ -74,6 +74,7 @@ function editEntry(type,entry) {
 }
 saveEntry = async function() {
   const box=$('dynamicFields');
+  if(globalThis.DrManCalendar&&!DrManCalendar.validate(box))return;
   for(const input of box.querySelectorAll('input,select,textarea'))if(!input.reportValidity())return;
   if(!recordReady())return feedback('ابتدا پرونده انتخاب‌شده را بارگذاری کنید.',true);
   if($('addModal').dataset.patientId!==currentPatient)return feedback('پرونده تغییر کرده؛ فرم را دوباره باز کنید.',true);
@@ -108,6 +109,7 @@ async function cancelAppointment(appointment) {
 if(record)render();
 
 uploadDoc = async function() {
+ if(globalThis.DrManCalendar&&!DrManCalendar.validate($('docModal')))return;
  if(!recordReady())return feedback('ابتدا پرونده انتخاب‌شده را بارگذاری کنید.',true);
  if($('docModal').dataset.patientId!==currentPatient)return feedback('پرونده تغییر کرده؛ فرم را دوباره باز کنید.',true);
  const file=$('docFile').files[0];

@@ -3,6 +3,14 @@ import { test, expect } from '@playwright/test';
 const json = (route, body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
 const patients = [{ id: 'overview-self', display_name: 'پروندهٔ آزمون اول', relation: 'self' }, { id: 'overview-family', display_name: 'پروندهٔ آزمون دوم', relation: 'child' }];
 const overview = name => ({ success: true, source: 'cached', state: 'ready', stale: false, generated_at: '2026-10-15T10:00:00Z', overview: { overall: 'جمع‌بندی آموزشی ' + name, next_steps: ['قدم بعدی ' + name], nutrition: ['خوراک پیشنهادی ' + name], movement: ['حرکت پیشنهادی ' + name], seek_care: 'در صورت علائم شدید ارزیابی پزشکی لازم است.', questions_for_doctor: ['در مراجعه چه چیزی بپرسم؟'], data_limits: ['بخشی از داده‌ها هنوز ثبت نشده است.'] } });
+const program = name => ({ goal: 'هدف کوچک و قابل ادامه برای ' + name, based_on: ['این برنامه بر اساس چربی خون و سابقهٔ همین پرونده است.'],
+  first_week: [
+    { label: 'روزهای ۱ و ۲ · شروع آسان', steps: ['یک انتخاب غذایی قابل اجرا برای ' + name, 'زمان معمول خواب و بیداری را یادداشت کنید.'] },
+    { label: 'روزهای ۳ و ۴ · تکرار عادت', steps: ['حرکت سبک متناسب با توان و شرایط خود انتخاب کنید.', 'همان تغییر غذایی را تکرار و موانعش را یادداشت کنید.'] },
+    { label: 'روزهای ۵ تا ۷ · مرور هفته', steps: ['تعداد روزهای اجرای عادت را مرور کنید.', 'پرسش مربوط به آزمایش را برای مراجعه آماده کنید.'] }
+  ], next_weeks: ['فقط یک عادت را در هفتهٔ دوم کمی گسترش دهید.', 'پایان هفتهٔ دوم پایبندی و انرژی خود را مرور کنید.'],
+  sleep_and_stress: ['نزدیک خواب استفاده از صفحه‌نمایش را کمتر کنید.', 'یک مکث کوتاه برای آرام‌سازی در روز بگذارید.'],
+  tracking: ['تعداد روزهای انجام عادت را برای خود ثبت کنید.', 'علائم و محدودیت‌ها را در مراجعه مطرح کنید.'], precautions: ['حساسیت به بادام زمینی را رعایت کنید.'] });
 
 async function expectReadable(locator) {
   const measured = await locator.evaluate(element => {
@@ -87,4 +95,45 @@ test('a failed automatic request leaves the rest of the record usable', async ({
   await page.goto('/health'); await expect(page.locator('#automaticHealthOverview')).toContainText('جمع‌بندی فعلاً دریافت نشد');
   await expect(page.locator('#medications')).toContainText('داروی ثبت‌شدهٔ ساختگی');
   await expect(page.getByRole('button', { name: '+ اطلاعات سلامت', exact: true })).toBeEnabled();
+});
+
+test('a lifestyle program shows seven-day actions, continuation and safe sources without creating patient tasks', async ({ page }) => {
+  const calls = [], payload = overview('برنامهٔ آزمایشی'); payload.overview.lifestyle_plan = program('برنامهٔ آزمایشی'); payload.lifestyle_source = 'record';
+  page.on('request', request => { if (request.url().includes('/api/')) calls.push({ url: request.url(), method: request.method() }); });
+  await page.route('**/api/health-navigator', route => json(route, payload));
+  await page.goto('/health');
+  const plan = page.locator('#automaticHealthOverview .health-lifestyle-plan');
+  await expect(plan).toContainText('برنامهٔ اصلاح سبک زندگی شما');
+  await expect(plan.locator('.health-lifestyle-week>section')).toHaveCount(3);
+  await expect(plan.locator('.health-lifestyle-week li')).toHaveCount(6);
+  for (const heading of ['ادامه در هفته‌های بعد', 'خواب و آرامش', 'چطور پیشرفتم را ببینم؟', 'متناسب با شرایط شما']) await expect(plan.getByRole('heading', { name: heading })).toBeVisible();
+  await expect(plan).toContainText('بادام زمینی'); await expect(plan).toContainText('برنامهٔ شخصی‌تر');
+  await plan.locator('summary').click();
+  for (const link of await plan.locator('a').all()) expect(await link.getAttribute('href')).toMatch(/^https:\/\/(www\.)?(who\.int|niddk\.nih\.gov|cdc\.gov)\//);
+  expect(calls.filter(call => /health-entry|care-tasks|patients/.test(call.url) && call.method !== 'GET')).toEqual([]);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    await expectReadable(plan.locator('.health-lifestyle-goal'));
+    await expectReadable(plan.locator('.health-lifestyle-week li').first());
+    await expectReadable(plan.locator('a').first());
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  }
+});
+
+test('lifestyle text is inert and switching family clears the prior personal program immediately', async ({ page }) => {
+  let release; const gate = new Promise(resolve => { release = resolve; });
+  await page.route('**/api/health-navigator', async route => {
+    const id = route.request().postDataJSON().patient_id, payload = overview(id);
+    payload.overview.lifestyle_plan = program(id === 'overview-self' ? 'اطلاعات سبک زندگی اول' : 'برنامهٔ عضو خانواده');
+    if (id === 'overview-family') await gate;
+    else payload.overview.lifestyle_plan.first_week[0].steps[0] = '<img src=x onerror="window.lifestyleExecuted=true">';
+    await json(route, payload);
+  });
+  await page.goto('/health'); const plan = page.locator('.health-lifestyle-plan');
+  await expect(plan).toContainText('<img src=x'); await expect(plan.locator('img')).toHaveCount(0);
+  expect(await page.evaluate(() => window.lifestyleExecuted)).toBeUndefined();
+  await page.locator('#patientSelect').selectOption('overview-family');
+  await expect(page.locator('#automaticHealthOverview')).not.toContainText('اطلاعات سبک زندگی اول');
+  await expect(page.locator('.health-lifestyle-plan')).toHaveCount(0);
+  release(); await expect(plan).toContainText('برنامهٔ عضو خانواده');
 });

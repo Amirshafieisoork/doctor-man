@@ -1,4 +1,5 @@
 import { requireUser } from './_lib/session.js';
+import { diagnosticOrderWithPreparation } from './_lib/lab-preparation.js';
 import { supabase } from './_lib/db.js';
 import { prescriptionRegistration } from './_lib/patient-registration.js';
 async function doctorForUser(userId){const {data}=await supabase.from('doctor_profiles').select('id,full_name,specialty,verification_status').eq('user_id',userId).maybeSingle();return data}
@@ -30,7 +31,7 @@ export default async function handler(req,res){
    jobs.push(supabase.from('visit_intakes').select('id,appointment_id,chief_complaint,symptom_onset,history_of_present_illness,associated_symptoms,past_medical_history,current_medications_note,allergies_note,pregnancy_status,home_vitals,red_flag_answers,questions_for_doctor,status,submitted_at,reviewed_at').eq('patient_id',patientId).eq('doctor_id',doctor.id).order('created_at',{ascending:false}).limit(30).then(r=>{output.intakes=r.data||[]}));
    jobs.push(supabase.from('encounters').select('*').eq('patient_id',patientId).order('occurred_at',{ascending:false}).limit(100).then(r=>{output.encounters=(r.data||[]).map(e=>({...e,prescribing_ready:prescribingReady(e)}))}));
    jobs.push(supabase.from('prescriptions').select('id,encounter_id,issued_at,signed_at,clinical_basis,notes,status,doctor_profiles(full_name,specialty),prescription_items(*)').eq('patient_id',patientId).order('issued_at',{ascending:false}).limit(100).then(r=>{output.prescriptions=r.data||[]}));
-   jobs.push(supabase.from('diagnostic_orders').select('id,order_type,items,clinical_note,priority,status,ordered_at,completed_at,doctor_profiles:ordered_by_doctor_id(full_name,specialty)').eq('patient_id',patientId).order('ordered_at',{ascending:false}).limit(100).then(r=>{output.diagnostic_orders=r.data||[]}));
+   jobs.push(supabase.from('diagnostic_orders').select('id,order_type,items,clinical_note,priority,status,ordered_at,completed_at,doctor_profiles:ordered_by_doctor_id(full_name,specialty)').eq('patient_id',patientId).order('ordered_at',{ascending:false}).limit(100).then(r=>{output.diagnostic_orders=(r.data||[]).map(diagnosticOrderWithPreparation)}));
    jobs.push(supabase.from('patient_procedures').select('id,name,procedure_type,performed_at,outcome,notes').eq('patient_id',patientId).order('performed_at',{ascending:false}).limit(100).then(r=>{output.procedures=r.data||[]}));
    jobs.push(supabase.from('patient_family_history').select('*').eq('patient_id',patientId).order('created_at',{ascending:false}).limit(100).then(r=>{output.family_history=r.data||[]}));
    jobs.push(supabase.from('preventive_screenings').select('*').eq('patient_id',patientId).order('next_due_at',{ascending:true,nullsFirst:false}).limit(100).then(r=>{output.screenings=r.data||[]}));

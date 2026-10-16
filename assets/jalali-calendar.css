@@ -1,0 +1,9 @@
+/* Native values stay machine readable; people edit only Persian-calendar dates. */
+input.jalali-source{display:none!important}
+.jalali-control{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;width:100%;min-width:0;vertical-align:middle}
+.jalali-control-datetime{grid-template-columns:minmax(0,1.5fr) minmax(100px,1fr)}
+.jalali-control input{width:100%;min-width:0;text-align:center;font-variant-numeric:tabular-nums;unicode-bidi:isolate;margin:0!important}
+.jalali-control .jalali-date-help{grid-column:1/-1;font-size:11px;line-height:1.7;color:var(--muted,var(--d,#9ab0c9));direction:rtl;text-align:right;white-space:normal}
+.jalali-control input:focus-visible{outline:2px solid var(--a,#00b8bd);outline-offset:2px}
+.jalali-control input:invalid:not(:placeholder-shown){border-color:#e06673}
+@media(max-width:400px){.jalali-control-datetime{grid-template-columns:minmax(0,1.2fr) minmax(90px,1fr)}}

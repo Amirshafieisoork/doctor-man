@@ -1,0 +1,23 @@
+#drmanAiChatButton{position:fixed;inset-inline-start:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:80;min-height:52px;padding:12px 22px!important;border-radius:28px!important;background:#007b80!important;color:#fff!important;border:1px solid #74e0df!important;box-shadow:0 6px 24px #002c4040!important;font-size:14px!important;font-weight:800;cursor:pointer}
+#drmanAiChatButton:focus-visible{outline:3px solid #39d5db!important;outline-offset:4px}
+#drmanAiChatDialog{position:fixed;inset:auto;inset-inline-start:18px;bottom:calc(82px + env(safe-area-inset-bottom,0px));width:min(450px,calc(100vw - 28px));max-height:calc(100dvh - 105px);margin:0;padding:20px;border:1px solid var(--b,#b7d0df);border-radius:20px;background:var(--s,#fff);color:var(--t,#10243e);overflow:auto;text-align:right;direction:rtl;box-shadow:0 16px 65px #001e3655;font-family:inherit}
+#drmanAiChatDialog::backdrop{background:#00162677}
+#drmanAiChatDialog .ai-chat-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#drmanAiChatDialog h2{font-size:18px!important;line-height:1.8;margin:0}
+#drmanAiChatDialog [data-chat-close]{font-size:26px;min-width:42px;min-height:42px;padding:2px}
+#drmanAiChatDialog .ai-chat-intro,#drmanAiChatDialog .ai-chat-status{font-size:12px!important;line-height:1.9;color:var(--d,#526681)}
+#drmanAiChatDialog label{display:grid;gap:7px;font-size:13px;line-height:1.8}
+#drmanAiChatDialog select,#drmanAiChatDialog textarea{width:100%;box-sizing:border-box;min-width:0;margin:0;font:inherit}
+#drmanAiChatDialog .ai-chat-patient{margin:14px 0}
+#drmanAiChatDialog .ai-chat-messages{max-height:36dvh;overflow:auto;overscroll-behavior:contain;min-height:32px}
+#drmanAiChatDialog .ai-chat-turn{margin:10px 0;padding:12px;border:1px solid var(--b,#dce8f3);border-radius:12px;overflow-wrap:anywhere}
+#drmanAiChatDialog .ai-chat-asked{font-weight:700;margin:0 0 10px;font-size:13px;white-space:pre-wrap}
+#drmanAiChatDialog .ai-chat-answer{margin:0;white-space:pre-wrap;font-size:13px!important;line-height:2}
+#drmanAiChatDialog .ai-chat-sources{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px}
+#drmanAiChatDialog a{color:var(--a,#0868fa);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+#drmanAiChatDialog .ai-chat-form{display:grid;gap:8px;margin-top:12px}
+#drmanAiChatDialog .ai-chat-form button,#drmanAiChatDialog [data-chat-consent] button{min-height:46px;background:#007b80!important;color:white!important;border-radius:12px}
+#drmanAiChatDialog [data-chat-consent]{border:1px solid var(--b,#dce8f3);padding:12px;border-radius:12px;font-size:12px;line-height:1.9}
+#drmanAiChatDialog [hidden]{display:none!important}
+@media(max-width:500px){#drmanAiChatButton{inset-inline-start:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));font-size:13px!important;padding:11px 17px!important}#drmanAiChatDialog{inset-inline-start:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:16px;max-height:calc(100dvh - 96px)}}
+@media print{#drmanAiChatButton,#drmanAiChatDialog{display:none!important}}

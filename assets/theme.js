@@ -1,4 +1,13 @@
 (() => {
+  const chatScript = document.createElement('script');
+  chatScript.src = '/assets/ai-chat.js'; chatScript.async = false;
+  document.head.append(chatScript);
+  const calendarStyle = document.createElement('link');
+  calendarStyle.rel = 'stylesheet'; calendarStyle.href = '/assets/jalali-calendar.css';
+  document.head.append(calendarStyle);
+  const calendarScript = document.createElement('script');
+  calendarScript.src = '/assets/jalali-calendar.js'; calendarScript.async = false;
+  document.head.append(calendarScript);
   let saved;
   try { saved = localStorage.getItem('drman-theme'); } catch {}
   const brandMarks = { light: '/assets/drman-mark-v5.webp', dark: '/assets/drman-mark-v6.webp' };

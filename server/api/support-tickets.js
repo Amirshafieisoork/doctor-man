@@ -5,6 +5,7 @@ import { safeErrorMetadata } from './_lib/errors.js';
 import { ticketId,ticketText,categories,fetchTicket,fetchTicketMessages,appendTicketMessage,createSupportTicket,maybeAnswerTicket } from './_lib/support-tickets.js';
 
 export default async function handler(req,res){
+  res.setHeader('Cache-Control','private, no-store');
   if(!['GET','POST'].includes(req.method))return res.status(405).json({success:false,error:'Method not allowed'});
   const user=await requireUser(req,res);if(!user)return;
   try{
@@ -26,7 +27,8 @@ export default async function handler(req,res){
     }
     if(body.ticket_id)await appendTicketMessage(ticket,user.sub,'user',message);
     await recordRate(rate.keyHash,'support-ticket-message',true,rate.eventId);
-    const answer=await maybeAnswerTicket(ticket,user.sub);
+    const silent={status(){return this},json(){return this},getHeader(){},setHeader(){}};
+    const answer=await maybeAnswerTicket(ticket,user.sub,{verifySession:async()=>Boolean(await requireUser(req,silent))});
     if(!(await requireUser(req,res)))return;
     const fresh=await fetchTicket(ticket.id,user.sub);
     return res.status(200).json({success:true,ticket:fresh,messages:await fetchTicketMessages(ticket.id),...answer});

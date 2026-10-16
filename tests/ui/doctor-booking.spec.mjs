@@ -93,10 +93,48 @@ test('a late availability response cannot replace a newly selected date', async 
     await json(route, 200, { success: true, slots: [slot('clinic-old', 'زمان قبلی')] });
   });
   await page.goto('/doctor/lifecycle-qa'); await pending;
-  await page.locator('#date').fill('2031-01-07'); await page.locator('#date').dispatchEvent('change');
+  await page.locator('#jalali-date').fill('۱۴۰۹/۱۰/۱۷'); await page.locator('#jalali-date').dispatchEvent('change');
   await expect(page.getByRole('button', { name: '10:00 · زمان جدید' })).toBeVisible();
   const oldResponse = page.waitForResponse(response => response.url().includes('/api/availability?') && !response.url().includes('2031-01-07'));
   release(); await oldResponse;
   await expect(page.getByRole('button', { name: '10:00 · زمان جدید' })).toBeVisible();
   await expect(page.getByRole('button', { name: '10:00 · زمان قبلی' })).toHaveCount(0);
+});
+
+test('editing a selected date to an invalid Shamsi date cannot book the old slot', async ({ page }) => {
+  const submitted = [];
+  await page.route('**/api/availability?**', route => json(route, 200, {
+    success: true, slots: [slot('clinic-old', 'زمان قبلی')]
+  }));
+  await page.route('**/api/appointments', route => {
+    submitted.push(route.request().postDataJSON());
+    return json(route, 201, { success: true, appointment: { id: 'synthetic-appointment' } });
+  });
+  await page.goto('/doctor/lifecycle-qa');
+  await page.getByRole('button', { name: '10:00 · زمان قبلی' }).click();
+  const date = page.locator('#jalali-date');
+  await date.fill('۱۴۰۴/۱۲/۳۰');
+  await expect(page.locator('#slots button')).toHaveCount(0);
+  // Invoke the real save handler directly too: browser validation alone must
+  // not be the only protection against a stale selected appointment.
+  await page.evaluate(() => book());
+  expect(submitted).toEqual([]);
+  expect(await date.evaluate(input => input.validationMessage)).toContain('تقویم شمسی');
+  await expect(date).toHaveValue('۱۴۰۴/۱۲/۳۰');
+});
+
+test('editing a date invalidates an in-flight availability response before blur', async ({ page }) => {
+  let release, requested;
+  const started = new Promise(resolve => { requested = resolve; });
+  const delayed = new Promise(resolve => { release = resolve; });
+  await page.route('**/api/availability?**', async route => {
+    requested(); await delayed;
+    await json(route, 200, { success: true, slots: [slot('clinic-old', 'زمان قبلی')] });
+  });
+  await page.goto('/doctor/lifecycle-qa'); await started;
+  await page.locator('#jalali-date').fill('۱۴۰۴/۱۲/۳۰');
+  const response = page.waitForResponse(result => result.url().includes('/api/availability?'));
+  release(); await response;
+  await expect(page.locator('#slots')).toHaveText('پس از وارد کردن تاریخ معتبر، زمان آزاد را دوباره انتخاب کنید.');
+  await expect(page.locator('#slots button')).toHaveCount(0);
 });

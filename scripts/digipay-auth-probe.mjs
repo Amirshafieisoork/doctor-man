@@ -1,7 +1,7 @@
-import { getDigiPayToken } from '../server/api/_lib/digipay.js';
+import { requestDigiPayToken } from '../server/api/_lib/digipay.js';
+import { readEffectiveDigiPaySettings } from '../server/api/_lib/private-digipay-settings.js';
 
 const PREFIX = 'DRMAN_DIGIPAY_AUTH_CHECK';
-const CREDENTIAL_NAMES = ['DIGIPAY_CLIENT_ID', 'DIGIPAY_CLIENT_SECRET', 'DIGIPAY_USERNAME', 'DIGIPAY_PASSWORD'];
 const UAT_BASE = 'https://uat.mydigipay.info/digipay/api';
 const PRODUCTION_BASE = 'https://api.mydigipay.com/digipay/api';
 
@@ -10,7 +10,10 @@ function report(result) {
 }
 
 async function checkAuthentication() {
-  const missing = CREDENTIAL_NAMES.filter(name => !String(process.env[name] || '').trim());
+  let settings;
+  try { settings = await readEffectiveDigiPaySettings(); }
+  catch { report({ configured: false, authenticated: false, code: 'DIGIPAY_SETTINGS_UNAVAILABLE' }); return; }
+  const missing = ['client_id','client_secret','username','password'].filter(field => !settings.credentials[field]);
   if (missing.length) {
     report({ configured: false, authenticated: false, missing, code: 'DIGIPAY_NOT_CONFIGURED' });
     return;
@@ -18,7 +21,7 @@ async function checkAuthentication() {
 
   // Match the adapter's default and single trailing-slash normalization. Do
   // not allow other hosts, URL credentials, ports, queries or fragments.
-  const base = String(process.env.DIGIPAY_BASE_URL || UAT_BASE).replace(/\/$/, '');
+  const base = settings.baseUrl;
   const environment = base === PRODUCTION_BASE ? 'production' : base === UAT_BASE ? 'uat' : null;
   if (!environment) {
     report({ configured: false, authenticated: false, code: 'DIGIPAY_NOT_CONFIGURED' });
@@ -36,7 +39,7 @@ async function checkAuthentication() {
       }
       return originalFetch(input, { ...options, redirect: 'error' });
     };
-    await getDigiPayToken();
+    await requestDigiPayToken(settings);
     report({ configured: true, authenticated: true, environment, code: 'OK' });
   } catch (error) {
     const code = error?.name === 'AbortError' || error?.name === 'TimeoutError' || error?.code === 'ETIMEDOUT'

@@ -1,3 +1,4 @@
+import { displayDate } from './_lib/display-date.js';
 import { safeErrorMetadata } from './_lib/errors.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
@@ -13,10 +14,10 @@ async function syncReminders(userId){
     supabase.from('patient_vaccinations').select('id,patient_id,vaccine_name,next_due_at').in('patient_id',ids).not('next_due_at','is',null).lte('next_due_at',plusDays(14).toISOString().slice(0,10)).gte('next_due_at',today).limit(100),
     supabase.from('preventive_screenings').select('id,patient_id,screening_name,next_due_at,status').in('patient_id',ids).not('next_due_at','is',null).neq('status','not_applicable').lte('next_due_at',plusDays(30).toISOString().slice(0,10)).gte('next_due_at',today).limit(100)
   ]);
-  for(const x of tasks.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'care_task_reminder',title:x.priority==='urgent'?'پیگیری مهم سلامت':'یادآوری پیگیری',body:x.title+(x.due_at?' · موعد '+new Date(x.due_at).toLocaleDateString('fa-IR'):''),action_url:'/health',dedupe_key:'task:'+x.id,source_type:'care_task',source_id:x.id});
-  for(const x of appts.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'appointment_reminder',title:'یادآوری نوبت',body:(x.doctor_profiles?.full_name||'پزشک')+' · '+new Date(x.starts_at).toLocaleString('fa-IR'),action_url:'/health',dedupe_key:'appointment:'+x.id,source_type:'appointment',source_id:x.id});
-  for(const x of vaccines.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'vaccine_reminder',title:'یادآوری واکسن',body:x.vaccine_name+' · موعد '+new Date(x.next_due_at+'T00:00:00Z').toLocaleDateString('fa-IR'),action_url:'/health',dedupe_key:'vaccine:'+x.id,source_type:'vaccination',source_id:x.id});
-  for(const x of screens.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'screening_reminder',title:'یادآوری غربالگری',body:x.screening_name+' · موعد '+new Date(x.next_due_at+'T00:00:00Z').toLocaleDateString('fa-IR'),action_url:'/health',dedupe_key:'screening:'+x.id,source_type:'screening',source_id:x.id});
+  for(const x of tasks.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'care_task_reminder',title:x.priority==='urgent'?'پیگیری مهم سلامت':'یادآوری پیگیری',body:x.title+(x.due_at?' · موعد '+displayDate(x.due_at):''),action_url:'/health',dedupe_key:'task:'+x.id,source_type:'care_task',source_id:x.id});
+  for(const x of appts.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'appointment_reminder',title:'یادآوری نوبت',body:(x.doctor_profiles?.full_name||'پزشک')+' · '+displayDate(x.starts_at,{time:true}),action_url:'/health',dedupe_key:'appointment:'+x.id,source_type:'appointment',source_id:x.id});
+  for(const x of vaccines.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'vaccine_reminder',title:'یادآوری واکسن',body:x.vaccine_name+' · موعد '+displayDate(x.next_due_at),action_url:'/health',dedupe_key:'vaccine:'+x.id,source_type:'vaccination',source_id:x.id});
+  for(const x of screens.data||[])await insertOnce({user_id:userId,patient_id:x.patient_id,type:'screening_reminder',title:'یادآوری غربالگری',body:x.screening_name+' · موعد '+displayDate(x.next_due_at),action_url:'/health',dedupe_key:'screening:'+x.id,source_type:'screening',source_id:x.id});
 }
 
 export default async function handler(req,res){

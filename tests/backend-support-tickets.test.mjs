@@ -21,7 +21,7 @@ const createdAt='2026-10-13T12:00:00.000Z';
 const title='اشکال ورود',text='رمز حساب کار نمی‌کند';
 function json(body,status=200){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});}
 function response(){return {statusCode:200,headers:{},status(code){this.statusCode=code;return this;},json(value){this.body=value;return this;},setHeader(k,v){this.headers[k]=v;},getHeader(k){return this.headers[k];}};}
-function services(t,{aiEnabled=false,status='open',legacyUsage=0,ticketUsage=0,limit=5,aiFailure=false,onAI,rateCount=0,aiDisabled=false,notificationFailure=false}={}){
+function services(t,{aiEnabled=false,status='open',legacyUsage=0,ticketUsage=0,limit=5,aiFailure=false,onAI,rateCount=0,aiDisabled=false,notificationFailure=false,aiAnswer}={}){
   const state={status:'active',sessionVersion:0,tickets:[{id:ticketId,user_id:userId,title,category:'account',status,ai_enabled:aiEnabled,tags:[],created_at:createdAt,updated_at:createdAt},{id:foreignTicketId,user_id:foreignUserId,title:'private foreign title',category:'other',status:'open',ai_enabled:true,tags:[],created_at:createdAt,updated_at:createdAt}],messages:[],aiCalls:[],dbCalls:[],reservations:[]};
   const client=createClient('https://ticket-tests.invalid','test-only-client-key',{auth:{persistSession:false,autoRefreshToken:false},global:{async fetch(input,init){
     const req=new Request(input,init),url=new URL(req.url),name=url.pathname.split('/').at(-1),query=url.searchParams;
@@ -87,7 +87,7 @@ function services(t,{aiEnabled=false,status='open',legacyUsage=0,ticketUsage=0,l
   }}});
   const original={from:supabase.from,rpc:supabase.rpc,create:OpenAI.Chat.Completions.prototype.create};
   supabase.from=client.from.bind(client);supabase.rpc=client.rpc.bind(client);
-  OpenAI.Chat.Completions.prototype.create=async function(body){state.aiCalls.push(body);await onAI?.(state);if(aiFailure)throw new Error('test-only-private-provider-error');return {choices:[{message:{content:'راهنمای پاسخ هوشمند'}}]};};
+  OpenAI.Chat.Completions.prototype.create=async function(body){state.aiCalls.push(body);await onAI?.(state);if(aiFailure)throw new Error('test-only-private-provider-error');return {choices:[{finish_reason:'stop',message:{content:JSON.stringify(aiAnswer||{answer:'از بخش فراموشی رمز در صفحه ورود درخواست بازیابی ثبت کنید؛ پشتیبانی پس از تأیید هویت راهنمایی می‌کند.',reference_ids:['account_help']})}}]};};
   t.after(()=>{supabase.from=original.from;supabase.rpc=original.rpc;OpenAI.Chat.Completions.prototype.create=original.create;});
   return state;
 }
@@ -224,4 +224,32 @@ test('the legacy support chat route writes a persistent ticket instead of a tran
 test('rate-limited messages do not create tickets, append content, or call AI',async t=>{
   const state=services(t,{rateCount:30}),res=await call(userTickets,{method:'POST',body:{title,message:text}});
   assert.equal(res.statusCode,429);assert.ok(Number(res.headers['Retry-After'])>0);assert.equal(state.messages.length,0);assert.equal(state.aiCalls.length,0);assert.equal(state.dbCalls.some(c=>c.name==='create_support_ticket'),false);
+});
+
+
+test('medical support uses reviewed references without transmitting ticket health data to a model',async t=>{
+  const state=services(t,{aiEnabled:true}),res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message:'پرولاکتین بالا یعنی تومور دارم؟'}});
+  assert.equal(res.statusCode,200);assert.equal(state.aiCalls.length,0);assert.equal(res.body.evidence_mode,'curated_reference');assert.equal(res.body.search_performed,false);
+  assert.ok(res.body.sources.some(source=>source.url==='https://medlineplus.gov/lab-tests/prolactin-levels/'));
+  assert.match(res.body.answer,/به‌تنهایی|به تنهایی/);assert.match(state.messages.at(-1).content,/medlineplus.gov/);
+});
+test('unknown medical requests and mixed billing plus drug advice never fall through to site AI',async t=>{
+  const state=services(t,{aiEnabled:true});
+  for(const message of ['برای سردرد شدید چه قرصی بخورم؟','پلنم فعال نمیشه؛ داروی تومور رو چقدر بخورم؟']){
+    const res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message}});assert.equal(res.statusCode,200);assert.equal(res.body.search_performed,false);assert.match(res.body.answer,/نمی‌توانم|منبع اختصاصی/);
+  }
+  assert.equal(state.aiCalls.length,0);
+});
+test('support discards fabricated site source IDs and retains human follow-up',async t=>{
+  const state=services(t,{aiEnabled:true,aiAnswer:{answer:'پاسخ ظاهراً معتبر که منبع آن ساختگی است.',reference_ids:['https://evil.invalid']}}),res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message:text}});
+  assert.equal(res.body.pending_admin,true);assert.equal(res.body.answer,undefined);assert.deepEqual(state.messages.map(row=>row.sender_type),['user']);assert.equal(state.reservations.length,0);
+});
+test('resetting a password during support generation prevents saving or exposing the late answer',async t=>{
+  const state=services(t,{aiEnabled:true,onAI:async s=>{s.sessionVersion++;}}),res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message:text}});
+  assert.equal(res.statusCode,401);assert.equal(res.body.answer,undefined);assert.deepEqual(state.messages.map(row=>row.sender_type),['user']);assert.equal(state.reservations.length,0);
+});
+test('site support removes credential-like strings, email and national/phone identifiers before calling Free AI',async t=>{
+  const state=services(t,{aiEnabled:true}),message='مشکل ورود؛ password: SUPER_PRIVATE_VALUE، client_secret: PRIVATE_SECRET من ۰۹۱۲۳۴۵۶۷۸۹ و ۰۰۱۲۳۴۵۶۷۸ user@example.invalid هستم';
+  const res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message}});assert.equal(res.statusCode,200);assert.equal(state.aiCalls.length,1);
+  const sent=JSON.stringify(state.aiCalls[0]);assert.doesNotMatch(sent,/SUPER_PRIVATE_VALUE|PRIVATE_SECRET|09123456789|0012345678|user@example/);assert.equal(JSON.parse(state.aiCalls[0].messages[1].content).raw_ticket_text_sent,false);
 });

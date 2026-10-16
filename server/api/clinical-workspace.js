@@ -1,4 +1,5 @@
 import { safeErrorMetadata } from './_lib/errors.js';
+import { diagnosticOrderWithPreparation } from './_lib/lab-preparation.js';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { encounterLinks } from './_lib/clinical-links.js';
@@ -69,7 +70,8 @@ export default async function handler(req,res){
       const items=Array.isArray(body.items)?body.items.map(x=>text(x,160)).filter(Boolean).slice(0,50):[];if(!items.length)return res.status(400).json({success:false,error:'موارد درخواست را وارد کنید'});
       const orderType=['lab','imaging','pathology','other'].includes(body.order_type)?body.order_type:'lab',priority=['routine','urgent'].includes(body.priority)?body.priority:'routine';
       const {data,error}=await supabase.from('diagnostic_orders').insert({patient_id:patientId,ordered_by_doctor_id:doctor.id,destination_organization_id:body.destination_organization_id||null,order_type:orderType,items,clinical_note:text(body.clinical_note,2500),priority,status:'ordered',ordered_at:new Date().toISOString()}).select('*').single();if(error)throw error;
-      await audit(session.sub,patientId,'diagnostic_order.created','diagnostic_order',data.id,{order_type:orderType});await notifyPatient(patientId,'درخواست بررسی جدید',`${orderType==='lab'?'آزمایش':'بررسی تشخیصی'} جدید برای شما ثبت شد.`,'diagnostic_order');return res.status(201).json({success:true,item:data});
+      const item=diagnosticOrderWithPreparation(data);
+      await audit(session.sub,patientId,'diagnostic_order.created','diagnostic_order',data.id,{order_type:orderType});await notifyPatient(patientId,'درخواست بررسی جدید',`${orderType==='lab'?'آزمایش':'بررسی تشخیصی'} جدید برای شما ثبت شد.${item.preparation?' راهنمای آمادگی را در بخش «تاریخچه پزشکی» پرونده سلامت ببینید.':''}`,'diagnostic_order');return res.status(201).json({success:true,item});
     }
     if(action==='follow_up'){
       const title=text(body.title,180);if(!title)return res.status(400).json({success:false,error:'عنوان پیگیری لازم است'});

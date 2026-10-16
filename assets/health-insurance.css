@@ -1,0 +1,28 @@
+/* Insurance is a pair of clearly named coverages, with optional details below. */
+#dynamicFields [hidden],#insuranceEditModal [hidden]{display:none!important}
+.insurance-form-intro{padding:1rem;border-radius:16px;background:var(--soft,#eef8fa);border:1px solid var(--line,#ccdce7);color:var(--text,#102638)}
+.insurance-form-intro p{margin:.5rem 0 0;line-height:1.9;font-weight:400;font-size:.9rem}
+.insurance-required{font-size:.75rem;font-weight:400}
+.insurance-extra{border:1px solid var(--line,#ccdce7);border-radius:14px;padding:.85rem}
+.insurance-extra summary,.insurance-history summary{cursor:pointer;font-weight:700;line-height:1.8}
+.insurance-extra[open] summary{margin-bottom:.85rem}
+.insurance-extra .form{padding:0}
+.insurance-note{line-height:1.9;margin:0}
+.insurance-form-error,.insurance-conflict{padding:.8rem;border:1px solid currentColor;border-radius:12px;color:var(--danger,#b91c1c);line-height:1.9}
+.insurance-group{display:grid;gap:.65rem;min-width:0}
+.insurance-group+.insurance-group{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line,#ccdce7)}
+.insurance-group h3{margin:0;font-size:1rem}
+.insurance-intro{margin:0 0 1rem;line-height:1.9}
+.insurance-empty{margin:0;line-height:1.9}
+.insurance-policy{min-width:0}
+.insurance-policy-heading{display:flex;justify-content:space-between;gap:.6rem;align-items:start;flex-wrap:wrap}
+.insurance-policy-heading strong{overflow-wrap:anywhere}
+.insurance-period{font-size:.75rem;border:1px solid var(--line,#ccdce7);border-radius:999px;padding:.1rem .6rem;white-space:nowrap}
+.insurance-history{margin-top:1rem;border-top:1px solid var(--line,#ccdce7);padding-top:1rem}
+.insurance-history[open] summary{margin-bottom:.8rem}
+.insurance-history .insurance-policy+.insurance-policy{margin-top:.65rem}
+#insuranceEditModal .dialog{max-height:90vh;overflow:auto}
+#dynamicFields small,#insuranceEditModal small{display:block;font-size:.75rem;line-height:1.8;font-weight:400}
+html[data-theme=dark] .insurance-form-intro{background:#112b3a;color:#e4edf5}
+html[data-theme=dark] .insurance-form-error,html[data-theme=dark] .insurance-conflict{color:#ffb4b4}
+@media(max-width:560px){.insurance-extra .form{grid-template-columns:1fr}.insurance-extra summary{font-size:.9rem}.insurance-policy .archive-actions{display:flex;flex-wrap:wrap;gap:.5rem}.insurance-policy .tiny{overflow-wrap:anywhere}}

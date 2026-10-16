@@ -28,7 +28,7 @@ test('filtered empty results help recover and escape the original search safely'
 test('public guides disclose AI assistance and editorial review without inventing a physician', async t => {
   database(t, { ...guide, author_name: 'تحریریه دکتر من', ai_assisted: true, evidence_updated_at: '2026-10-13', next_review_at: '2027-04-13', body_html: '<h2>راهنما</h2><p>اصل سند را نگه دارید.</p><script>unsafe()</script>', source_links: [{ title: 'MedlinePlus', url: 'https://medlineplus.gov/lab-tests/complete-blood-count-cbc/' }] });
   const result = await page({ slug: guide.slug });
-  assert.equal(result.statusCode, 200); assert.match(result.html, /بازبینی تحریریه/); assert.match(result.html, /از ابزار هوش مصنوعی استفاده شده/); assert.match(result.html, /2027-04-13/); assert.match(result.html, /href="https:\/\/medlineplus.gov/); assert.doesNotMatch(result.html, /unsafe\(\)|"@type":"Physician"|reviewedBy/);
+  assert.equal(result.statusCode, 200); assert.match(result.html, /بازبینی تحریریه/); assert.match(result.html, /از ابزار هوش مصنوعی استفاده شده/); assert.match(result.html, /۱۴۰۶\/۰۱\/۲۴/); assert.doesNotMatch(result.html, /آخرین بررسی منابع: 2026|بازبینی برنامه‌ریزی‌شده: 2027/); assert.match(result.html, /href="https:\/\/medlineplus.gov/); assert.doesNotMatch(result.html, /unsafe\(\)|"@type":"Physician"|reviewedBy/);
 });
 test('source links require clean HTTPS URLs and never link credential-bearing or script URLs', async t => {
   database(t, { ...guide, source_links: [{ title: 'unsafe script', url: 'javascript:alert(1)' }, { title: 'unsafe credentials', url: 'https://name:secret@example.invalid/' }, { title: 'trusted source', url: 'https://www.radiologyinfo.org/en/info/bodymr' }] });

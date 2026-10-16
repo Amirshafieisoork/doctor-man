@@ -1,3 +1,4 @@
+import { displayDate } from './_lib/display-date.js';
 import { supabase } from './_lib/db.js';
 import { cleanArticleHtml } from './_lib/article-html.js';
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -32,6 +33,6 @@ export default async function handler(req,res){
  const schemaObj={'@context':'https://schema.org','@type':'MedicalWebPage',headline:a.title,description:a.seo_description||a.summary,datePublished:a.published_at,dateModified:a.updated_at,author:{'@type':'Organization',name:authorName},publisher:{'@type':'Organization',name:'DrMan',url:BASE},url:`${BASE}/learn/${a.slug}`};
  if(reviewer)schemaObj.reviewedBy={'@type':'Physician',name:reviewer.full_name,medicalSpecialty:reviewer.specialty,url:`${BASE}/doctor/${reviewer.slug}`};
  const schema=JSON.stringify(schemaObj).replace(/</g,'\\u003c');const sources=Array.isArray(a.source_links)?a.source_links:[];
- const meta=`<div class="review ${reviewer?'':'editorial'}">${reviewed}${a.ai_assisted?'<br><small>در تهیه پیش‌نویس از ابزار هوش مصنوعی استفاده شده و مسئولیت انتشار با بازبین است.</small>':''}${a.evidence_updated_at?`<br><small>آخرین بررسی منابع: ${esc(a.evidence_updated_at)}</small>`:''}${a.next_review_at?`<br><small>بازبینی برنامه‌ریزی‌شده: ${esc(a.next_review_at)}</small>`:''}</div>`;
+ const meta=`<div class="review ${reviewer?'':'editorial'}">${reviewed}${a.ai_assisted?'<br><small>در تهیه پیش‌نویس از ابزار هوش مصنوعی استفاده شده و مسئولیت انتشار با بازبین است.</small>':''}${a.evidence_updated_at?`<br><small>آخرین بررسی منابع: ${esc(displayDate(a.evidence_updated_at))}</small>`:''}${a.next_review_at?`<br><small>بازبینی برنامه‌ریزی‌شده: ${esc(displayDate(a.next_review_at))}</small>`:''}</div>`;
  return res.status(200).send(shell(a.seo_title||`${a.title} | DrMan`,a.seo_description||a.summary||'',`<main class="wrap"><a href="/learn">← بازگشت به مقالات و راهنما</a><article class="card article"><span class="pill">${typeLabel(a)}</span> <span class="pill">${esc(a.category||'سلامت')}</span><h1>${esc(a.title)}</h1><p class="muted">${esc(a.summary||'')}</p>${meta}${cleanArticleHtml(a.body_html)}${sources.length?`<h3>منابع</h3><ul class="sources">${sources.slice(0,20).map(sourceItem).join('')}</ul>`:''}<p class="muted">این مطلب آموزشی است و جایگزین تشخیص یا درمان فردی توسط پزشک نیست.</p></article></main>`,`${BASE}/learn/${a.slug}`,schema,a.noindex===true));
 }

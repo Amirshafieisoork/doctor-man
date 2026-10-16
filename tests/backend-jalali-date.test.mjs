@@ -34,3 +34,18 @@ test('birthday validation preserves empty values and disallows future or excessi
   assert.throws(() => birthDate('1410/01/01', now), /آینده/);
   assert.throws(() => birthDate('1279/01/01', now), /بازه/);
 });
+
+test('generic dates are not constrained by birthday future/age restrictions', () => {
+  assert.equal(toGregorian('۱۴۱۰/۰۱/۰۱'), '2031-03-21');
+  assert.equal(globalThis.DrManJalali.persianDigits(format('2031-03-21')), '۱۴۱۰/۰۱/۰۱');
+  assert.equal(globalThis.DrManJalali.display('2026-10-16'), '۱۴۰۵/۰۷/۲۴');
+  assert.equal(globalThis.DrManJalali.display('2026-02-30'), '—');
+});
+test('local datetime conversion preserves clock time and validates Persian digits', () => {
+  assert.equal(globalThis.DrManJalali.toLocalDateTime('۱۴۰۵/۰۷/۲۴', '۱۴:۳۰'), '2026-10-16T14:30');
+  assert.equal(globalThis.DrManJalali.toLocalDateTime('۱۴۰۵/۰۷/۲۴', '00:00'), '2026-10-16T00:00');
+  for (const time of ['24:00', '13:60', '4:20', '', '12:00Z', '12:00+03:30']) assert.throws(() => globalThis.DrManJalali.toLocalDateTime('۱۴۰۵/۰۷/۲۴', time));
+  const instant = new Date(2026, 9, 16, 14, 30);
+  assert.equal(globalThis.DrManJalali.localDate(instant), '2026-10-16');
+  assert.equal(globalThis.DrManJalali.localDateTime(instant), '2026-10-16T14:30');
+});

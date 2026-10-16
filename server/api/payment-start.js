@@ -3,17 +3,17 @@ import crypto from 'node:crypto';
 import { requireUser } from './_lib/session.js';
 import { supabase } from './_lib/db.js';
 import { createDigiPayTicket } from './_lib/digipay.js';
+import { readPublicDigiPaySettings } from './_lib/private-digipay-settings.js';
 
 function sha256(value){return crypto.createHash('sha256').update(String(value)).digest('hex')}
 
 export default async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
   const session=await requireUser(req,res);if(!session)return;
-  if(!process.env.DIGIPAY_CLIENT_ID||!process.env.DIGIPAY_CLIENT_SECRET||!process.env.DIGIPAY_USERNAME||!process.env.DIGIPAY_PASSWORD){
-    return res.status(503).json({success:false,error:'درگاه دیجی‌پی هنوز توسط مدیر سایت فعال نشده است.',code:'DIGIPAY_NOT_CONFIGURED'});
-  }
-
   try{
+    if (!(await readPublicDigiPaySettings(supabase)).configured) {
+      return res.status(503).json({success:false,error:'درگاه دیجی‌پی هنوز توسط مدیر سایت فعال نشده است.',code:'DIGIPAY_NOT_CONFIGURED'});
+    }
     const planId=String(req.body?.plan_id||'').trim();
     if(!/^[0-9a-f-]{36}$/i.test(planId))return res.status(400).json({success:false,error:'پلن انتخاب‌شده معتبر نیست'});
 
