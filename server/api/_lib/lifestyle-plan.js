@@ -1,6 +1,34 @@
 // Conservative, useful advice is available even when no AI consent/key exists.
 // A lab flag identifies a reported finding, never a diagnosis or a treatment.
-export const LIFESTYLE_VERSION = 'lifestyle-plan-v1';
+import { displayDate } from './display-date.js';
+export const LIFESTYLE_VERSION = 'lifestyle-plan-v2';
+const normalized = value => String(value || '').normalize('NFKC').replace(/[يى]/g, 'ی').replace(/ك/g, 'ک').replace(/\u200c/g, ' ');
+const FOOD_MENTION = /(?<![\p{L}\p{N}])(?:بادام(?:\s+زمینی|\s+هندی)?|گردو|فندق|پسته|شیر|لبنیات?|لاکتوز|کره|پنیر|ماست|تخم\s*مرغ|کنجد|ارده|گندم|گلوتن|سلیاک|ماهی|میگو|صدف|سویا|عدس|حبوبات|لوبیا|نخود|خوراکی|غذا(?:یی|ی)?|peanut|nuts?|milk|dairy|lactose|eggs?|sesame|wheat|gluten|fish|shellfish|soy)(?![\p{L}\p{N}])/iu;
+const ENVIRONMENT_MENTION = /(?<![\p{L}\p{N}])(?:علف|کاه|باغ|گرده|گرد\s*و\s*غبار|چمن|درخت|کپک|مایت|pollen|grass|hay|dust|mold|mould|mites?)(?![\p{L}\p{N}])/iu;
+export function foodAllergyRows(rows = []) {
+  return rows.filter(row => {
+    const allergen = normalized(row.allergen), type = normalized(row.allergy_type).toLowerCase();
+    // Mixed environmental/food descriptions keep the food constraint, even if
+    // the dropdown was selected incorrectly. Unknown types stay conservative.
+    if (FOOD_MENTION.test(allergen) || /^(?:food|خوراکی|غذایی)$/.test(type)) return true;
+    if (/^(?:environmental|environment|respiratory|drug|medication|contact|محیطی|تنفسی|دارویی|تماسی)$/.test(type)) return false;
+    return !ENVIRONMENT_MENTION.test(allergen);
+  });
+}
+export function criticalReportContext(record) {
+  const report = record.tests?.[0], flagged = (report?.items || []).filter(item => item.flag === 'critical');
+  const allergyMarker = name => !/potassium|sodium|glucose|creatinine|troponin|hemoglobin|platelet|\bcbc\b|پتاسیم|سدیم|گلوکز|کراتینین|قند خون|تروپونین|هموگلوبین|پلاکت/iu.test(normalized(name)) && /\b(?:ige|rast|immunoglobulin\s*e)\b|آی\s*جی\s*ای|ایمونوگلوبولین\s*ای/iu.test(normalized(name));
+  const details = flagged.map(item => ({ name: String(item.name || 'آزمایش بدون نام').slice(0,120), value: String(item.value ?? '').slice(0,80), unit: String(item.unit || '').slice(0,60), date: report.created_at || null, allergy_marker: allergyMarker(item.name) }));
+  return { reported: details.length > 0, clinicalHold: details.some(item => !item.allergy_marker), details };
+}
+export function criticalReportNotice(record) {
+  const context = criticalReportContext(record); if (!context.reported) return '';
+  const result = context.details.slice(0,3).map(item => [item.name, item.value, item.unit].filter(Boolean).join(' ')).join('، ');
+  const date = context.details[0]?.date ? ' در گزارش ' + displayDate(context.details[0].date) : '';
+  return context.clinicalHold
+    ? `برای ${result}${date} برچسب «بحرانی» ثبت شده است. این برچسب تفسیر باید با نتیجهٔ اصلی توسط آزمایشگاه یا پزشک فوراً بررسی شود تا فوریت و اقدام درست مشخص شود؛ از آن تشخیص یا رژیم تازه نتیجه نگیرید.`
+    : `برای ${result}${date} در تفسیر برچسب «بحرانی» ثبت شده است. بالا بودن شاخص حساسیت به‌تنهایی شدت واکنش یا فوریت را ثابت نمی‌کند؛ نتیجهٔ اصلی را همراه علائم با پزشک مرور کنید. با مشکل تنفس یا ورم ناگهانی لب و زبان، رسیدگی فوری لازم است.`;
+}
 const names = rows => (rows || []).map(row => row.name || '').join(' ');
 const words = (value, expression) => expression.test(value.normalize('NFKC'));
 export function lifestyleContext(record) {
@@ -13,8 +41,8 @@ export function lifestyleContext(record) {
   const ageUnknown = record.patient.age_years == null;
   const pregnancy = ['yes', 'possible'].includes(record.patient.pregnancy_status);
   const unknownPregnancy = record.patient.sex === 'female' && record.patient.pregnancy_status === 'unknown';
-  const critical = labs.some(item => item.flag === 'critical');
-  return { kidney, cardiac, diabetes, child, ageUnknown, pregnancy, unknownPregnancy, critical,
+  const criticalContext = criticalReportContext(record), critical = criticalContext.clinicalHold;
+  return { kidney, cardiac, diabetes, child, ageUnknown, pregnancy, unknownPregnancy, critical, reportedCritical: criticalContext.reported,
     lipids: high(/ldl|cholesterol|triglyceride|چربی|کلسترول|تری.?گلیسرید/iu),
     glucose: high(/glucose|hba1c|قند|هموگلوبین گلیک/iu),
     bloodPressure: (record.vitals || []).some(row => row.systolic >= 140 || row.diastolic >= 90) };
@@ -26,8 +54,11 @@ export function localLifestylePlan(record) {
   if (context.glucose || context.diabetes) based.push('قند یا سابقهٔ دیابت در پرونده نیازمند توجه است؛ برنامه بر وعده‌های منظم و ثبت الگوی خوردن تمرکز دارد.');
   if (context.bloodPressure) based.push('در اندازه‌گیری‌های ثبت‌شده، فشار خون بالاتر دیده می‌شود؛ یک عدد به‌تنهایی تشخیص فشار خون بالا نیست.');
   if (context.kidney || context.cardiac) based.push('با توجه به سابقهٔ ' + (context.kidney ? 'کلیه' : 'قلب') + '، برنامهٔ غذا و فعالیت باید با محدودیت‌های پزشک هماهنگ باشد.');
-  const allergies = (record.allergies || []).map(item => item.allergen).filter(Boolean).slice(0, 3);
+  const foodRows = foodAllergyRows(record.allergies || []);
+  const allergies = foodRows.map(item => item.allergen).filter(Boolean).slice(0, 3);
   if (allergies.length) precautions.push('حساسیت ثبت‌شده به ' + allergies.join('، ') + ' را رعایت کنید؛ برچسب مواد غذایی و احتمال آلودگی متقاطع را بررسی کنید.');
+  const otherAllergies = (record.allergies || []).filter(item => !foodRows.includes(item)).map(item => item.allergen).filter(Boolean).slice(0,3);
+  if (otherAllergies.length) precautions.push('حساسیت غیرخوراکی ثبت‌شده: ' + otherAllergies.join('، ') + '؛ این مورد به‌تنهایی دلیل حذف غذاها نیست. از تماس با عامل حساسیت‌زا پرهیز کنید و علائم را در مراجعه مطرح کنید.');
   if (context.kidney) precautions.push('مقدار آب، پروتئین، پتاسیم و فسفر را خودسرانه زیاد یا کم نکنید؛ نمک جایگزین هم ممکن است مناسب شما نباشد. برنامهٔ اختصاصی کلیه را با متخصص تغذیه هماهنگ کنید.');
   if (context.cardiac) precautions.push('از محدودیت فعالیت و مایعات تجویزشده پیروی کنید؛ پیش از افزایش شدت ورزش با تیم درمان هماهنگ کنید.');
   if (context.diabetes) precautions.push('اگر انسولین یا داروی پایین‌آورندهٔ قند مصرف می‌کنید، وعده‌ای را حذف نکنید و تغییر فعالیت یا غذا را با برنامهٔ پیشگیری از افت قند هماهنگ کنید.');
@@ -35,7 +66,7 @@ export function localLifestylePlan(record) {
   if (context.ageUnknown) precautions.push('سن مشخص نیست؛ پیش از تعیین الگوی غذا، خواب یا فعالیت، تاریخ تولد را ثبت کنید. این برنامه هدف وزن یا ورزش تعیین نمی‌کند.');
   if (context.pregnancy) precautions.push('در بارداری یا احتمال آن، رژیم کاهش وزن و هدف وزن بزرگسال مناسب نیست؛ غذا و فعالیت را با ماما یا پزشک هماهنگ کنید.');
   else if (context.unknownPregnancy) precautions.push('اگر احتمال بارداری وجود دارد، پیش از هر برنامهٔ تغییر وزن آن را روشن کنید؛ این برنامه هدف کاهش وزن تعیین نمی‌کند.');
-  if (context.critical) precautions.unshift('در گزارش علامت بحرانی وجود دارد؛ نخست فوراً برای بررسی نتیجه با مرکز درمانی تماس بگیرید. شروع یا افزایش ورزش را تا روشن‌شدن وضعیت به تعویق بیندازید.');
+  if (context.reportedCritical) precautions.unshift(criticalReportNotice(record));
   const generalDiet = context.ageUnknown || (context.child && record.patient.age_years < 2)
     ? 'الگوی تغذیهٔ مناسب سن و توصیهٔ درمانگر را ادامه دهید؛ پیش از تغییر وعده‌ها یا نوع غذا، سن و محدودیت‌های تغذیه را روشن کنید.'
     : context.kidney

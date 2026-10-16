@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { HEALTH_NAVIGATOR_MODEL } from './ai-models.js';
 import { pregnancyContext } from '../../../assets/bmi.js';
-import { LIFESTYLE_VERSION, lifestyleContext, localLifestylePlan } from './lifestyle-plan.js';
+import { LIFESTYLE_VERSION, lifestyleContext, localLifestylePlan, criticalReportNotice } from './lifestyle-plan.js';
 
 export const OVERVIEW_VERSION = 'health-overview-v1';
 const MAX_DAILY_ATTEMPTS = 3;
@@ -33,7 +33,7 @@ export function overviewRecord(patient, results, now = Date.now()) {
   return {
     patient: { age_years: ageYears(patient.birth_date, now), sex: patient.sex || null, height_cm: finite(patient.height_cm), pregnancy_status: pregnancy.status },
     conditions: ordered(results.conditions, 'diagnosed_at', row => ({ name: text(row.name, 160), status: text(row.status, 30), diagnosed_at: row.diagnosed_at || null, notes: text(row.notes, 500) }), 25),
-    allergies: ordered(results.allergies, 'allergen', row => ({ allergen: text(row.allergen, 160), severity: text(row.severity, 50), reaction: text(row.reaction, 200) }), 25),
+    allergies: ordered(results.allergies, 'allergen', row => ({ allergen: text(row.allergen, 160), allergy_type: text(row.allergy_type, 40), severity: text(row.severity, 50), reaction: text(row.reaction, 200) }), 25),
     medications: ordered(results.medications, 'name', row => ({ name: text(row.name, 160), frequency: text(row.frequency, 100), instructions: text(row.instructions, 300) }), 25),
     vitals: ordered(results.vitals, 'measured_at', row => ({ measured_at: row.measured_at || null, height_cm: finite(row.height_cm), weight_kg: finite(row.weight_kg), systolic: finite(row.systolic), diastolic: finite(row.diastolic), heart_rate: finite(row.heart_rate), oxygen_saturation: finite(row.oxygen_saturation), glucose_mg_dl: finite(row.glucose_mg_dl), temperature_c: finite(row.temperature_c) }), 12),
     tests: ordered(results.tests, 'created_at', row => ({ created_at: row.created_at || null, status: text(row.status, 30), summary: text(row.structured_analysis?.summary || row.analysis, 1000), items: list(row.structured_analysis?.items, 24).map(item => ({ name: text(item.name, 120), value: text(String(item.value ?? ''), 80), unit: text(item.unit, 60), reference_range: text(item.reference_range, 140), flag: text(item.flag, 30) })), abnormal_items: list(row.structured_analysis?.abnormal_items, 12).map(item => text(typeof item === 'string' ? item : item?.name, 160)).filter(Boolean) }), 6),
@@ -51,7 +51,7 @@ export function localOverview(record) {
   else if (newest?.abnormal_items?.length) steps.push(`موارد نیازمند بررسی در آخرین تفسیر: ${newest.abnormal_items.slice(0, 4).join('، ')}. دربارهٔ زمان پیگیری با پزشک هماهنگ کنید.`);
   if (record.tasks.length) steps.push(`پیگیری ثبت‌شده: ${record.tasks[0].title}. زمان و وضعیت آن را در بخش پیگیری‌های پرونده بررسی کنید.`);
   if (record.medications.length) steps.push('فهرست داروهای فعال را برای مراجعه آماده نگه دارید و دارو، مکمل یا فرآوردهٔ گیاهی را خودسرانه شروع، قطع یا کم‌وزیاد نکنید.');
-  if (record.allergies.length) steps.push(`حساسیت‌های ثبت‌شده (${record.allergies.slice(0, 3).map(item => item.allergen).join('، ')}) را پیش از دریافت دارو یا غذا به مراقب سلامت اطلاع دهید.`);
+  if (record.allergies.length) steps.push(`حساسیت‌های ثبت‌شده (${record.allergies.slice(0, 3).map(item => item.allergen).join('، ')}) را هنگام مراجعه به مراقب سلامت اطلاع دهید.`);
   if (latestVital?.weight_kg && !(latestVital.height_cm || record.patient.height_cm)) limits.push('برای بررسی تناسب وزن، قد را هم در پرونده ثبت کنید.');
   if (!record.patient.age_years && record.patient.age_years !== 0) limits.push('سن ثبت نشده است؛ توصیه‌های کودک و بزرگسال می‌تواند متفاوت باشد.');
   if (!record.tests.length) limits.push('هنوز نتیجهٔ آزمایش قابل بررسی در این پرونده وجود ندارد.');
@@ -64,7 +64,7 @@ export function localOverview(record) {
     next_steps: steps.slice(0, 6),
     nutrition: [lifestyle.first_week[0].steps[0]],
     movement: [lifestyle.first_week[1].steps[0], 'اگر درد قفسهٔ سینه، تنگی نفس غیرمعمول، سرگیجه یا محدودیت حرکتی دارید، پیش از افزایش فعالیت ارزیابی شوید.'],
-    seek_care: flagged.some(item => item.flag === 'critical') ? 'در آخرین گزارش، علامت «بحرانی» ثبت شده است؛ برای تعیین اقدام لازم فوراً با مرکز درمانی تماس بگیرید. با درد شدید قفسهٔ سینه، تنگی نفس شدید، ضعف ناگهانی یک سمت بدن یا کاهش هوشیاری با ۱۱۵ تماس بگیرید.' : 'با درد شدید قفسهٔ سینه، تنگی نفس شدید، ضعف ناگهانی یک سمت بدن یا کاهش هوشیاری با ۱۱۵ تماس بگیرید؛ منتظر این جمع‌بندی نمانید.',
+    seek_care: flagged.some(item => item.flag === 'critical') ? criticalReportNotice(record) + ' با درد شدید قفسهٔ سینه، تنگی نفس شدید، ضعف ناگهانی یک سمت بدن یا کاهش هوشیاری با ۱۱۵ تماس بگیرید.' : 'با درد شدید قفسهٔ سینه، تنگی نفس شدید، ضعف ناگهانی یک سمت بدن یا کاهش هوشیاری با ۱۱۵ تماس بگیرید؛ منتظر این جمع‌بندی نمانید.',
     questions_for_doctor: flagged.length ? ['این تغییرات با داروها و سابقهٔ من چه ارتباطی دارند و چه زمانی نیاز به پیگیری دارند؟'] : ['با توجه به سن و سابقهٔ من، کدام پیگیری یا بررسی دوره‌ای لازم است؟'],
     data_limits: limits,
     lifestyle_plan: lifestyle
@@ -167,7 +167,7 @@ export async function generateOverview(client, record, userId) {
 export async function readOverviewRecord(database, patient, now) {
   const definitions = [
     ['conditions', 'patient_conditions', 'name,status,diagnosed_at,notes', 'diagnosed_at', 25],
-    ['allergies', 'patient_allergies', 'allergen,severity,reaction', 'created_at', 25],
+    ['allergies', 'patient_allergies', 'allergen,allergy_type,severity,reaction', 'created_at', 25],
     ['medications', 'patient_medications', 'name,status,frequency,instructions', 'created_at', 25],
     ['vitals', 'patient_vitals', 'measured_at,weight_kg,systolic,diastolic,heart_rate,oxygen_saturation,temperature_c,glucose_mg_dl', 'measured_at', 12],
     ['tests', 'test_results', 'created_at,status,structured_analysis,analysis', 'created_at', 6],

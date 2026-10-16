@@ -121,6 +121,24 @@ test('chat sends the explicitly selected family record and only two bounded prio
   expect(JSON.stringify(calls)).not.toMatch(/synthetic-private|access_token|syntheticEmergency/);
 });
 
+test('failed chat responses stay out of follow-up context and MyPlate is rendered as a trusted source', async ({ page }) => {
+  const calls = [];
+  await page.route('**/api/health-navigator', route => {
+    calls.push(route.request().postDataJSON());
+    return calls.length === 1 ? json(route, 503, { error: 'خطای ساختگی سرویس' })
+      : json(route, 200, { success: true, answer: 'پاسخ علمی قابل پیگیری', sources: [{ label: 'راهنمای بشقاب غذایی', url: 'https://www.myplate.gov/eat-healthy' }] });
+  });
+  await open(page); await ask(page, 'سؤال ناموفق');
+  await expect(chat(page).locator('.ai-chat-answer')).toHaveText('خطای ساختگی سرویس'); await expect(submit(page)).toBeEnabled();
+  await ask(page, 'سؤال موفق');
+  await expect(chat(page).locator('.ai-chat-answer').last()).toHaveText('پاسخ علمی قابل پیگیری'); await expect(submit(page)).toBeEnabled();
+  await expect(chat(page).getByRole('link', { name: 'راهنمای بشقاب غذایی', exact: true })).toHaveAttribute('href', 'https://www.myplate.gov/eat-healthy');
+  await ask(page, 'پیگیری سؤال موفق');
+  await expect(chat(page).locator('.ai-chat-answer').last()).toHaveText('پاسخ علمی قابل پیگیری');
+  expect(calls).toHaveLength(3); expect(calls[1].history).toEqual([]);
+  expect(calls[2].history).toEqual([{ question: 'سؤال موفق', answer: 'پاسخ علمی قابل پیگیری' }]);
+});
+
 test('health-page chat initially follows the currently selected record rather than the first family member', async ({ page }) => {
   const calls = [];
   await page.route('**/api/health-navigator', route => {

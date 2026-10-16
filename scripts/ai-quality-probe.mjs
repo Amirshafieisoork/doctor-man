@@ -12,6 +12,7 @@ import { safeErrorMetadata } from '../server/api/_lib/errors.js';
 const expected=process.env.DRMAN_AI_QUALITY_PROBE||'';
 const enabled=/^[a-f0-9]{40}$/.test(expected)&&expected===process.env.VERCEL_GIT_COMMIT_SHA;
 const report=value=>console.log('DRMAN_AI_QUALITY '+JSON.stringify({synthetic_only:true,...value}));
+function reportAnswer(value){const raw=JSON.stringify(value),size=1100,total=Math.ceil(raw.length/size);for(let index=0;index<total;index++)report({stage:'answer_chunk',kind:value.kind,index,total,text:raw.slice(index*size,(index+1)*size)});}
 const measuredAt='2026-10-16T08:00:00.000Z';
 export function qualityFixture(kind){
  const patient={birth_date:'1990-01-01',sex:kind==='skin'?'female':'male',height_cm:178};
@@ -27,16 +28,17 @@ export function qualityChatFixture(kind='chat'){
 if(enabled){
  try{
   const kind=process.env.DRMAN_AI_QUALITY_CASE;
-  assert.ok(['chat','followup','nutrition','skin','candidate_chat'].includes(kind));
+  assert.ok(['chat','followup','nutrition','environmental_nutrition','skin','candidate_chat'].includes(kind));
   const config=await configuredModels();assert.equal(config.provider,'groq-free');assert.equal(config.free_only,true);
   const client=await avalaiClient();assert.ok(client);const start=Date.now();
-  if(kind==='nutrition'||kind==='skin'){
-   const fixture=qualityFixture(kind),programKind=kind==='skin'?'skin_hair':'nutrition';
+  if(kind==='nutrition'||kind==='environmental_nutrition'||kind==='skin'){
+   const fixture=qualityFixture(kind==='environmental_nutrition'?'nutrition':kind),programKind=kind==='skin'?'skin_hair':'nutrition';
+   if(kind==='environmental_nutrition'){fixture.sections.allergies=[{allergen:'گرده چمن',allergy_type:'environmental',severity:'moderate'}];fixture.sections.tests=[{created_at:measuredAt,status:'warning',structured_analysis:{summary:'گزارش کاملاً ساختگی بررسی حساسیت',items:[{name:'Total IgE',value:'480',unit:'IU/mL',flag:'critical'}]}}];fixture.record=overviewRecord(fixture.patient,fixture.sections);fixture.answers=wellnessAnswers('nutrition',{...fixture.answers,dietary_pattern:'balanced',dislikes:'',additional_allergies:''});}
    const estimate=wellnessRequestEstimate(programKind,fixture.record,fixture.answers);
    report({stage:'input',kind,commit:expected,profile:fixture.record.patient,questionnaire:fixture.answers,request_estimate:estimate});
    assert.ok(estimate<=7800,'Quality request must fit the Free rate allowance');
    const result=await generateWellnessProgram(client,programKind,fixture.record,fixture.answers,'synthetic-content-review');
-   report({stage:'answer',kind,model:result.model,source:result.source,guard_reasons:result.guard_reasons||[],program:result.program,elapsed_ms:Date.now()-start});
+   reportAnswer({stage:'answer',kind,model:result.model,source:result.source,guard_reasons:result.guard_reasons||[],program:result.program,elapsed_ms:Date.now()-start});
   }else{
    const fixture=qualityChatFixture(kind),pack=medicalEvidenceForQuestion(fixture.question,{history:fixture.history});
    if(kind==='candidate_chat'){
@@ -44,8 +46,8 @@ if(enabled){
     client.chat.completions.create=(body,options)=>create({...body,model:LAB_PRIMARY_MODEL},options);
    }
    report({stage:'input',kind,commit:expected,question:fixture.question,history:fixture.history,topic_ids:pack.topics.map(topic=>topic.id)});
-   if(!pack.supported){report({stage:'answer',kind,source:'local',...medicalEvidenceFallback(pack,{unknown:true})});}
-   else{try{const result=await runNavigator(client,navigatorMessages(fixture.record,fixture.question,fixture.history,pack),'synthetic-content-review',pack);report({stage:'answer',kind,model:result.model,source:'ai',answer:renderNavigatorAnswer(result.parsed),sources:result.sources,elapsed_ms:Date.now()-start});}catch(error){report({stage:'generation_rejected',kind,...safeErrorMetadata(error),...(typeof error?.message==='string'&&/^[A-Z][A-Z_]{3,100}$/.test(error.message)?{classification:error.message}:{})});report({stage:'answer',kind,source:'local',...medicalEvidenceFallback(pack),elapsed_ms:Date.now()-start});}}
+   if(!pack.supported){reportAnswer({stage:'answer',kind,source:'local',...medicalEvidenceFallback(pack,{unknown:true})});}
+   else{try{const result=await runNavigator(client,navigatorMessages(fixture.record,fixture.question,fixture.history,pack),'synthetic-content-review',pack);reportAnswer({stage:'answer',kind,model:result.model,source:'ai',answer:renderNavigatorAnswer(result.parsed),sources:result.sources,elapsed_ms:Date.now()-start});}catch(error){report({stage:'generation_rejected',kind,...safeErrorMetadata(error),...(typeof error?.message==='string'&&/^[A-Z][A-Z_]{3,100}$/.test(error.message)?{classification:error.message}:{})});reportAnswer({stage:'answer',kind,source:'local',...medicalEvidenceFallback(pack),elapsed_ms:Date.now()-start});}}
   }
  }catch(error){report({stage:'failed',...safeErrorMetadata(error),...(typeof error?.message==='string'&&/^[A-Z][A-Z_]{3,100}$/.test(error.message)?{classification:error.message}:{})});process.exitCode=1;}
 }
