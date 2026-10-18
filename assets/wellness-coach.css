@@ -1,6 +1,56 @@
-.wellness-coach{background:var(--s,var(--surface,#fff));border:1px solid var(--b,var(--line,#cbdce7));border-radius:20px;padding:clamp(16px,3vw,28px);color:var(--t,var(--text,#102638));min-width:0}
+.wellness-coach{
+  background:var(--s,var(--surface,#fff));
+  border:1px solid var(--b,var(--line,#cbdce7));
+  border-radius:20px;
+  padding:clamp(16px,3vw,28px);
+  color:var(--t,var(--text,#102638));
+  min-width:0;
+}
 .wellness-coach>h2{margin:0 0 .6rem;font-size:1.35rem}
 .wellness-intro,.wellness-status,.wellness-summary{line-height:1.95;margin:.6rem 0 1.2rem}
+
+/* Calorie / goal highlight strip */
+.wellness-calorie-bar{
+  display:grid;
+  grid-template-columns:1.2fr 1fr;
+  gap:14px;
+  margin:0 0 1.4rem;
+}
+.wellness-calorie-card,
+.wellness-goal-card{
+  padding:16px 18px;
+  border-radius:16px;
+  border:1px solid var(--b,#cbdce7);
+  background:linear-gradient(145deg,rgba(0,212,255,.07),rgba(19,191,166,.04));
+}
+.wellness-calorie-card strong{
+  display:block;
+  font-size:1.75rem;
+  font-weight:800;
+  letter-spacing:-.02em;
+  color:var(--a,#00d4ff);
+  line-height:1.2;
+}
+.wellness-calorie-card span,
+.wellness-goal-card span{
+  font-size:.85rem;
+  color:var(--d,var(--muted,#526681));
+}
+.wellness-progress{
+  margin-top:10px;
+  height:8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  overflow:hidden;
+}
+.wellness-progress>i{
+  display:block;
+  height:100%;
+  width:var(--pct,40%);
+  border-radius:inherit;
+  background:linear-gradient(90deg,var(--a,#00d4ff),#13bfa6);
+}
+
 .wellness-context{padding:1rem;background:var(--s2,#edf5fa);border:1px solid var(--b,#cbdce7);border-radius:16px;margin-bottom:1.5rem}
 .wellness-context-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1rem 0}
 .wellness-context-list>div{min-width:0}.wellness-context-list dt{font-size:.8rem;font-weight:700;margin-bottom:.35rem}.wellness-context-list dd{margin:0;line-height:1.8;overflow-wrap:anywhere}
@@ -18,11 +68,51 @@
 .wellness-error{color:#b91c1c}.wellness-consent,.wellness-weight-note,.wellness-patch-test{padding:1rem;border:1px solid var(--b,#cbdce7);border-radius:14px;background:var(--s2,#edf5fa);line-height:1.9}
 .wellness-consent p{margin:0 0 .8rem}.wellness-program{margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--b,#cbdce7);line-height:1.95;overflow-wrap:anywhere}
 .wellness-program>h2{font-size:1.25rem;margin:0}.wellness-program h3{font-size:1rem;margin:1.4rem 0 .6rem}.wellness-program ul,.wellness-program ol{padding-inline-start:1.4rem;margin:.4rem 0}.wellness-program li+li{margin-top:.5rem}
+
+/* Meal cards */
 .wellness-menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
-.wellness-day{padding:1rem;border:1px solid var(--b,#cbdce7);background:var(--s2,#edf5fa);border-radius:16px;min-width:0}
-.wellness-day h4{margin:0 0 .75rem}.wellness-day p{margin:.5rem 0}.wellness-day strong{display:inline}
+.wellness-day{
+  padding:1.1rem 1.15rem;
+  border:1px solid var(--b,#cbdce7);
+  background:var(--s2,#edf5fa);
+  border-radius:16px;
+  min-width:0;
+  transition:border-color .2s,transform .15s;
+}
+.wellness-day:hover{border-color:rgba(0,212,255,.35)}
+.wellness-day h4{margin:0 0 .75rem;font-size:.95rem}
+.wellness-day p{margin:.5rem 0;font-size:.88rem;line-height:1.75}
+.wellness-day strong{display:inline}
+.wellness-day .kcal{
+  display:inline-block;
+  margin-top:8px;
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--a,#00d4ff);
+  background:rgba(0,212,255,.1);
+  padding:3px 9px;
+  border-radius:999px;
+}
+
 .wellness-routines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem}
 .wellness-weight-goal{font-weight:700}.wellness-sources{margin:1rem 0}.wellness-sources summary{cursor:pointer;font-weight:700}.wellness-sources a{display:block;color:var(--a,#007b80);text-decoration:underline;text-underline-offset:4px;margin-top:.6rem}
+
 html[data-theme=dark] .wellness-error{color:#ffb4b4}
-@media(max-width:760px){.wellness-menu{grid-template-columns:1fr}.wellness-context-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.wellness-fields,.wellness-routines{grid-template-columns:1fr}.wellness-actions .primary{width:100%}.wellness-context-list{gap:.7rem}.wellness-coach{padding:16px}.wellness-questionnaire fieldset{padding:.8rem}.wellness-fields .full{grid-column:auto}}
+html[data-theme=dark] .wellness-calorie-card,
+html[data-theme=dark] .wellness-goal-card{
+  background:linear-gradient(145deg,rgba(0,212,255,.1),rgba(19,191,166,.05));
+}
+
+@media(max-width:760px){
+  .wellness-menu{grid-template-columns:1fr}
+  .wellness-context-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wellness-calorie-bar{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .wellness-fields,.wellness-routines{grid-template-columns:1fr}
+  .wellness-actions .primary{width:100%}
+  .wellness-context-list{gap:.7rem}
+  .wellness-coach{padding:16px}
+  .wellness-questionnaire fieldset{padding:.8rem}
+  .wellness-fields .full{grid-column:auto}
+}

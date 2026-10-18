@@ -4,8 +4,92 @@
 .patient-details #patientSexStatus{flex-basis:100%;font-size:12px}
 .patient-details label small{font-size:11px;font-weight:400;color:var(--muted,var(--d));line-height:1.7}
 .patient-details .all-measurements{font-size:12px;width:100%;text-align:right}
-.profile-bmi{flex-basis:100%;padding:13px 15px;border:1px solid var(--border,var(--b));border-radius:12px;background:var(--surface,var(--s2));color:var(--text,var(--t));line-height:1.9;font-size:13px}
-.profile-bmi[hidden]{display:none}.profile-bmi>strong{display:block;font-size:17px;color:var(--text,var(--t))}.profile-bmi p{margin:5px 0}
+
+/* Enhanced BMI profile card */
+.profile-bmi{
+  flex-basis:100%;
+  padding:18px 20px;
+  border:1px solid var(--border,var(--b));
+  border-radius:16px;
+  background:linear-gradient(145deg,rgba(0,212,255,.06),rgba(19,191,166,.04));
+  color:var(--text,var(--t));
+  line-height:1.9;
+  font-size:13px;
+  display:grid;
+  gap:12px;
+}
+.profile-bmi[hidden]{display:none}
+.profile-bmi>strong{
+  display:block;
+  font-size:22px;
+  font-weight:800;
+  letter-spacing:-.02em;
+  color:var(--a,#00d4ff);
+}
+.profile-bmi p{margin:4px 0}
+.profile-bmi .bmi-value-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.profile-bmi .bmi-ring{
+  width:110px;
+  height:110px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(circle at center,var(--s2,#0f1e36) 58%,transparent 59%),
+    conic-gradient(var(--a,#00d4ff) calc(var(--bmi-pct,60)*1%),rgba(255,255,255,.08) 0);
+  box-shadow:0 0 0 1px rgba(0,212,255,.15),0 8px 24px rgba(0,0,0,.2);
+  flex-shrink:0;
+}
+.profile-bmi .bmi-ring-inner{
+  text-align:center;
+  line-height:1.15;
+}
+.profile-bmi .bmi-ring-inner b{
+  display:block;
+  font-size:26px;
+  font-weight:800;
+  color:var(--t,#e8f4ff);
+}
+.profile-bmi .bmi-ring-inner span{
+  font-size:11px;
+  color:var(--d,#7aa0c4);
+}
+.profile-bmi .bmi-meta{
+  flex:1;
+  min-width:160px;
+}
+.profile-bmi .bmi-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  background:rgba(0,255,157,.12);
+  color:var(--g,#00ff9d);
+  border:1px solid rgba(0,255,157,.25);
+}
+.profile-bmi .bmi-badge.warn{
+  background:rgba(255,208,96,.12);
+  color:var(--y,#ffd060);
+  border-color:rgba(255,208,96,.25);
+}
+.profile-bmi .bmi-badge.alert{
+  background:rgba(255,68,102,.12);
+  color:#ff8197;
+  border-color:rgba(255,68,102,.25);
+}
+.profile-bmi .bmi-range{
+  font-size:12px;
+  color:var(--d,#7aa0c4);
+}
+
 .patient-details input[dir=ltr]{text-align:center;letter-spacing:.04em}
 .body-summary{border-bottom:1px solid var(--border,var(--b));padding:0 0 14px;margin-bottom:12px;color:var(--text,var(--t));font-size:13px;line-height:1.9}
 .body-summary[hidden]{display:none}
@@ -13,11 +97,16 @@
 .body-measurements{font-weight:700}.body-measurement-date{font-size:11px;color:var(--muted,var(--d))}
 .bmi-summary>strong,.bmi-preview>strong{display:block;font-size:15px;color:var(--text,var(--t))}
 .bmi-range{font-size:12px}
-.bmi-preview{padding:12px 14px;border:1px solid var(--border,var(--b));border-radius:12px;background:var(--surface,var(--s2));color:var(--text,var(--t));line-height:1.8;font-size:12px}
+.bmi-preview{padding:14px 16px;border:1px solid var(--border,var(--b));border-radius:14px;background:var(--surface,var(--s2));color:var(--text,var(--t));line-height:1.8;font-size:12px}
 .bmi-preview p{margin:5px 0}
 #dynamicFields label{font-size:12px!important;line-height:1.8;color:var(--text,var(--t))}
 #dynamicFields label small{font-size:11px;color:var(--muted,var(--d));font-weight:400}
 #dynamicFields input::placeholder{opacity:1;color:var(--muted,var(--d))}
-@media(max-width:600px){.patient-details label{flex-basis:calc(50% - 10px);min-width:0}.body-summary{font-size:12px}}
+@media(max-width:600px){
+  .patient-details label{flex-basis:calc(50% - 10px);min-width:0}
+  .body-summary{font-size:12px}
+  .profile-bmi .bmi-ring{width:96px;height:96px}
+  .profile-bmi .bmi-ring-inner b{font-size:22px}
+}
 
 #vitals .tiny{font-size:12px;line-height:1.9}
