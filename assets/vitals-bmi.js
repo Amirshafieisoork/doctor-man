@@ -20,8 +20,10 @@ function updateProfileBMI() {
   container.hidden = false;
   const result = guidance($('patientWeight').value, $('patientHeight').value);
   appendGuidance(container, result, { preview: true });
-  if (!['incomplete', 'age-needed', 'child', 'infant', 'pregnancy'].includes(result.category)) {
-    const note = document.createElement('p'); note.textContent = result.advice[0]; container.append(note);
+  if (result.bmi != null && result.advice?.[0]) {
+    const note = document.createElement('p');
+    note.textContent = result.advice[0];
+    container.append(note);
   }
 }
 function renderProfile() {
@@ -51,26 +53,77 @@ function profileChanges() {
   }
   return Object.keys(changes).length ? changes : null;
 }
+function bmiBadgeClass(category) {
+  if (category === 'healthy') return 'bmi-badge';
+  if (category === 'underweight' || category === 'overweight') return 'bmi-badge warn';
+  if (category === 'obesity' || category === 'check') return 'bmi-badge alert';
+  return 'bmi-badge';
+}
+function bmiPercent(bmi) {
+  if (bmi == null || !Number.isFinite(bmi)) return 35;
+  // Map common adult BMI range ~15-40 onto a readable arc.
+  return Math.max(8, Math.min(100, Math.round(((bmi - 15) / 25) * 100)));
+}
 function appendGuidance(container, result, { preview = false } = {}) {
-  const heading = document.createElement('strong');
-  heading.textContent = result.bmi == null ? result.title : 'شاخص تناسب قد و وزن (BMI): ' + localNumber(result.bmi);
-  container.append(heading);
   if (result.bmi != null) {
-    const title = document.createElement('p'); title.textContent = result.title; container.append(title);
+    const row = document.createElement('div');
+    row.className = 'bmi-value-row';
+
+    const ring = document.createElement('div');
+    ring.className = 'bmi-ring';
+    ring.style.setProperty('--bmi-pct', String(bmiPercent(result.bmi)));
+    const inner = document.createElement('div');
+    inner.className = 'bmi-ring-inner';
+    const value = document.createElement('b');
+    value.textContent = localNumber(result.bmi);
+    const unit = document.createElement('span');
+    unit.textContent = 'BMI';
+    inner.append(value, unit);
+    ring.append(inner);
+
+    const meta = document.createElement('div');
+    meta.className = 'bmi-meta';
+    const heading = document.createElement('strong');
+    heading.textContent = 'شاخص توده بدنی (BMI)';
+    const badge = document.createElement('span');
+    badge.className = bmiBadgeClass(result.category);
+    badge.textContent = result.title;
+    meta.append(heading, badge);
+    if (result.range) {
+      const range = document.createElement('p');
+      range.className = 'bmi-range';
+      range.textContent = 'بازه تقریبی وزن مناسب برای این قد: ' + localNumber(result.range.min) + ' تا ' + localNumber(result.range.max) + ' کیلوگرم';
+      meta.append(range);
+    }
+    row.append(ring, meta);
+    container.append(row);
+  } else {
+    const heading = document.createElement('strong');
+    heading.textContent = result.title;
+    container.append(heading);
   }
+
   if (preview) {
-    if (result.category === 'incomplete' || result.category === 'age-needed' || result.category === 'child' || result.category === 'infant' || result.category === 'pregnancy') {
-      const note = document.createElement('p'); note.textContent = result.advice[0]; container.append(note);
+    if (['incomplete', 'age-needed', 'child', 'infant', 'pregnancy', 'check'].includes(result.category)) {
+      const note = document.createElement('p');
+      note.textContent = result.advice[0];
+      container.append(note);
     }
     return;
   }
-  if (result.range) {
-    const range = document.createElement('p'); range.className = 'bmi-range';
+
+  if (result.bmi == null && result.range) {
+    const range = document.createElement('p');
+    range.className = 'bmi-range';
     range.textContent = 'بازه تقریبی وزن برای این قد در بزرگسالان: ' + localNumber(result.range.min) + ' تا ' + localNumber(result.range.max) + ' کیلوگرم؛ هدف شخصی وزن ممکن است متفاوت باشد.';
     container.append(range);
   }
   const list = document.createElement('ul');
-  for (const advice of result.advice) { const item = document.createElement('li'); item.textContent = advice; list.append(item); }
+  for (const advice of result.advice) {
+    const item = document.createElement('li');
+    item.textContent = advice;
+    list.append(item);
+  }
   container.append(list);
 }
 function renderBodySummary() {
