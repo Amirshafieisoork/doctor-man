@@ -12,6 +12,12 @@ import { safeErrorMetadata } from '../server/api/_lib/errors.js';
 const expected=process.env.DRMAN_AI_QUALITY_PROBE||'';
 const enabled=/^[a-f0-9]{40}$/.test(expected)&&expected===process.env.VERCEL_GIT_COMMIT_SHA;
 const report=value=>console.log('DRMAN_AI_QUALITY '+JSON.stringify({synthetic_only:true,...value}));
+function syntheticProviderDiagnostic(error){
+ const message=String(error?.message||'').toLowerCase(),code=error?.code||error?.error?.code;
+ const knownCodes=new Set(['json_validate_failed','invalid_request_error','rate_limit_exceeded','context_length_exceeded','schema_validation_error','tool_use_failed']);
+ const category=/not supported|unsupported|not permitted/.test(message)&&/schema|minitems|maxitems|minlength|maxlength/.test(message)?'unsupported_schema_keyword':/failed to generate json|json validation|json_validate/.test(message)?'json_generation':/schema/.test(message)?'schema_validation':/max_completion_tokens|maximum.*token|too many tokens|request too large/.test(message)?'request_too_large':/rate.limit/.test(message)?'rate_limit':'other';
+ return{category,...(knownCodes.has(code)?{provider_code:code}:{}),failed_generation_chars:typeof error?.error?.failed_generation==='string'?error.error.failed_generation.length:0};
+}
 function reportAnswer(value){const raw=JSON.stringify(value),size=1100,total=Math.ceil(raw.length/size);for(let index=0;index<total;index++)report({stage:'answer_chunk',kind:value.kind,index,total,text:raw.slice(index*size,(index+1)*size)});}
 const measuredAt='2026-10-16T08:00:00.000Z';
 export function qualityFixture(kind){
@@ -40,7 +46,7 @@ if(enabled){
    // This client is scoped to the fixed SYNTHETIC fixture above. Capture only
    // this single synthetic completion, never attach logging to app handlers.
    const create=client.chat.completions.create.bind(client.chat.completions);let syntheticCompletion;
-   client.chat.completions.create=async(...args)=>{syntheticCompletion=await create(...args);return syntheticCompletion;};
+   client.chat.completions.create=async(...args)=>{try{syntheticCompletion=await create(...args);return syntheticCompletion;}catch(error){report({stage:'synthetic_provider_diagnostic',kind,...safeErrorMetadata(error),...syntheticProviderDiagnostic(error)});throw error;}};
    let result;
    try{result=await generateWellnessProgram(client,programKind,fixture.record,fixture.answers,'synthetic-content-review');}
    catch(error){

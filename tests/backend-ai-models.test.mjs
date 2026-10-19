@@ -203,6 +203,9 @@ test('text requests enforce the free output budget and GPT-OSS compatible reason
       assert.equal(original.max_completion_tokens, 10000);
       await modelClient.chat.completions.create({ model: LAB_INTERPRETATION_MODEL, messages: [], max_completion_tokens: 1200 });
       assert.equal(requests[1].body.max_completion_tokens, 1200);
+      assert.equal(requests[1].body.reasoning_effort, 'low');
+      await modelClient.chat.completions.create({model:LAB_INTERPRETATION_MODEL,messages:[],max_completion_tokens:3000,reasoning_effort:'medium',temperature:0.2,include_reasoning:true});
+      assert.equal(requests[2].body.reasoning_effort,'medium');assert.equal(requests[2].body.max_completion_tokens,3000);assert.equal(requests[2].body.temperature,0.2);assert.equal(requests[2].body.include_reasoning,false);
     });
   });
 });

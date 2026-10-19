@@ -22,11 +22,12 @@ export function parseNavigatorAnswer(content,evidence){
  const structured=Object.fromEntries(NAV_SCHEMA.required.map(key=>[key,parsed[key]]));
  return {parsed:structured,sources};
 }
-export function navigatorRequestEstimate(messages){let weighted=0;for(const character of JSON.stringify(messages)+JSON.stringify(NAV_SCHEMA))weighted+=character.codePointAt(0)<128?1:2;return Math.ceil(weighted/2)+2200+256;}
+const NAV_MAX_OUTPUT_TOKENS=3000;
+export function navigatorRequestEstimate(messages){let weighted=0;for(const character of JSON.stringify(messages)+JSON.stringify(NAV_SCHEMA))weighted+=character.codePointAt(0)<128?1:2;return Math.ceil(weighted/2)+NAV_MAX_OUTPUT_TOKENS+256;}
 export async function runNavigator(client,messages,safetyIdentifier,evidence){
  if(navigatorRequestEstimate(messages)>7800)throw new Error('NAV_REQUEST_TOO_LARGE');
  const models=[HEALTH_NAVIGATOR_MODEL,HEALTH_NAVIGATOR_FALLBACK_MODEL].filter((v,i,a)=>v&&a.indexOf(v)===i);let last;
- for(const model of models){try{const r=await client.chat.completions.create({model,messages,max_completion_tokens:2200,response_format:{type:'json_schema',json_schema:{name:'drman_health_navigator',strict:true,schema:NAV_SCHEMA}},safety_identifier:safetyIdentifier});if(r.choices?.[0]?.finish_reason!=='stop'||r.choices?.[0]?.message?.refusal)throw new Error('NAV_INCOMPLETE');return {...parseNavigatorAnswer(r.choices?.[0]?.message?.content,evidence),model:r.model||model,requestId:r._request_id||null};}catch(error){last=error;console.error('navigator model failed',model,safeErrorMetadata(error));}}
+ for(const model of models){try{const r=await client.chat.completions.create({model,messages,max_completion_tokens:NAV_MAX_OUTPUT_TOKENS,reasoning_effort:'medium',temperature:0.2,response_format:{type:'json_schema',json_schema:{name:'drman_health_navigator',strict:true,schema:NAV_SCHEMA}},safety_identifier:safetyIdentifier},{timeout:45000});if(r.choices?.[0]?.finish_reason!=='stop'||r.choices?.[0]?.message?.refusal)throw new Error('NAV_INCOMPLETE');return {...parseNavigatorAnswer(r.choices?.[0]?.message?.content,evidence),model:r.model||model,requestId:r._request_id||null};}catch(error){last=error;console.error('navigator model failed',model,safeErrorMetadata(error));}}
  throw last||new Error('NAVIGATOR_AI_FAILED');
 }
 export function renderNavigatorAnswer(x){const lines=[x.overall.trim()];if(x.next_steps.length)lines.push('','پیشنهاد عملی',...x.next_steps.map(v=>'• '+v));if(x.seek_care.trim())lines.push('','زمان پیگیری',x.seek_care);if(x.questions_for_doctor.length)lines.push('','برای دقیق‌تر شدن',...x.questions_for_doctor.map(v=>'• '+v));if(x.data_limits.length)lines.push('','نکته درباره این پاسخ',...x.data_limits.map(v=>'• '+v));return lines.join('\n').slice(0,12000);}

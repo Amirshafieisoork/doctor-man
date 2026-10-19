@@ -41,7 +41,10 @@ export async function avalaiClient({ database } = {}) {
       payload.reasoning_effort = 'none'; payload.reasoning_format = 'hidden'; delete payload.include_reasoning;
     } else {
       payload.max_completion_tokens = Math.min(Number(payload.max_completion_tokens) || 3000, 4500);
-      payload.reasoning_effort = 'low'; payload.include_reasoning = false; delete payload.reasoning_format;
+      // Selected conversational routes may request a bounded reasoning budget.
+      // Other handlers retain their existing low-cost default; never accept
+      // unbounded/high reasoning or expose a reasoning trace to the client.
+      payload.reasoning_effort = body.reasoning_effort === 'medium' ? 'medium' : 'low'; payload.include_reasoning = false; delete payload.reasoning_format;
     }
     return create(payload, requestOptions);
   };
