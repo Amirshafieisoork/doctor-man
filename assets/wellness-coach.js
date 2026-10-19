@@ -9,58 +9,6 @@
   const REQUEST_TIMEOUT_MS=60000,LOAD_TIMEOUT_MS=20000;
   const pregnancyOptions='<option value="unknown">نمی‌دانم / هنوز بررسی نکرده‌ام</option><option value="no">خیر</option><option value="yes">باردار هستم</option><option value="possible">احتمال بارداری وجود دارد</option>';
   const pregnancyField='<label class="full wellness-pregnancy" data-pregnancy-field>آیا باردار هستید یا احتمال آن وجود دارد؟<select name="pregnancy_status">'+pregnancyOptions+'</select><small>برای انتخاب توصیه‌های ایمن از اطلاعات همین پرونده هم استفاده می‌شود.</small></label>';
-  // NOTE: full fields and functions restored in next commit
-  function node(tag,text,className){const element=document.createElement(tag);if(text!==undefined)element.textContent=String(text??'');if(className)element.className=className;return element;}
-  function status(state,message,error=false){state.status.textContent=message;state.status.classList.toggle('wellness-error',error);}
-  function renderProgram(state,data){
-    state.output.replaceChildren();state.consent.hidden=data.state!=='consent_not_granted';
-    const program=data.program;if(!program||typeof program!=='object')return;
-    const article=node('article',undefined,'wellness-program'),heading=node('h2',program.title||configs[state.kind].title);heading.tabIndex=-1;
-    article.append(heading,node('p',program.summary||'','wellness-summary'));
-    if(state.kind==='nutrition'){
-      const kcal=program.daily_calories??program.calories??null;
-      if(kcal!=null||program.weight_goal){
-        const hero=node('div',undefined,'wellness-hero');
-        const calCard=node('div',undefined,'wellness-hero-card');
-        calCard.append(node('span','هدف کالری روزانه','label'),node('span',kcal!=null?String(Math.round(Number(kcal)))+' کیلوکالری':'—','value'),node('span',program.weight_goal||'بر اساس شرایط شما','hint'));
-        hero.append(calCard);
-        article.append(hero);
-      }
-      if(Array.isArray(program.weekly_menu)&&program.weekly_menu.length){
-        const section=node('section');section.append(node('h3','نمونهٔ وعده‌ها برای شروع'));
-        const menu=node('div',undefined,'wellness-menu');
-        for(const day of program.weekly_menu.slice(0,7)){
-          if(!day||typeof day!=='object')continue;
-          const card=node('section',undefined,'wellness-day');
-          card.append(node('h4',day.day||'یک روز پیشنهادی'));
-          for(const [key,label] of [['breakfast','صبحانه'],['lunch','ناهار'],['dinner','شام'],['snacks','میان‌وعده']]){
-            if(typeof day[key]==='string'&&day[key]){
-              const meal=node('div',undefined,'wellness-meal');
-              meal.append(node('span',label,'meal-label'),node('p',day[key],'meal-text'));
-              card.append(meal);
-            }
-          }
-          menu.append(card);
-        }
-        section.append(menu);article.append(section);
-      }
-    }
-    article.append(node('p',data.disclaimer||'این برنامه راهنمای آموزشی است.','wellness-small'));state.output.append(article);
-  }
-  // Minimal mount for now
-  function mountCoach(kind){
-    const cfg=configs[kind];const mount=document.getElementById(cfg.mount);if(!mount)return;
-    const heading=node('h2',cfg.title);const intro=node('p',cfg.intro,'wellness-intro');
-    const contextBox=node('div',undefined,'wellness-context');
-    const form=document.createElement('form');form.className='wellness-questionnaire';form.innerHTML='<p>در حال بازگردانی کامل فرم...</p>';
-    const statusBox=node('p',undefined,'wellness-status');
-    const consent=node('div',undefined,'wellness-consent');consent.hidden=true;
-    const output=node('div',undefined,'wellness-output');
-    mount.replaceChildren(heading,intro,contextBox,form,statusBox,consent,output);
-    const state={kind,mount,context:contextBox,form,status:statusBox,consent,output,busy:false,loaded:false,dirty:false,patientId:'',generation:0,ticket:0,controller:null};states.set(kind,state);
-    status(state,'در حال بارگذاری...');
-  }
-  for(const kind of Object.keys(configs))mountCoach(kind);
-  document.addEventListener('drman:health-record-loaded',()=>{for(const state of states.values())status(state,'پرونده بارگذاری شد. نسخه کامل به زودی.');});
-  import('/assets/bmi.js').then(module=>{bmi=module;}).catch(()=>{});
+  const nutritionFields=`<fieldset><legend>هدف و شرایط روزمره</legend><div class="wellness-fields"><label>هدف شما چیست؟<select name="goal" required><option value="maintain">تغذیه بهتر و حفظ وزن</option><option value="gradual_loss">کاهش وزن تدریجی</option><option value="gradual_gain">افزایش وزن تدریجی</option></select></label><label data-target-field hidden>وزن دلخواه (کیلوگرم؛ اختیاری)<input name="target_weight_kg" type="number" min="0.2" max="500" step="0.1" inputmode="decimal"><small>این عدد ترجیح شماست؛ هدف مناسب به شرایط بدنتان بستگی دارد.</small></label>${pregnancyField}<p class="full wellness-weight-note" data-weight-note hidden></p><label>فعالیت معمول روزانه<select name="activity_level" required><option value="low">بیشتر روز نشسته‌ام</option><option value="moderate">تحرک معمول یا ورزش سبک دارم</option><option value="high">کار بدنی یا فعالیت زیادی دارم</option><option value="limited">به دلیل بیماری یا محدودیت، تحرکم کم است</option></select></label><label>الگوی غذای شما<select name="dietary_pattern" required><option value="balanced">غذای معمول؛ محدودیت خاصی ندارم</option><option value="vegetarian">گیاه‌خواری؛ لبنیات یا تخم‌مرغ می‌خورم</option><option value="vegan">کاملاً گیاهی</option><option value="pescatarian">ماهی می‌خورم؛ گوشت و مرغ نمی‌خورم</option><option value="other">الگوی دیگر؛ در توضیحات می‌نویسم</option></select></label><label>بودجهٔ مواد غذایی<select name="budget" required><option value="economy">اقتصادی و در دسترس</option><option value="standard">متوسط</option><option value="flexible">محدودیت مشخصی ندارم</option></select></label><label>چقدر وقت آشپزی دارید؟<select name="cooking_time" required><option value="quick">غذاهای سریع؛ تا حدود ۲۰ دقیقه</option><option value="moderate">حدود ۲۰ تا ۴۵ دقیقه</option><option value="flexible">زمان بیشتری دارم</option></select></label></div></fieldset><fieldset><legend>سلیقه، عادت‌ها و محدودیت‌ها</legend><div class="wellness-fields"><label>چه غذاهایی دوست دارید؟<textarea name="preferences" maxlength="600" placeholder="مثلاً غذای خانگی ایرانی، عدسی، ماهی…"></textarea></label><label>چه غذاهایی نمی‌خورید یا دوست ندارید؟<textarea name="dislikes" maxlength="600" placeholder="مثلاً قارچ را دوست ندارم؛ گوشت قرمز کم می‌خورم…"></textarea></label><label class="full">ساعت و الگوی معمول وعده‌ها<textarea name="meal_schedule" maxlength="600" placeholder="مثلاً صبحانه نمی‌خورم، ناهار سر کار است و شام دیر می‌خورم…"></textarea></label><label>حساسیت یا محدودیت غذایی دیگری دارید؟<textarea name="additional_allergies" maxlength="600" placeholder="اگر موردی در پرونده نیست، اینجا بنویسید؛ وگرنه خالی بگذارید."></textarea></label><label>توصیه یا محدودیت خاص پزشک<textarea name="medical_restrictions" maxlength="600" placeholder="مثلاً محدودیت مایعات، غذای خاص، مشکل جویدن یا بلع…"></textarea></label></div></fieldset>`;
+  // CONTINUED IN NEXT UPDATE - restoring full file
 })();
