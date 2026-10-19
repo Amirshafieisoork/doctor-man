@@ -1,1 +1,53 @@
-PLACEHOLDER2
+.wellness-coach{
+  background:var(--s,var(--surface,#fff));
+  border:1px solid var(--b,var(--line,#cbdce7));
+  border-radius:22px;
+  padding:clamp(18px,3vw,32px);
+  color:var(--t,var(--text,#102638));
+  min-width:0;
+}
+.wellness-coach>h2{margin:0 0 .6rem;font-size:1.4rem;font-weight:800}
+.wellness-intro,.wellness-status,.wellness-summary{line-height:1.95;margin:.6rem 0 1.2rem}
+.wellness-hero{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;margin:0 0 1.5rem}
+.wellness-hero-card{position:relative;padding:18px 20px;border-radius:18px;border:1px solid rgba(0,212,255,.16);background:radial-gradient(120% 90% at 0% 0%, rgba(0,212,255,.14), transparent 55%),linear-gradient(155deg, rgba(15,30,54,.9), rgba(8,18,36,.95));overflow:hidden}
+html[data-theme=light] .wellness-hero-card{background:radial-gradient(120% 90% at 0% 0%, rgba(0,170,210,.1), transparent 55%),linear-gradient(155deg, #f3fafc, #eaf5f9);border-color:rgba(0,140,180,.14)}
+.wellness-hero-card .label{display:block;font-size:.78rem;font-weight:700;color:var(--d,var(--muted,#7aa0c4));margin-bottom:.35rem}
+.wellness-hero-card .value{display:block;font-size:1.85rem;font-weight:800;letter-spacing:-.03em;color:var(--a,#00d4ff);line-height:1.15}
+.wellness-hero-card .hint{display:block;margin-top:.45rem;font-size:.82rem;color:var(--d,var(--muted,#7aa0c4));line-height:1.7}
+.wellness-progress{margin-top:12px;height:9px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+html[data-theme=light] .wellness-progress{background:rgba(0,0,0,.06)}
+.wellness-progress>i{display:block;height:100%;width:var(--pct,40%);border-radius:inherit;background:linear-gradient(90deg,#00d4ff,#13bfa6);box-shadow:0 0 12px rgba(0,212,255,.4)}
+.wellness-context{padding:1rem;background:var(--s2,#edf5fa);border:1px solid var(--b,#cbdce7);border-radius:16px;margin-bottom:1.5rem}
+.wellness-context-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1rem 0}
+.wellness-context-list>div{min-width:0}.wellness-context-list dt{font-size:.8rem;font-weight:700;margin-bottom:.35rem}.wellness-context-list dd{margin:0;line-height:1.8;overflow-wrap:anywhere}
+.wellness-small,.wellness-meta{font-size:.8rem;line-height:1.9;color:var(--d,var(--muted,#526681));margin:.6rem 0}
+.wellness-questionnaire{display:grid;gap:1.2rem}
+.wellness-questionnaire fieldset{margin:0;padding:1rem;border:1px solid var(--b,#cbdce7);border-radius:16px;min-width:0}
+.wellness-questionnaire legend{font-weight:800;padding:0 .45rem}
+.wellness-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;min-width:0}
+.wellness-fields label{display:grid;align-content:start;gap:.5rem;font-size:.9rem;line-height:1.8;color:inherit;min-width:0}
+.wellness-fields input,.wellness-fields select,.wellness-fields textarea{width:100%;min-width:0;font-size:.9rem;line-height:1.8;box-sizing:border-box}
+.wellness-fields textarea{min-height:105px}.wellness-fields small{font-size:.75rem;font-weight:400;line-height:1.8;color:var(--d,var(--muted,#526681))}
+.wellness-coach [hidden]{display:none!important}
+.wellness-actions{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+.wellness-actions .primary{padding:.95rem 1.5rem;font-weight:700;border-radius:12px}
+.wellness-error{color:#b91c1c}.wellness-consent,.wellness-weight-note,.wellness-patch-test{padding:1rem;border:1px solid var(--b,#cbdce7);border-radius:14px;background:var(--s2,#edf5fa);line-height:1.9}
+.wellness-consent p{margin:0 0 .8rem}.wellness-program{margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--b,#cbdce7);line-height:1.95;overflow-wrap:anywhere}
+.wellness-program>h2{font-size:1.3rem;margin:0;font-weight:800}.wellness-program h3{font-size:1.05rem;margin:1.5rem 0 .75rem;font-weight:800}.wellness-program ul,.wellness-program ol{padding-inline-start:1.4rem;margin:.4rem 0}.wellness-program li+li{margin-top:.55rem}
+.wellness-menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.wellness-day{padding:1.15rem 1.2rem;border:1px solid rgba(0,212,255,.12);background:linear-gradient(165deg, rgba(15,30,54,.75), rgba(10,22,40,.9));border-radius:18px;min-width:0;transition:border-color .2s, transform .15s, box-shadow .2s;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+html[data-theme=light] .wellness-day{background:linear-gradient(165deg,#f7fbfd,#eef5f9);border-color:rgba(0,140,180,.12);box-shadow:0 6px 18px rgba(16,60,90,.06)}
+.wellness-day:hover{border-color:rgba(0,212,255,.4);transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,212,255,.1)}
+.wellness-day h4{margin:0 0 1rem;font-size:1rem;font-weight:800;color:var(--a,#00d4ff)}
+.wellness-meal{display:grid;gap:.2rem;padding:.65rem 0;border-top:1px solid rgba(255,255,255,.06)}
+html[data-theme=light] .wellness-meal{border-top-color:rgba(0,0,0,.06)}
+.wellness-meal:first-of-type{border-top:0;padding-top:0}
+.wellness-meal .meal-label{font-size:.72rem;font-weight:700;letter-spacing:.04em;color:var(--d,#7aa0c4)}
+.wellness-meal .meal-text{font-size:.9rem;line-height:1.7;margin:0;color:var(--t,var(--text))}
+.wellness-day .kcal{display:inline-flex;margin-top:10px;font-size:.75rem;font-weight:700;color:#00d4ff;background:rgba(0,212,255,.12);padding:4px 10px;border-radius:999px;border:1px solid rgba(0,212,255,.2)}
+.wellness-routines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem}
+.wellness-weight-goal{font-weight:700;padding:12px 16px;border-radius:14px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.15);margin:1rem 0}
+.wellness-sources{margin:1rem 0}.wellness-sources summary{cursor:pointer;font-weight:700}.wellness-sources a{display:block;color:var(--a,#007b80);text-decoration:underline;text-underline-offset:4px;margin-top:.6rem}
+html[data-theme=dark] .wellness-error{color:#ffb4b4}
+@media(max-width:760px){.wellness-menu{grid-template-columns:1fr}.wellness-context-list{grid-template-columns:repeat(2,minmax(0,1fr))}.wellness-hero{grid-template-columns:1fr}}
+@media(max-width:560px){.wellness-fields,.wellness-routines{grid-template-columns:1fr}.wellness-actions .primary{width:100%}.wellness-context-list{gap:.7rem}.wellness-coach{padding:16px}.wellness-questionnaire fieldset{padding:.8rem}.wellness-fields .full{grid-column:auto}}
