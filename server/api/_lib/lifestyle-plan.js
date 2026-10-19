@@ -5,19 +5,32 @@ export const LIFESTYLE_VERSION = 'lifestyle-plan-v2';
 const normalized = value => String(value || '').normalize('NFKC').replace(/[يى]/g, 'ی').replace(/ك/g, 'ک').replace(/\u200c/g, ' ');
 const FOOD_MENTION = /(?<![\p{L}\p{N}])(?:بادام(?:\s+زمینی|\s+هندی)?|گردو|فندق|پسته|شیر|لبنیات?|لاکتوز|کره|پنیر|ماست|تخم\s*مرغ|کنجد|ارده|گندم|گلوتن|سلیاک|ماهی|میگو|صدف|سویا|عدس|حبوبات|لوبیا|نخود|خوراکی|غذا(?:یی|ی)?|peanut|nuts?|milk|dairy|lactose|eggs?|sesame|wheat|gluten|fish|shellfish|soy)(?![\p{L}\p{N}])/iu;
 const ENVIRONMENT_MENTION = /(?<![\p{L}\p{N}])(?:علف|کاه|باغ|گرده|گرد\s*و\s*غبار|چمن|درخت|کپک|مایت|pollen|grass|hay|dust|mold|mould|mites?)(?![\p{L}\p{N}])/iu;
+function pureEnvironmental(value) {
+  let rest=normalized(value).replace(new RegExp(ENVIRONMENT_MENTION.source,'giu'),' ');
+  rest=rest.replace(/(?<![\p{L}\p{N}])(?:حساسیت|آلرژی|به|از|دارم|ندارم|شدید|خفیف|محیطی|تنفسی|و|یا|allergy|allergic|to|and|or|environmental|sensitivity|timothy|bermuda)(?![\p{L}\p{N}])/giu,' ');
+  return rest.replace(/[\s\p{P}\p{S}\d۰-۹٠-٩]/gu,'')==='';
+}
 export function foodAllergyRows(rows = []) {
   return rows.filter(row => {
-    const allergen = normalized(row.allergen), type = normalized(row.allergy_type).toLowerCase();
-    // Mixed environmental/food descriptions keep the food constraint, even if
-    // the dropdown was selected incorrectly. Unknown types stay conservative.
-    if (FOOD_MENTION.test(allergen) || /^(?:food|خوراکی|غذایی)$/.test(type)) return true;
-    if (/^(?:environmental|environment|respiratory|drug|medication|contact|محیطی|تنفسی|دارویی|تماسی)$/.test(type)) return false;
-    return !ENVIRONMENT_MENTION.test(allergen);
+    const allergen=normalized(row.allergen),type=normalized(row.allergy_type).toLowerCase();
+    if(FOOD_MENTION.test(allergen)||/^(?:food|خوراکی|غذایی)$/.test(type))return true;
+    // Only positively identified pure environmental descriptions are excluded.
+    // An unknown tail may name a food (e.g. pollen AND strawberry) and must stay.
+    if(ENVIRONMENT_MENTION.test(allergen))return !pureEnvironmental(allergen);
+    if(/^(?:environmental|environment|respiratory|محیطی|تنفسی)$/.test(type))return true;
+    if(/^(?:drug|medication|contact|دارویی|تماسی)$/.test(type))return false;
+    return true;
   });
 }
 export function criticalReportContext(record) {
   const report = record.tests?.[0], flagged = (report?.items || []).filter(item => item.flag === 'critical');
-  const allergyMarker = name => !/potassium|sodium|glucose|creatinine|troponin|hemoglobin|platelet|\bcbc\b|پتاسیم|سدیم|گلوکز|کراتینین|قند خون|تروپونین|هموگلوبین|پلاکت/iu.test(normalized(name)) && /\b(?:ige|rast|immunoglobulin\s*e)\b|آی\s*جی\s*ای|ایمونوگلوبولین\s*ای/iu.test(normalized(name));
+  const allergyMarker = name => {
+    const value=normalized(name),marker=/\b(?:ige|rast|immunoglobulin\s*e)\b|آی\s*جی\s*ای|ایمونوگلوبولین\s*ای/iu;
+    if(!marker.test(value))return false;
+    const rest=value.replace(new RegExp(marker.source,'giu'),' ').replace(/\b(?:total|specific|serum|blood|allergen|allergy|panel|immunocap)\b|کل|اختصاصی|سرم|آلرژن|آلرژی|پنل/giu,' ').replace(/[\s\p{P}\p{S}]/gu,' ').trim();
+    const remaining=rest.replace(new RegExp(FOOD_MENTION.source,'giu'),' ').replace(/(?<![\p{L}\p{N}])(?:white|yolk|protein|سفیده|زرده|پروتئین)(?![\p{L}\p{N}])/giu,' ');
+    return !rest||pureEnvironmental(remaining);
+  };
   const details = flagged.map(item => ({ name: String(item.name || 'آزمایش بدون نام').slice(0,120), value: String(item.value ?? '').slice(0,80), unit: String(item.unit || '').slice(0,60), date: report.created_at || null, allergy_marker: allergyMarker(item.name) }));
   return { reported: details.length > 0, clinicalHold: details.some(item => !item.allergy_marker), details };
 }

@@ -7,7 +7,7 @@ const patient={id:'synthetic',birth_date:'1990-01-01',sex:'male',height_cm:178};
 test('environmental and medication allergy types do not become food exclusions; mixed food descriptions stay guarded',()=>{
  const rows=[{allergen:'گرده چمن و علف',allergy_type:'environmental'},{allergen:'کاه و گرد و غبار',allergy_type:'other'},{allergen:'پنی‌سیلین',allergy_type:'drug'},{allergen:'گرده چمن و بادام زمینی',allergy_type:'environmental'},{allergen:'شیر',allergy_type:'food'}];
  assert.deepEqual(foodAllergyRows(rows),rows.slice(3));
- assert.equal(foodAllergyRows([{allergen:'گرده چمن و حساسیت به غذای ناشناخته'}]).length,1);assert.equal(foodAllergyRows([{allergen:'کاهو'}]).length,1);
+ assert.equal(foodAllergyRows([{allergen:'گرده چمن و حساسیت به غذای ناشناخته'}]).length,1);assert.equal(foodAllergyRows([{allergen:'کاهو'}]).length,1);for(const allergen of ['گرده چمن و توت‌فرنگی','گرد و غبار و موز','گرده چمن و سیب','علف ندارم ولی به توت فرنگی حساسیت دارم'])assert.equal(foodAllergyRows([{allergen,allergy_type:'environmental'}]).length,1,allergen);
  const record=overviewRecord(patient,{allergies:rows.slice(0,2)}),text=localLifestylePlan(record).precautions.join(' ');
  assert.doesNotMatch(text,/برچسب مواد غذایی|آلودگی متقاطع/);assert.match(text,/دلیل حذف غذاها نیست/);
  assert.equal(record.allergies[0].allergy_type,'environmental');
@@ -27,5 +27,5 @@ test('true or uncertain acute critical results retain named, dated urgent review
  const record=overviewRecord(patient,{allergies:[{allergen:'چمن',allergy_type:'environmental'}],tests:[{created_at:'2026-10-15',structured_analysis:{items:[{name:'Potassium',value:'6.8',unit:'mmol/L',flag:'critical'}]}}]});
  assert.equal(criticalReportContext(record).clinicalHold,true);
  const warning=criticalReportNotice(record);assert.match(warning,/Potassium 6.8 mmol\/L/);assert.match(warning,/۱۴۰۵/);assert.match(warning,/فوراً بررسی/);
- for(const name of ['Potassium and IgE','Troponin – allergy panel','CBC allergy panel','Troponin IgE']){record.tests[0].items[0].name=name;assert.equal(criticalReportContext(record).clinicalHold,true,name);}
+ for(const name of ['Potassium and IgE','Troponin – allergy panel','CBC allergy panel','Troponin IgE','TSH IgE','Hb IgE','PLT IgE','K IgE','IgE شیر و پتاسیم','پتاسیم شیر IgE','سدیم و بادام IgE','هموگلوبین milk IgE']){record.tests[0].items[0].name=name;assert.equal(criticalReportContext(record).clinicalHold,true,name);}
 });
