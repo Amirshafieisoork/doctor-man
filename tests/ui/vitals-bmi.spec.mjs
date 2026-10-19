@@ -113,3 +113,22 @@ test('a recent possible pregnancy intake suppresses adult targets and a later ex
   await page.reload(); await expect(page.locator('#bodySummary')).toContainText('بازه تقریبی وزن');
   await expect(page.locator('#bodySummary')).toContainText('وزن نیازمند پیگیری بیشتر');
 });
+
+test('weight status leads the card, BMI remains secondary and suggested actions are visible without fake progress',async({page})=>{
+  await setup(page,fixture(),{'bmi-self':{vitals:[{weight_kg:70,measured_at:'2026-10-15T09:00:00Z'}]}});await page.goto('/health');
+  const profile=page.locator('#profileBmi');
+  for(const [weight,label]of [['70','وزن متناسب'],['80','اضافه‌وزن'],['48','کم‌وزنی'],['99','وزن در محدودهٔ چاقی']]){
+    await page.locator('#patientWeight').fill(weight);await expect(profile.locator('>.bmi-status-title')).toHaveText(label);
+    expect(await profile.evaluate(el=>el.firstElementChild.classList.contains('bmi-status-title'))).toBe(true);await expect(profile.locator('.bmi-ring-inner span')).toHaveText('BMI');
+  }
+  await expect(page.locator('#bodySummary .bmi-next-steps')).toContainText('وعده‌های متعادل');
+  await expect(page.locator('#bodySummary .bmi-action')).toHaveText('برنامه غذایی متناسب با من');
+  expect(await profile.locator('.bmi-ring').evaluate(el=>el.style.getPropertyValue('--bmi-pct'))).toBe('');
+  await page.locator('#bodySummary .bmi-action').click();await expect(page.locator('#nutritionCoach')).toHaveClass(/on/);
+});
+
+test('unknown age and pregnancy retain plain special guidance instead of an adult weight label',async({page})=>{
+  const patients=fixture();patients[0].birth_date=null;await setup(page,patients,{'bmi-self':{vitals:[{weight_kg:99,measured_at:'2026-10-15T09:00:00Z'}]}});await page.goto('/health');
+  await expect(page.locator('#profileBmi >.bmi-status-title')).toContainText('تاریخ تولد');await expect(page.locator('#profileBmi')).not.toContainText('چاقی');await expect(page.locator('#profileBmi')).not.toContainText('اضافه‌وزن');
+  for(const theme of ['light','dark']){await page.evaluate(value=>document.documentElement.dataset.theme=value,theme);await expect(page.locator('#profileBmi >.bmi-status-title')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);}
+});

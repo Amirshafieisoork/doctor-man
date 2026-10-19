@@ -32,27 +32,23 @@ html[data-theme=light] .profile-bmi{
   box-shadow:0 10px 28px rgba(16,60,90,.08);
 }
 .profile-bmi[hidden]{display:none}
-.profile-bmi .bmi-value-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-.profile-bmi .bmi-ring{
-  --bmi-pct:40;
+.bmi-value-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.bmi-ring{
   width:128px;height:128px;border-radius:50%;display:grid;place-items:center;
-  background:
-    radial-gradient(circle at center, var(--s,#0a1628) 54%, transparent 55%),
-    conic-gradient(from -90deg, #00d4ff calc(var(--bmi-pct) * 1%), #13bfa6 calc(var(--bmi-pct) * 1%), rgba(255,255,255,.08) 0);
-  box-shadow:0 0 0 1px rgba(0,212,255,.2),0 0 32px rgba(0,212,255,.18),inset 0 0 20px rgba(0,0,0,.25);
+  background:linear-gradient(145deg,rgba(19,191,166,.14),rgba(0,212,255,.06));
+  border:3px solid rgba(19,191,166,.65);
+  box-shadow:0 0 24px rgba(0,212,255,.1),inset 0 0 20px rgba(0,0,0,.1);
   flex-shrink:0;
 }
-html[data-theme=light] .profile-bmi .bmi-ring{
-  background:
-    radial-gradient(circle at center, #fff 54%, transparent 55%),
-    conic-gradient(from -90deg, #0aa8d8 calc(var(--bmi-pct) * 1%), #12b89a calc(var(--bmi-pct) * 1%), rgba(0,0,0,.06) 0);
+html[data-theme=light] .bmi-ring{
+  background:linear-gradient(145deg,#effbf8,#f4fbff);
   box-shadow:0 0 0 1px rgba(0,160,200,.15), 0 8px 24px rgba(0,120,160,.12);
 }
-.profile-bmi .bmi-ring-inner{text-align:center;line-height:1.15}
-.profile-bmi .bmi-ring-inner b{display:block;font-size:30px;font-weight:800;letter-spacing:-.03em;color:var(--t,#e8f4ff);text-shadow:0 0 20px rgba(0,212,255,.35)}
-html[data-theme=light] .profile-bmi .bmi-ring-inner b{color:#0b2a3d;text-shadow:none}
-.profile-bmi .bmi-ring-inner span{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--d,#7aa0c4)}
-.profile-bmi .bmi-meta{flex:1;min-width:180px;display:grid;gap:8px}
+.bmi-ring-inner{text-align:center;line-height:1.15}
+.bmi-ring-inner b{display:block;font-size:30px;font-weight:800;letter-spacing:-.03em;color:var(--t,#e8f4ff)}
+html[data-theme=light] .bmi-ring-inner b{color:#0b2a3d}
+.bmi-ring-inner span{display:block;margin-top:5px;font-size:11px;font-weight:700;color:var(--d,#7aa0c4)}
+.bmi-meta{flex:1;min-width:180px;display:grid;gap:8px}
 .profile-bmi .bmi-meta > strong{display:block;font-size:15px;font-weight:800;color:var(--t,#e8f4ff)}
 .profile-bmi .bmi-badge{display:inline-flex;align-items:center;gap:6px;width:fit-content;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(0,255,157,.14);color:#00ff9d;border:1px solid rgba(0,255,157,.28)}
 .profile-bmi .bmi-badge.warn{background:rgba(255,208,96,.14);color:#ffd060;border-color:rgba(255,208,96,.28)}
@@ -71,6 +67,18 @@ html[data-theme=light] .profile-bmi .bmi-badge.alert{background:rgba(200,40,70,.
 .bmi-range{font-size:12px}
 .bmi-preview{padding:14px 16px;border:1px solid var(--border,var(--b));border-radius:14px;background:var(--surface,var(--s2));color:var(--text,var(--t));line-height:1.8;font-size:12px}
 .bmi-preview p{margin:5px 0}.bmi-preview .bmi-ring{width:96px;height:96px}.bmi-preview .bmi-ring-inner b{font-size:22px}
+.bmi-status-title{display:block!important;font-size:clamp(1.15rem,2.4vw,1.65rem)!important;font-weight:850;line-height:1.6;color:var(--text,var(--t))}
+[data-bmi-category=healthy]>.bmi-status-title{color:#63e1bc}
+[data-bmi-category=overweight]>.bmi-status-title,[data-bmi-category=underweight]>.bmi-status-title{color:#ffcf80}
+[data-bmi-category=obesity]>.bmi-status-title{color:#ffb3ac}
+html[data-theme=light] [data-bmi-category=healthy]>.bmi-status-title{color:#08735c}
+html[data-theme=light] [data-bmi-category=overweight]>.bmi-status-title,html[data-theme=light] [data-bmi-category=underweight]>.bmi-status-title{color:#875800}
+html[data-theme=light] [data-bmi-category=obesity]>.bmi-status-title{color:#b34238}
+.bmi-explanation{margin:0;font-size:13px;line-height:1.9}
+.bmi-next-steps{display:grid;gap:9px;list-style:none;padding:0!important;margin:14px 0!important}
+.bmi-next-steps li{position:relative;border-inline-start:3px solid #29bfa4;background:rgba(27,180,155,.07);border-radius:8px;padding:10px 13px;margin:0!important}
+.bmi-limit{color:var(--muted,var(--d));font-size:11px;line-height:1.9}
+.bmi-action{min-height:44px;width:100%;border:1px solid #2ab99f!important;background:rgba(27,180,155,.08)!important;color:var(--text,var(--t))!important;border-radius:12px!important;font-weight:700}
 #dynamicFields label{font-size:12px!important;line-height:1.8;color:var(--text,var(--t))}
 #dynamicFields label small{font-size:11px;color:var(--muted,var(--d));font-weight:400}
 #dynamicFields input::placeholder{opacity:1;color:var(--muted,var(--d))}

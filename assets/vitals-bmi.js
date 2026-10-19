@@ -20,7 +20,7 @@ function updateProfileBMI() {
   container.hidden = false;
   const result = guidance($('patientWeight').value, $('patientHeight').value);
   appendGuidance(container, result, { preview: true });
-  if (result.bmi != null && result.advice?.[0]) {
+  if (['healthy', 'underweight', 'overweight', 'obesity'].includes(result.category) && result.advice?.[0]) {
     const note = document.createElement('p');
     note.textContent = result.advice[0];
     container.append(note);
@@ -59,19 +59,24 @@ function bmiBadgeClass(category) {
   if (category === 'obesity' || category === 'check') return 'bmi-badge alert';
   return 'bmi-badge';
 }
-function bmiPercent(bmi) {
-  if (bmi == null || !Number.isFinite(bmi)) return 35;
-  // Map common adult BMI range ~15-40 onto a readable arc.
-  return Math.max(8, Math.min(100, Math.round(((bmi - 15) / 25) * 100)));
-}
+const plainStatus = result => ({
+  healthy: 'وزن متناسب',
+  underweight: 'کم‌وزنی',
+  overweight: 'اضافه‌وزن',
+  obesity: 'وزن در محدودهٔ چاقی'
+}[result.category] || result.title);
 function appendGuidance(container, result, { preview = false } = {}) {
+  container.dataset.bmiCategory = result.category;
+  const heading = document.createElement('strong');
+  heading.className = 'bmi-status-title';
+  heading.textContent = plainStatus(result);
+  container.append(heading);
   if (result.bmi != null) {
     const row = document.createElement('div');
     row.className = 'bmi-value-row';
 
     const ring = document.createElement('div');
     ring.className = 'bmi-ring';
-    ring.style.setProperty('--bmi-pct', String(bmiPercent(result.bmi)));
     const inner = document.createElement('div');
     inner.className = 'bmi-ring-inner';
     const value = document.createElement('b');
@@ -83,12 +88,14 @@ function appendGuidance(container, result, { preview = false } = {}) {
 
     const meta = document.createElement('div');
     meta.className = 'bmi-meta';
-    const heading = document.createElement('strong');
-    heading.textContent = 'شاخص توده بدنی (BMI)';
+    const explanation = document.createElement('p');
+    explanation.className = 'bmi-explanation';
+    explanation.textContent = ({ healthy: 'وزن شما نسبت به قدتان در محدودهٔ معمول بزرگسالان است.', underweight: 'وزن شما نسبت به قدتان از محدودهٔ معمول بزرگسالان کمتر است.', overweight: 'وزن شما نسبت به قدتان از محدودهٔ معمول بزرگسالان بیشتر است.', obesity: 'این نسبت قد و وزن در محدودهٔ چاقیِ بزرگسالان قرار می‌گیرد؛ با قدم‌های تدریجی شروع کنید.' })[result.category] || 'این عدد به‌تنهایی وضعیت سلامت یا هدف وزن را مشخص نمی‌کند.';
     const badge = document.createElement('span');
     badge.className = bmiBadgeClass(result.category);
     badge.textContent = result.title;
-    meta.append(heading, badge);
+    meta.append(explanation);
+    if (['healthy', 'underweight', 'overweight', 'obesity'].includes(result.category)) meta.append(badge);
     if (result.range) {
       const range = document.createElement('p');
       range.className = 'bmi-range';
@@ -97,10 +104,6 @@ function appendGuidance(container, result, { preview = false } = {}) {
     }
     row.append(ring, meta);
     container.append(row);
-  } else {
-    const heading = document.createElement('strong');
-    heading.textContent = result.title;
-    container.append(heading);
   }
 
   if (preview) {
@@ -119,12 +122,27 @@ function appendGuidance(container, result, { preview = false } = {}) {
     container.append(range);
   }
   const list = document.createElement('ul');
+  list.className = 'bmi-next-steps';
   for (const advice of result.advice) {
     const item = document.createElement('li');
     item.textContent = advice;
     list.append(item);
   }
   container.append(list);
+  if (['healthy', 'underweight', 'overweight', 'obesity'].includes(result.category)) {
+    const note = document.createElement('p');
+    note.className = 'bmi-limit';
+    note.textContent = 'این توضیح دربارهٔ نسبت قد و وزن است؛ ترکیب بدن و سلامت کلی را به‌تنهایی نشان نمی‌دهد.';
+    container.append(note);
+    const nutrition = document.querySelector('[data-page="nutritionCoach"]');
+    if (nutrition) {
+      const action = document.createElement('button');
+      action.type = 'button'; action.className = 'bmi-action';
+      action.textContent = 'برنامه غذایی متناسب با من';
+      action.addEventListener('click', () => { nutrition.click(); document.getElementById('nutritionCoach')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+      container.append(action);
+    }
+  }
 }
 function renderBodySummary() {
   const container = document.getElementById('bodySummary');

@@ -48,7 +48,7 @@ function contextFor(record, answers) {
   const eatingDisorder = /اختلال.{0,8}خوردن|بی.?اشتهایی عصبی|پرخوری عصبی|anorexi|bulimi|eating.?disorder/i.test(merged.conditions.map(row => row.name).join(' '));
   const conditions = norm(merged.conditions.map(row => row.name).join('؛ '));
   const advancedKidney = /دیالیز|dialysis|نارسایی کلیه|(?:کلیه|ckd|kidney|renal).{0,30}(?:مرحله\s*(?:۳ب|3b|۴|4|۵|5)|stage\s*(?:3b|4|5)|پیشرفته)/i.test(conditions);
-  const unspecifiedCKD = /بیماری مزمن کلیه|chronic kidney|\bckd\b/i.test(conditions) && !/(?:مرحله|stage)\s*(?:۱|1|۲|2|۳الف|3a)\b/i.test(conditions);
+  const unspecifiedCKD = /بیماری مزمن کلیه|chronic kidney|\bckd\b/i.test(conditions) && !/(?:مرحله|stage)\s*(?:۱|1|۲|2|۳\s*الف|3a)(?![\p{L}\p{N}])/iu.test(conditions);
   const specialDietHold = /اختلال بلع|مشکل بلع|فقط پوره|فقط غذای مایع|تغذیه.{0,10}لوله|محدودیت مایعات|نارسایی قلبی شدید|dysphagia|tube feeding|fluid restriction/i.test(conditions);
   const clinicalHold = specialDietHold || risk.critical || risk.ageUnknown || (risk.child && merged.patient.age_years < 2) || advancedKidney || unspecifiedCKD || eatingDisorder || (bmi !== null && bmi < 16);
   const vulnerable = risk.child || risk.ageUnknown || risk.pregnancy || risk.unknownPregnancy || eatingDisorder || (bmi !== null && bmi < 18.5);
@@ -65,13 +65,13 @@ export function wellnessEvidence(kind, record, answers) {
 }
 const token = body => new RegExp('(?<![\\p{L}\\p{N}])(?:'+body+')(?![\\p{L}\\p{N}])','iu');
 const foodGroups = [
-  { trigger: token('شیر|لبنیات?|لاکتوز|dairy|milk|lactose'), food: token('شیر|ماست|پنیر|دوغ|کشک|خامه|لبنیات?|کره(?!\\s+(?:بادام|فندق))|milk|dairy|yog[hu]urt|cheese|butter') },
-  { trigger: token('تخم\\s*مرغ|eggs?'), food: token('تخم\\s*مرغ|املت|نیمرو|کوکو|eggs?|omelet(?:te)?') },
-  { trigger: token('گندم|گلوتن|سلیاک|wheat|gluten|celiac|coeliac'), food: token('نان|گندم|جو|بلغور|ماکارونی|پاستا|رشته|bread|wheat|barley|pasta') },
+  { trigger: token('شیر|لبنیات?|لاکتوز|ماست|پنیر|خامه|کره|بستنی|dairy|milk|lactose'), food: token('شیر|شیرکاکائو|شیرخشک|ماست|پنیر|دوغ|کشک|خامه|بستنی|لبنیات?|کره(?!\\s+(?:بادام|فندق))|milk|dairy|yog[hu]urt|cheese|butter|ice\\s*cream|milkshake') },
+  { trigger: token('تخم\\s*مرغ|eggs?'), food: token('تخم\\s*مرغ|املت|نیمرو|کوکو|مایونز|eggs?|mayonnaise|omelet(?:te)?') },
+  { trigger: token('گندم|گلوتن|سلیاک|wheat|gluten|celiac|coeliac'), food: token('نان|گندم|جو|بلغور|ماکارونی|پاستا|رشته|بیسکویت|کلوچه|کیک|کراکر|bread|wheat|barley|pasta|biscuits?|cookies?|crackers?|cakes?') },
   { trigger: token('عدس|عدسی|نخود|لوبیا|حبوبات|legumes?|lentils?|chickpeas?|beans?'), food: token('عدس|عدسی|عدس\\s*پلو|نخود|لوبیا|حبوبات|حمص|فلافل|legumes?|lentils?|chickpeas?|beans?') },
   { trigger: token('ماهی|میگو|صدف|دریایی|fish|seafood|shellfish|shrimp'), food: token('ماهی|میگو|صدف|دریایی|fish|seafood|shrimp') },
   { trigger: token('مغز|بادام(?:\\s+زمینی|\\s+هندی)?|پسته|آجیل|گردو|فندق|peanuts?|nuts?'), food: token('بادام(?:\\s+زمینی|\\s+هندی)?|پسته|آجیل|گردو|فندق|مغز|peanuts?|nuts?') },
-  { trigger: token('کنجد|ارده|sesame|tahini'), food: token('کنجد|ارده|sesame|tahini') },
+  { trigger: token('کنجد|ارده|sesame|tahini'), food: token('کنجد|ارده|حلوا\\s*(?:ارده|شکری)|sesame|tahini') },
   { trigger: token('سویا|soy'), food: token('سویا|توفو|soy|tofu') }
 ];
 // Split contrast clauses before deciding whether a constraint is explicitly

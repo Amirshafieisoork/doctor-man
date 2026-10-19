@@ -88,3 +88,36 @@ test('an unresponsive generation times out, preserves questionnaire and allows a
   await page.clock.install();let calls=0;const gate=deferred();await page.route('**/api/wellness-coach**',async route=>{if(route.request().method()==='GET')return json(route,empty('nutrition'));calls++;if(calls===1){await gate.promise;return json(route,result('nutrition')).catch(()=>{});}return json(route,result('nutrition'));});
   const mount=await open(page);await fillNutrition(mount);await mount.locator('button[type=submit]').click();await expect.poll(()=>calls).toBe(1);await page.clock.fastForward(60001);await expect(mount.locator('.wellness-status')).toContainText('بیش از حد طول کشید');await expect(mount.locator('[name=preferences]')).toHaveValue(nutritionAnswers.preferences);await expect(mount.locator('button[type=submit]')).toBeEnabled();gate.release();await mount.locator('button[type=submit]').click();await expect(mount.locator('.wellness-program')).toBeVisible();expect(calls).toBe(2);
 });
+
+test('complete nutrition is a practical meal dashboard with timing, preparation, swaps and follow-up, without invented metrics',async({page})=>{
+  const payload=result('nutrition','غذای خانگی',{source:'cached',program_source:'ai'});
+  Object.assign(payload.program,{plan_status:'ready',weekly_menu:[
+    {day:'روز اول',breakfast:'یک تخم‌مرغ آب‌پز، یک کف دست نان سبوس‌دار و خیار',lunch:'یک کاسه عدسی با نان و سبزی خوردن',dinner:'خوراک مرغ و سبزیجات با برنج',snacks:'یک سیب و ماست ساده'},
+    {day:'روز دوم',breakfast:'نان و پنیر کم‌نمک با خیار',lunch:'لوبیاپلو با سالاد و ماست ساده',dinner:'املت گوجه‌فرنگی و نان',snacks:'یک پرتقال'},
+    {day:'روز سوم',breakfast:'جو دوسر پخته با شیر',lunch:'خوراک لوبیا با نان',dinner:'مرغ و سبزیجات پخته',snacks:'یک گلابی'}
+  ],meal_timing:['صبحانه پیش از خروج از خانه؛ ناهار حدود ساعت یک در محل کار.'],preparation:['عدس و لوبیا را از شب قبل آماده کنید.'],alternatives:['اگر عدس ندارید، خوراک لوبیا جایگزین کنید.'],check_in:['آخر هفته میزان گرسنگی و زمان آماده‌سازی را یادداشت کنید.'],questions:['ناهار را امکان گرم کردن دارید؟']});
+  await page.route('**/api/wellness-coach**',route=>json(route,payload));
+  const mount=await open(page),program=mount.locator('.wellness-program');
+  await expect(program.locator('.wellness-day')).toHaveCount(3);await expect(program.locator('.wellness-meal')).toHaveCount(12);
+  for(const text of ['زمان‌بندی وعده‌ها','آماده‌سازی سادهٔ غذا','جایگزین‌های در دسترس','این هفته چه چیزی را پیگیری کنم؟','ناهار را امکان گرم کردن دارید؟','یک کف دست نان'])await expect(program).toContainText(text);
+  await expect(program.locator('.wellness-source-badge')).toHaveText('برنامه با هوش مصنوعی');
+  await expect(mount.locator('.wellness-hero')).toContainText('اضافه‌وزن');
+  await expect(mount.locator('[role=progressbar],canvas,.wellness-progress,.kcal')).toHaveCount(0);
+  await expect(program).not.toContainText('۲٬۱۵۰');await expect(program).not.toContainText('kcal');
+  await expect(mount.locator('[name=preferences]')).toHaveValue(nutritionAnswers.preferences);
+  for(const theme of ['light','dark']){await page.evaluate(value=>document.documentElement.dataset.theme=value,theme);await expect(program.locator('.meal-text').first()).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);}
+});
+
+test('clinical hold gives the reason and next questions without a pretend menu or shopping list',async({page})=>{
+  const payload=result('nutrition','روشن کردن شرایط',{source:'local',state:'clinical_review'});
+  Object.assign(payload.program,{plan_status:'clinical_hold',summary:'محدودیت مایعات ثبت شده است؛ پیش از انتخاب مقدار غذا باید وضعیت آن روشن شود.',questions:['محدودیت مایعات هنوز برقرار است؟'],weekly_menu:[{day:'روز اول',breakfast:'منوی قدیمی که نباید نشان داده شود'}],shopping_list:['خرید قدیمی که نباید نشان داده شود']});
+  await page.route('**/api/wellness-coach**',route=>json(route,payload));const mount=await open(page),program=mount.locator('.wellness-program');
+  await expect(program).toHaveAttribute('data-plan-status','clinical_hold');await expect(program).toContainText('محدودیت مایعات ثبت شده است');await expect(program).toContainText('برای ادامه، این اطلاعات را روشن کنیم');await expect(program).toContainText('محدودیت مایعات هنوز برقرار است؟');
+  await expect(program.locator('.wellness-day,.wellness-shopping')).toHaveCount(0);await expect(program).not.toContainText('منوی قدیمی');await expect(program).not.toContainText('خرید قدیمی');await expect(program.locator('.wellness-source-badge')).toHaveText('راهنمای آمادهٔ بررسی‌شده');
+});
+
+test('nutrition context uses the latest valid weight, without classifying a child with adult thresholds',async({page})=>{
+  await page.route('**/api/health-record**',route=>json(route,{record:{vitals:[{weight_kg:45,measured_at:'2020-10-15T08:00:00Z'},{weight_kg:82,measured_at:'2026-10-15T08:00:00Z'}],conditions:[],allergies:[]}}));
+  const mount=await open(page);await expect(mount.locator('.wellness-context')).toContainText('۸۲ کیلوگرم');await expect(mount.locator('.wellness-context')).not.toContainText('۴۵ کیلوگرم');
+  await page.locator('#patientSelect').selectOption('wellness-family');await expect(mount.locator('.wellness-hero')).toContainText('نمودار رشد');await expect(mount.locator('.wellness-hero')).not.toContainText('چاقی');await expect(mount.locator('.wellness-hero')).not.toContainText('اضافه‌وزن');
+});
