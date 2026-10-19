@@ -112,6 +112,111 @@ test('a pending Navigator answer cannot appear in another family member record',
   expect(submitted.patient_id).toBe('synthetic-self');
 });
 
+test('record chat carries only the last two successful bounded turns into follow-up questions', async ({ page }) => {
+  const calls = [];
+  await page.route('**/api/health-record**', route => json(route, 200, { record: {} }));
+  await page.route('**/api/health-navigator', route => {
+    const body = route.request().postDataJSON();
+    if (body.mode === 'overview') return json(route, 200, { success: true });
+    calls.push(body);
+    return calls.length === 2 ? json(route, 503, { error: 'خطای ساختگی برای بررسی تلاش دوباره' })
+      : json(route, 200, { success: true, answer: 'پاسخ ' + calls.length + ' ' + 'آ'.repeat(1100) });
+  });
+  await page.goto('/health');
+  await page.getByRole('tab', { name: 'راهنمای هوشمند سلامت', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'پرسیدن', exact: true })).toBeEnabled();
+  for (let index = 1; index <= 5; index++) {
+    await page.locator('#navQuestion').fill('پرسش ' + index + ' ' + 'ب'.repeat(800));
+    await page.getByRole('button', { name: 'پرسیدن', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'پرسیدن', exact: true })).toBeEnabled();
+    await expect(page.locator('#navAnswer')).toContainText(index === 2 ? 'خطای ساختگی' : 'پاسخ ' + index);
+  }
+  expect(calls).toHaveLength(5); expect(calls[0].history).toEqual([]);
+  expect(calls[2].history.map(turn => turn.question.slice(0, 6))).toEqual(['پرسش 1']);
+  expect(calls[4].history.map(turn => turn.question.slice(0, 6))).toEqual(['پرسش 3', 'پرسش 4']);
+  for (const call of calls) {
+    expect(call.patient_id).toBe('synthetic-self'); expect(call.history.length).toBeLessThanOrEqual(2);
+    for (const turn of call.history) { expect(turn.question.length).toBeLessThanOrEqual(700); expect(turn.answer.length).toBeLessThanOrEqual(1000); }
+  }
+  expect(JSON.stringify(calls.at(-1).history)).not.toContain('خطای ساختگی');
+});
+
+test('record chat clears prior context when switching families and when leaving the page', async ({ page }) => {
+  const calls = [];
+  await page.route('**/api/health-record**', route => json(route, 200, { record: {} }));
+  await page.route('**/api/health-navigator', route => {
+    const body = route.request().postDataJSON(); if (body.mode === 'overview') return json(route, 200, { success: true });
+    calls.push(body); return json(route, 200, { success: true, answer: 'پاسخ همین پرونده' });
+  });
+  await page.goto('/health');
+  await page.getByRole('tab', { name: 'راهنمای هوشمند سلامت', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'پرسیدن', exact: true })).toBeEnabled();
+  const ask = async text => { await page.locator('#navQuestion').fill(text); await page.getByRole('button', { name: 'پرسیدن', exact: true }).click(); await expect(page.locator('#navAnswer')).toContainText('پاسخ همین پرونده'); };
+  await ask('سؤال خصوصی اول');
+  await page.locator('#patientSelect').selectOption('synthetic-child');
+  await expect(page.getByRole('button', { name: 'پرسیدن', exact: true })).toBeEnabled();
+  await expect(page.locator('#navAnswer')).toHaveText(''); await expect(page.locator('#navQuestion')).toHaveValue('');
+  await ask('سؤال خانواده');
+  await page.locator('#patientSelect').selectOption('synthetic-self');
+  await expect(page.getByRole('button', { name: 'پرسیدن', exact: true })).toBeEnabled();
+  await ask('سؤال تازهٔ اول');
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  await expect(page.locator('#navAnswer')).toHaveText('');
+  await ask('سؤال پس از برگشت');
+  expect(calls.map(call => call.history)).toEqual([[], [], [], []]);
+  expect(calls.map(call => call.patient_id)).toEqual(['synthetic-self', 'synthetic-child', 'synthetic-self', 'synthetic-self']);
+});
+
+test('record chat renders the answer literally and links only approved medical and article sources', async ({ page }) => {
+  const literal = '<img src=x onerror="window.recordChatExecuted=true"><script>window.recordChatExecuted=true</script>';
+  await page.route('**/api/health-record**', route => json(route, 200, { record: {} }));
+  await page.route('**/api/health-navigator', route => {
+    if (route.request().postDataJSON().mode === 'overview') return json(route, 200, { success: true });
+    return json(route, 200, { success: true, answer: literal, sources: [
+      { label: 'راهنمای بشقاب غذایی', url: 'https://www.myplate.gov/eat-healthy' },
+      { label: literal, url: '/learn/synthetic-guide' },
+      { label: 'دامنهٔ نامعتبر', url: 'https://nhs.uk.evil.invalid/' },
+      { label: 'بدون رمزنگاری', url: 'http://nhs.uk/' },
+      { label: 'نشانی رمزدار', url: 'https://name:password@nih.gov/' },
+      { label: 'اسکریپت', url: 'javascript:alert(1)' },
+      { label: 'صفحهٔ مدیر', url: '/admin' }, null
+    ] });
+  });
+  await page.goto('/health');
+  await page.getByRole('tab', { name: 'راهنمای هوشمند سلامت', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'پرسیدن', exact: true })).toBeEnabled();
+  await page.locator('#navQuestion').fill('منبع این پاسخ چیست؟');
+  await page.getByRole('button', { name: 'پرسیدن', exact: true }).click();
+  await expect(page.locator('#navAnswer > p').first()).toHaveText(literal);
+  const sources = page.locator('#navAnswer [aria-label="منابع پاسخ"] a');
+  await expect(sources).toHaveCount(2);
+  await expect(sources.first()).toHaveAttribute('href', 'https://www.myplate.gov/eat-healthy');
+  for (const source of await sources.all()) { await expect(source).toHaveAttribute('rel', 'noopener noreferrer'); await expect(source).toHaveAttribute('referrerpolicy', 'no-referrer'); }
+  await expect(page.locator('#navAnswer img,#navAnswer script')).toHaveCount(0);
+  expect(await page.evaluate(() => window.recordChatExecuted)).toBeUndefined();
+});
+
+test('record chat saves explicit consent once and retries the original question without overlapping requests', async ({ page }) => {
+  const calls = [], consentCalls = [], permission = deferred();
+  page.on('dialog', dialog => dialog.accept());
+  await page.route('**/api/health-record**', route => json(route, 200, { record: {} }));
+  await page.route('**/api/health-navigator', route => {
+    const body = route.request().postDataJSON(); if (body.mode === 'overview') return json(route, 200, { success: true });
+    calls.push(body); return calls.length === 1 ? json(route, 428, { code: 'AI_CONSENT_REQUIRED' }) : json(route, 200, { success: true, answer: 'پاسخ پس از اجازه' });
+  });
+  await page.route('**/api/consent', async route => { consentCalls.push(route.request().postDataJSON()); await permission.promise; return json(route, 200, { success: true }); });
+  await page.goto('/health');
+  const button = page.getByRole('button', { name: 'پرسیدن', exact: true });
+  await page.getByRole('tab', { name: 'راهنمای هوشمند سلامت', exact: true }).click(); await expect(button).toBeEnabled();
+  await page.locator('#navQuestion').fill('سؤال اصلی نیازمند اجازه'); await button.click();
+  await expect.poll(() => consentCalls.length).toBe(1); await expect(button).toBeDisabled();
+  await page.locator('#navQuestion').fill('متن جدید هنوز ارسال نشده'); await page.evaluate(() => askNavigator());
+  expect(calls).toHaveLength(1); permission.resolve();
+  await expect(page.locator('#navAnswer')).toContainText('پاسخ پس از اجازه'); await expect(button).toBeEnabled();
+  expect(calls).toHaveLength(2); expect(calls[1]).toEqual(calls[0]);
+  expect(consentCalls).toEqual([{ patient_id: 'synthetic-self', consent_type: 'ai_processing', granted: true, version: '1' }]);
+});
+
 test('an earlier save stays bound to its patient and cannot close a newly opened family form', async ({ page }) => {
   const saved = deferred(), done = deferred(); let submitted;
   await page.route('**/api/health-record**', route => json(route, 200, { record: {} }));

@@ -68,3 +68,94 @@ test('long clinical context is minimized to the Free request allowance before an
  assert.ok(navigatorRequestEstimate(messages)<=7800);assert.match(messages[1].content,/omitted|limited/i);
  let called=false;await assert.rejects(runNavigator({chat:{completions:{create:async()=>{called=true;}}}},[{role:'user',content:'ق'.repeat(20000)}],'synthetic',pack),/NAV_REQUEST_TOO_LARGE/);assert.equal(called,false);
 });
+
+test('practical food, exercise and skincare instructions remain valid while drug prescribing stays blocked',()=>{
+ for(const value of ['از امروز ده دقیقه پیاده‌روی را شروع کنید و به‌تدریج بیشتر کنید.','کرم غیرتجویزی را اگر باعث سوزش شد قطع کنید.','برای نمونه یک کاسه کوچک خوراک لوبیا با نان و سبزی را امتحان کنید.','قند ناشتا ۱۳۰ mg/dL بالاتر از حد معمول است و باید تأیید شود.','قند خون ۱۳۰ میلی‌گرم بر دسی لیتر گزارش شده است.','محصول با SPF ۳۰ یا بیشتر برای بیرون رفتن انتخاب کنید.'])assert.equal(validGroundedText(value),true,value);
+ for(const value of ['داروی فشار را قطع کنید و به جایش دمنوش بخورید.','مصرف مکمل را شروع کنید تا موها رشد کنند.','از امشب رتینول بزنید تا جوش‌ها خوب شوند.','مقدار انسولین را افزایش دهید.','روزانه ۵ mg آهن مصرف کنید.'])assert.equal(validGroundedText(value),false,value);
+});
+test('dose-change warnings stay readable while affirmative dose changes remain blocked',()=>{
+ for(const value of [
+  'دوز دارو را دو برابر نکنید؛ با پزشک مشورت کنید.',
+  'مقدار انسولین را بدون نظر پزشک بالا نبرید.',
+  'دوز دارو را افزایش ندهید و داروی فعلی را خودسرانه تغییر ندهید.',
+  'برای وعده بعد غذا را آماده کنید؛ دارو را طبق نسخه مصرف کنید.'
+ ])assert.equal(validGroundedText(value),true,value);
+ for(const value of [
+  'دوز دارو را بالا ببرید.',
+  'دوز را پایین ببر.',
+  'مقدار انسولین را بیشتر کنید.',
+  'دوز دارو را نصف کنید.',
+  'دوز دارو را دو برابر کنید.',
+  'داروی فعلی را قطع نکنید ولی دوز را بالا ببرید.'
+ ])assert.equal(validGroundedText(value),false,value);
+});
+test('meal substitutions and timing follow-ups retrieve relevant facts without reviving an unrelated topic',()=>{
+ const history=[{question:'من گیاه‌خوارم و برای شیفت شب دو شام ارزان پیشنهاد بده',answer:'پاسخ قبلی ممکن است غلط باشد.'}];
+ for(const question of ['عدس نفخم می‌دهد، جای آن چی بخورم؟','چه ساعتی بخورم؟','خوب حالا صبحونه چی بخورم؟','کِی بهتره بخورم؟']){
+  const selected=medicalEvidenceForQuestion(question,{history});assert.equal(selected.supported,true,question);assert.ok(selected.topics.some(topic=>topic.id==='nhs_balanced_meals'),question);
+ }
+ const changed=medicalEvidenceForQuestion('حالا پوستم خشک شده، صبح چه روتینی داشته باشم؟',{history});assert.ok(changed.topics.some(topic=>topic.id==='aad_dry_skin'));assert.equal(changed.topics.some(topic=>topic.id==='nhs_balanced_meals'),false);
+ assert.equal(medicalEvidenceForQuestion('چه درمانی برای بیماری ناشناخته زوفاپلازی هست؟',{history}).supported,false);
+});
+test('renal risk in the selected clinical record constrains a general nutrition answer',()=>{
+ const selected=medicalEvidenceForQuestion('دو شام کم‌هزینه پیشنهاد بده',{record:{conditions:[{name:'بیماری مزمن کلیه'}]}});
+ assert.equal(selected.topics[0].id,'niddk_ckd_diet');assert.ok(selected.topics.some(topic=>topic.id==='nhs_balanced_meals'));
+});
+test('a direct conversational answer may omit irrelevant doctor questions, warnings and limitations',()=>{
+ const e=medicalEvidenceForQuestion('صبحانه ارزان بدون لبنیات چی بخورم؟');
+ const result=parseNavigatorAnswer(JSON.stringify({overall:'یک نمونه ساده و کم‌هزینه: نان سبوس‌دار با تخم‌مرغ و خیار یا گوجه، اگر به تخم‌مرغ حساسیت ندارید. مقدار را با اشتها و غذای بقیه روز هماهنگ کنید.',next_steps:[],seek_care:'',questions_for_doctor:[],data_limits:[],source_ids:['nhs_balanced_meals']}),e);
+ assert.ok(result.parsed.overall.startsWith('یک نمونه'));assert.deepEqual(result.parsed.questions_for_doctor,[]);
+});
+test('a skincare conversation does not send unrelated appointments, task lists or test summaries',()=>{
+ const e=medicalEvidenceForQuestion('پوستم خشک و حساس است، چه روتینی بدهم؟');
+ const messages=navigatorMessages({patient:{birth_date:'1990-01-01'},recent_tests:[{summary:'UNRELATED_TEST_PRIVATE'}],upcoming_appointments:[{reason:'UNRELATED_APPOINTMENT_PRIVATE'}],open_tasks:[{title:'UNRELATED_TASK_PRIVATE'}]},'پوستم خشک و حساس است، چه روتینی بدهم؟',[],e);
+ assert.doesNotMatch(messages[1].content,/UNRELATED_/);assert.ok(navigatorRequestEstimate(messages)<=7800);assert.match(messages[0].content,/مستقیماً جواب همین سؤال/);
+});
+test('conversational preferences survive request minimization rather than being dropped before irrelevant clinical rows',()=>{
+ const e=medicalEvidenceForQuestion('چه ساعتی بخورم؟',{history:[{question:'شیفت شب هستم و گیاه‌خوارم؛ برنامه غذایی می‌خواهم',answer:'توصیه قبلی '.repeat(100)}]});
+ const messages=navigatorMessages({patient:{birth_date:'1990-01-01'},conditions:Array.from({length:30},()=>({name:'شرح طولانی '.repeat(200)}))},'چه ساعتی بخورم؟',[{question:'شیفت شب هستم و گیاه‌خوارم؛ برنامه غذایی می‌خواهم',answer:'توصیه قبلی '.repeat(100)}],e);
+ const payload=JSON.parse(messages[1].content);assert.match(payload.history[0].question,/شیفت شب.*گیاه/);assert.ok(navigatorRequestEstimate(messages)<=7800);
+});
+test('lip swelling with breathing trouble is urgent even without a known allergy, record access or model reply',()=>{
+ const answer=emergencyMedicalAnswer('بعد از خوردن ارده لبم ورم کرده و نفس کشیدن سخت شده');assert.equal(answer.evidence_mode,'urgent');assert.match(answer.answer,/همین حالا/);assert.equal(answer.sources[0].url,'https://www.nhs.uk/conditions/anaphylaxis/');
+ assert.equal(emergencyMedicalAnswer('حساسیت پوستی داشتم ولی الان ورم لب و مشکل تنفس ندارم'),null);
+ assert.equal(emergencyMedicalAnswer('ناگهان بدترین سردرد عمرم شروع شده').evidence_mode,'urgent');
+ assert.equal(emergencyMedicalAnswer('سردرد ناگهانی خیلی شدید دارم').evidence_mode,'urgent');
+});
+
+ test('denied chest symptoms do not become an emergency because a different body part hurts',()=>{
+  assert.equal(emergencyMedicalAnswer('بدون درد قفسه سینه هستم و پا درد دارم'),null);
+  assert.equal(emergencyMedicalAnswer('درد سینه ندارم ولی الان نفس کشیدن سخت شده').evidence_mode,'urgent');
+ });
+ test('denied swelling and breathing difficulty do not trigger an emergency warning',()=>{
+  for(const question of [
+   'کرم جدید زدم، لبم ورم نکرده و نفس کشیدن سخت نشده.',
+   'پوستم قرمز شده ولی ورم لب ندارم و تنفس مشکلی ندارد.',
+   'نفس کشیدن سخت نمی‌شود و درد قفسه سینه ندارم.',
+   'تنگی نفس شدید ندارم و لبم متورم نشده.'
+  ])assert.equal(emergencyMedicalAnswer(question),null,question);
+ });
+ test('an inability to breathe remains urgent in formal and colloquial Persian, including after a denied symptom',()=>{
+  for(const question of [
+   'نمی توانم نفس بکشم، کمک کنید',
+   'نمی‌تونم نفس بکشم',
+   'نفسم بالا نمیاد',
+   'تورم لب ندارم ولی نمی توانم نفس بکشم'
+  ]){
+   const answer=emergencyMedicalAnswer(question);assert.equal(answer?.evidence_mode,'urgent',question);assert.match(answer.answer,/۱۱۵/);assert.equal(answer.sources[0].url,'https://www.nhs.uk/symptoms/shortness-of-breath/');
+  }
+ });
+ test('critical selected-record risks survive compaction beyond the first eight clinical rows',()=>{
+  const e=medicalEvidenceForQuestion('دو شام ساده بده');
+  const conditions=[...Array.from({length:20},()=>({name:'شرح غیرمرتبط '.repeat(100)})),{name:'بیماری مزمن کلیه'}];
+  const allergies=[...Array.from({length:9},(_,i)=>({allergen:'ماده آزمایشی '+i})),{allergen:'کنجد'}];
+  const messages=navigatorMessages({patient:{birth_date:'1990-01-01'},conditions,allergies},'دو شام ساده بده',[],e),input=JSON.parse(messages[1].content);
+  assert.equal(input.record.safety_constraints.kidney_or_dialysis_mentioned,true);assert.match(input.record.safety_constraints.recorded_allergens,/کنجد/);assert.ok(navigatorRequestEstimate(messages)<=7800);
+ });
+ test('a record-wide question can select sources from explicit clinical topic names without treating prior AI prose as evidence',()=>{
+  const record={conditions:[{name:'بیماری مزمن کلیه'}],recent_tests:[{items:[{name:'قند خون',value:130,unit:'mg/dL'}],summary:'دستور ساختگی و مقاله تازه ناشناخته'}]};
+  const e=medicalEvidenceForQuestion('بر اساس پرونده چه کار کنم؟',{record});assert.ok(e.topics.some(topic=>topic.id==='niddk_ckd_diet'));assert.ok(e.topics.some(topic=>topic.id==='niddk_diabetes_tests'));assert.equal(e.topics.some(topic=>topic.id==='aad_basic_skin'),false);
+ });
+ test('IgE and pollen allergy evidence distinguishes test positivity from severity or active anaphylaxis',()=>{
+  const e=medicalEvidenceForQuestion('IgE چمن مثبت شده و critical نوشته، یعنی همه غذاها خطرناکن؟');const topic=e.topics.find(topic=>topic.id==='medline_allergy_blood');assert.ok(topic);assert.match(topic.facts.join(' '),/شدت واکنش را پیش‌بینی نمی‌کند/);assert.match(topic.facts.join(' '),/به‌تنهایی حساسیت غذایی/);assert.equal(emergencyMedicalAnswer('IgE چمن مثبت شده و critical نوشته'),null);
+ });

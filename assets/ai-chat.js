@@ -15,7 +15,7 @@
     function sourceLink(source) {
       try {
         const url = new URL(source.url, location.origin), host = url.hostname;
-        const trusted = ['medlineplus.gov', 'nhs.uk', 'cdc.gov', 'who.int', 'nih.gov', 'aad.org', 'fda.gov'].some(domain => host === domain || host.endsWith('.' + domain));
+        const trusted = ['medlineplus.gov', 'nhs.uk', 'cdc.gov', 'who.int', 'nih.gov', 'aad.org', 'fda.gov', 'myplate.gov'].some(domain => host === domain || host.endsWith('.' + domain));
         if (url.username || url.password || !(url.protocol === 'https:' && trusted || url.origin === location.origin && url.pathname.startsWith('/learn/'))) return null;
         const link = document.createElement('a'); link.href = url.href; link.textContent = source.label || 'منبع پزشکی'; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.referrerPolicy = 'no-referrer'; return link;
       } catch { return null; }
@@ -54,7 +54,7 @@
       const id = current, revision = version; busy = true; controls(); consent.hidden = true; status.textContent = 'در حال بررسی بر اساس اطلاعات پرونده و منابع پزشکی…';
       const requestController = new AbortController(); controller = requestController; const timer = setTimeout(() => requestController.abort(), 60000);
       try {
-        const history = turns.filter(item => item !== turn && item.answer).slice(-2).map(item => ({ question: item.question.slice(0, 700), answer: item.answer.slice(0, 1000) }));
+        const history = turns.filter(item => item !== turn && item.answer && item.succeeded).slice(-2).map(item => ({ question: item.question.slice(0, 700), answer: item.answer.slice(0, 1000) }));
         const response = await fetch('/api/health-navigator', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patient_id: id, question: turn.question, history }), signal: requestController.signal });
         const data = await response.json(); if (!active(id, revision)) return;
         if (response.status === 428 && data.code === 'AI_CONSENT_REQUIRED') {
@@ -68,7 +68,7 @@
           }); return;
         }
         if (!response.ok || !data.success) throw Error(data.error || 'پاسخ فعلاً آماده نشد؛ دوباره تلاش کنید.');
-        turn.answer = String(data.answer || 'پاسخ کافی دریافت نشد؛ سؤال را روشن‌تر مطرح کنید.'); turn.sources = Array.isArray(data.sources) ? data.sources : []; paint(); status.textContent = 'پاسخ آموزشی است؛ برای تصمیم درمانی با پزشک هماهنگ کنید.';
+        turn.answer = String(data.answer || 'پاسخ کافی دریافت نشد؛ سؤال را روشن‌تر مطرح کنید.'); turn.sources = Array.isArray(data.sources) ? data.sources : []; turn.succeeded = true; paint(); status.textContent = 'پاسخ آموزشی است؛ برای تصمیم درمانی با پزشک هماهنگ کنید.';
       } catch (error) { if (active(id, revision)) { turn.answer = error.name === 'AbortError' ? 'پاسخ طول کشید؛ کمی بعد دوباره تلاش کنید.' : error.message; paint(); status.textContent = 'ارسال دوبارهٔ سؤال امکان‌پذیر است.'; } }
       finally { clearTimeout(timer); if (active(id, revision)) { busy = false; controller = null; controls(); } }
     }
