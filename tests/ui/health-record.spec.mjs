@@ -35,6 +35,36 @@ test('saved lab interpretation expands as readable text without executing stored
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
 
+test('lab cards explain recorded flags in Persian, show source ranges and keep unknown results neutral',async({page})=>{
+  await page.route('**/api/health-record**',route=>json(route,200,{record:{}}));
+  const rows=[
+    {name:'شاخص بالاتر',flag:'high',value_text:'110',reference_range:'70–100'},
+    {name:'شاخص پایین‌تر',flag:'low',value_text:'12',reference_range:'20–50'},
+    {name:'شاخص در محدوده',flag:'normal',value_text:'97',reference_range:'70–100'},
+    {name:'شاخص بحرانی',flag:'critical',value_text:'450',reference_range:'70–100'},
+    {name:'شاخص بدون وضعیت',flag:'unknown',value_text:'900',reference_range:null},
+    {name:'شاخص با وضعیت ناآشنا',flag:'unrecognized',value_text:'90',reference_range:'<img src=x onerror="window.rangeExecuted=true">'}
+  ];
+  await page.route('**/api/biomarker-trends**',route=>json(route,200,{success:true,biomarkers:rows.map((row,index)=>({key:'synthetic-'+index,name:row.name,unit:'mg/dL',count:1,points:[],latest:{...row,observed_at:'2026-10-08T08:00:00Z'}}))}));
+  await page.goto('/health');const cards=page.locator('#biomarkerTrends .trend');await expect(cards).toHaveCount(6);
+  for(const[index,label]of ['بالاتر از محدودهٔ گزارش‌شده','پایین‌تر از محدودهٔ گزارش‌شده','در محدودهٔ گزارش‌شده','علامت بحرانی گزارش‌شده؛ پیگیری فوری','وضعیت مشخص نشده','وضعیت مشخص نشده'].entries())await expect(cards.nth(index).locator('.lab-reading-status')).toHaveText(label);
+  await expect(cards.nth(0).locator('.lab-reference-range')).toHaveText('محدودهٔ مرجع ثبت‌شده: 70–100');
+  await expect(cards.nth(4).locator('.lab-reference-range')).toHaveText('محدودهٔ مرجع ثبت نشده است.');
+  await expect(cards.nth(4).locator('.latest')).toContainText('900');
+  for(const index of [4,5]){await expect(cards.nth(index).locator('.success,.warning,.danger')).toHaveCount(0);await expect(cards.nth(index).locator('.latest')).toHaveClass(/lab-value-unknown/);}
+  await expect(cards.nth(5).locator('.lab-reference-range')).toContainText('<img src=x');await expect(page.locator('#biomarkerTrends img,#biomarkerTrends script')).toHaveCount(0);expect(await page.evaluate(()=>window.rangeExecuted)).toBeUndefined();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('saved lab summaries and timeline use understandable statuses, while glucose keeps its missing-context note',async({page})=>{
+  await page.route('**/api/health-record**',route=>json(route,200,{record:{tests:['normal','warning','danger',null].map((status,index)=>({id:'summary-'+index,status,created_at:'2026-10-08T08:00:00Z',reason:'',analysis:''})),vitals:[{id:'synthetic-vital',measured_at:'2026-10-08T08:00:00Z',weight_kg:70,systolic:120,diastolic:80,glucose_mg_dl:120}]}}));
+  await page.goto('/health');const tests=page.locator('#tests>.item');await expect(tests).toHaveCount(4);
+  for(const[index,label]of ['بدون هشدار در تفسیر ذخیره‌شده','نیازمند بررسی بیشتر','نیازمند پیگیری فوری','وضعیت مشخص نشده'].entries())await expect(tests.nth(index)).toContainText(label);
+  await expect(page.locator('#timeline')).toContainText('نیازمند بررسی بیشتر');await expect(page.locator('#timeline')).not.toContainText('warning');
+  await expect(page.locator('#vitals')).toContainText('قند خون ۱۲۰');await expect(page.locator('#vitals')).toContainText('فشار بالا ۱۲۰');await expect(page.locator('#vitals')).toContainText('فشار پایین ۸۰');await expect(page.locator('#vitals')).toContainText('وزن ۷۰');
+  await expect(page.locator('#vitals .vital-context-note')).toContainText('ناشتا بودن یا فاصله از وعدهٔ غذایی');await expect(page.locator('#vitals')).not.toContainText('طبیعی');
+});
+
 test('rapid family switches clear old records and ignore a late result from the prior selection', async ({ page }) => {
   const second = deferred(), firstReload = deferred(), secondDone = deferred();
   let selfLoads = 0, childLoads = 0;

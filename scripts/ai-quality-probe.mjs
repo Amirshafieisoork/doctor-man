@@ -54,6 +54,12 @@ if(enabled){
     }
     throw error;
    }
+   if(result.source==='local'&&result.guard_reasons?.length){
+    // Same fixed synthetic completion as the parser diagnostic above. Expose
+    // rejected model food content for a human to distinguish a true safety
+    // violation from an overly broad guard; app requests are never logged.
+    reportAnswer({stage:'guarded_synthetic_completion',kind,guard_reasons:result.guard_reasons,content:(syntheticCompletion?.choices?.[0]?.message?.content||'').slice(0,18000)});
+   }
    reportAnswer({stage:'answer',kind,model:result.model,source:result.source,guard_reasons:result.guard_reasons||[],program:result.program,elapsed_ms:Date.now()-start});
   }else{
    const fixture=qualityChatFixture(kind),pack=medicalEvidenceForQuestion(fixture.question,{history:fixture.history});
