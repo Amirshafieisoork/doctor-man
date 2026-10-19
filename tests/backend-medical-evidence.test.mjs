@@ -111,6 +111,16 @@ test('a skincare conversation does not send unrelated appointments, task lists o
  const messages=navigatorMessages({patient:{birth_date:'1990-01-01'},recent_tests:[{summary:'UNRELATED_TEST_PRIVATE'}],upcoming_appointments:[{reason:'UNRELATED_APPOINTMENT_PRIVATE'}],open_tasks:[{title:'UNRELATED_TASK_PRIVATE'}]},'پوستم خشک و حساس است، چه روتینی بدهم؟',[],e);
  assert.doesNotMatch(messages[1].content,/UNRELATED_/);assert.ok(navigatorRequestEstimate(messages)<=7800);assert.match(messages[0].content,/مستقیماً جواب همین سؤال/);
 });
+test('plain Persian lipid questions and their follow-ups retain the actual recent lab result',()=>{
+ const record={patient:{birth_date:'1990-01-01'},recent_tests:[{created_at:'2026-10-16',summary:'LDL بالاتر از محدودهٔ همین گزارش',items:[{name:'LDL',value:162,unit:'mg/dL',reference_range:'<130',flag:'high'}]}],open_tasks:[{title:'UNRELATED_TASK_PRIVATE'}]};
+ const first='چربی خونم بالاست، یعنی دیگر برنج نخورم؟ شیفت شب کار می‌کنم و برای امشب دو غذای ارزان بگو.';
+ for(const [question,history] of [[first,[]],['عدس نفخم می‌دهد، جای آن چی بخورم؟',[{question:first,answer:'پیشنهاد قبلی'}]]]){
+  const evidence=medicalEvidenceForQuestion(question,{history}),messages=navigatorMessages(record,question,history,evidence),input=JSON.parse(messages[1].content);
+  assert.equal(input.record.recent_tests[0].items[0].value,162);assert.equal(input.record.recent_tests[0].items[0].reference_range,'<130');
+  assert.doesNotMatch(messages[1].content,/UNRELATED_TASK_PRIVATE/);assert.ok(navigatorRequestEstimate(messages)<=7800);
+  assert.match(messages[0].content,/بازهٔ تکرار آزمایش یا آزمایش تازه از خودت تعیین نکن/);
+ }
+});
 test('conversational preferences survive request minimization rather than being dropped before irrelevant clinical rows',()=>{
  const e=medicalEvidenceForQuestion('چه ساعتی بخورم؟',{history:[{question:'شیفت شب هستم و گیاه‌خوارم؛ برنامه غذایی می‌خواهم',answer:'توصیه قبلی '.repeat(100)}]});
  const messages=navigatorMessages({patient:{birth_date:'1990-01-01'},conditions:Array.from({length:30},()=>({name:'شرح طولانی '.repeat(200)}))},'چه ساعتی بخورم؟',[{question:'شیفت شب هستم و گیاه‌خوارم؛ برنامه غذایی می‌خواهم',answer:'توصیه قبلی '.repeat(100)}],e);

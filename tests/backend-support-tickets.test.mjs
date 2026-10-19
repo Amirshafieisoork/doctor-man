@@ -235,10 +235,17 @@ test('medical support uses reviewed references without transmitting ticket healt
 });
 test('unknown medical requests and mixed billing plus drug advice never fall through to site AI',async t=>{
   const state=services(t,{aiEnabled:true});
-  for(const message of ['برای سردرد شدید چه قرصی بخورم؟','پلنم فعال نمیشه؛ داروی تومور رو چقدر بخورم؟']){
+  for(const message of ['برای لوپوس چه دارویی بخورم؟','پلنم فعال نمیشه؛ داروی تومور رو چقدر بخورم؟']){
     const res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message}});assert.equal(res.statusCode,200);assert.equal(res.body.search_performed,false);assert.match(res.body.answer,/نمی‌توانم|منبع اختصاصی/);
   }
   assert.equal(state.aiCalls.length,0);
+});
+test('headache questions use the reviewed NHS guidance without sending medical support content to a model',async t=>{
+  const state=services(t,{aiEnabled:true}),res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message:'برای سردرد شدید چه قرصی بخورم؟'}});
+  assert.equal(res.statusCode,200);assert.equal(state.aiCalls.length,0);assert.equal(res.body.evidence_mode,'curated_reference');assert.equal(res.body.search_performed,false);
+  assert.ok(res.body.sources.some(source=>source.url==='https://www.nhs.uk/symptoms/headaches/'));
+  assert.match(res.body.answer,/ناگهانی بسیار شدید/);assert.match(res.body.answer,/ارزیابی فوری/);assert.doesNotMatch(res.body.answer,/\d+\s*(?:mg|میلی.?گرم)|ایبوپروفن|استامینوفن/);
+  assert.match(state.messages.at(-1).content,/nhs.uk\/symptoms\/headaches/);
 });
 test('support discards fabricated site source IDs and retains human follow-up',async t=>{
   const state=services(t,{aiEnabled:true,aiAnswer:{answer:'پاسخ ظاهراً معتبر که منبع آن ساختگی است.',reference_ids:['https://evil.invalid']}}),res=await call(userTickets,{method:'POST',body:{ticket_id:ticketId,message:text}});

@@ -37,7 +37,23 @@ if(enabled){
    const estimate=wellnessRequestEstimate(programKind,fixture.record,fixture.answers);
    report({stage:'input',kind,commit:expected,profile:fixture.record.patient,questionnaire:fixture.answers,request_estimate:estimate});
    assert.ok(estimate<=7800,'Quality request must fit the Free rate allowance');
-   const result=await generateWellnessProgram(client,programKind,fixture.record,fixture.answers,'synthetic-content-review');
+   // This client is scoped to the fixed SYNTHETIC fixture above. Capture only
+   // this single synthetic completion, never attach logging to app handlers.
+   const create=client.chat.completions.create.bind(client.chat.completions);let syntheticCompletion;
+   client.chat.completions.create=async(...args)=>{syntheticCompletion=await create(...args);return syntheticCompletion;};
+   let result;
+   try{result=await generateWellnessProgram(client,programKind,fixture.record,fixture.answers,'synthetic-content-review');}
+   catch(error){
+    if(/^WELLNESS_[A-Z_]+$/.test(String(error?.message||''))){
+     const content=syntheticCompletion?.choices?.[0]?.message?.content||'';let parsed;
+     try{parsed=JSON.parse(content);}catch{}
+     report({stage:'rejected_synthetic_shape',kind,classification:error.message,finish_reason:syntheticCompletion?.choices?.[0]?.finish_reason,fields:parsed&&typeof parsed==='object'?Object.fromEntries(Object.entries(parsed).map(([key,value])=>[key,{type:Array.isArray(value)?'array':typeof value,length:Array.isArray(value)||typeof value==='string'?value.length:null}])):{}});
+     // Synthetic-only content review makes actual parser failures diagnosable.
+     // Limit the raw response; do not log provider messages or credentials.
+     reportAnswer({stage:'rejected_synthetic_completion',kind,content:content.slice(0,18000)});
+    }
+    throw error;
+   }
    reportAnswer({stage:'answer',kind,model:result.model,source:result.source,guard_reasons:result.guard_reasons||[],program:result.program,elapsed_ms:Date.now()-start});
   }else{
    const fixture=qualityChatFixture(kind),pack=medicalEvidenceForQuestion(fixture.question,{history:fixture.history});

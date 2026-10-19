@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { wellnessAnswers, wellnessCoach, wellnessClinicalRecord, wellnessEvidence, wellnessRequestEstimate, localWellnessProgram, parseWellnessProgram, generateWellnessProgram } from '../server/api/_lib/wellness-program.js';
+import { wellnessAnswers, wellnessCoach, wellnessClinicalRecord, wellnessEvidence, wellnessRequestEstimate, localWellnessProgram, wellnessSchema, wellnessMessages, parseWellnessProgram, generateWellnessProgram } from '../server/api/_lib/wellness-program.js';
 import { overviewRecord } from '../server/api/_lib/health-overview.js';
 
 const now=Date.parse('2026-10-16T12:00:00Z'),owner='synthetic-owner',patientId='synthetic-patient';
@@ -141,3 +141,13 @@ test('repeated physician-approval placeholders from a model are rejected rather 
 test('unsafe requested low weight does not become a target while useful meals remain available',async()=>{const{run}=setup();const r=await run({answers:{...nutrition,target_weight_kg:40}});assert.equal(r.body.program.plan_status,'ready');assert.match(r.body.program.weight_goal,/هدف کاهش وزن تعیین نمی‌شود/);assert.equal(r.body.program.weekly_menu.length,3);});
 
 test('explicit earlier kidney stages use practical food examples while advanced and unspecified disease ask for limits',async()=>{for(const condition of ['بیماری مزمن کلیه مرحله ۲','CKD stage 2','بیماری مزمن کلیه مرحله ۴','CKD stage 4','بیماری مزمن کلیه']){const{state,run}=setup();state.rows.patient_conditions=[{name:condition,status:'active'}];const result=await run();assert.equal(result.body.program.plan_status,/۲|stage 2/.test(condition)?'ready':'clinical_hold',condition);}});
+
+
+test('provider JSON schema expresses nonempty follow-up and bounded strings and exactly three meal days',()=>{
+ for(const kind of ['nutrition','skin_hair']){const schema=wellnessSchema(kind);assert.equal(schema.properties.follow_up.minItems,1);assert.equal(schema.properties.follow_up.maxItems,8);assert.equal(schema.properties.follow_up.items.minLength,5);assert.equal(schema.properties.follow_up.items.maxLength,1200);assert.equal(schema.properties.source_ids.minItems,1);assert.equal(schema.properties.data_limits.minItems,0);if(kind==='nutrition'){assert.equal(schema.properties.weekly_menu.minItems,3);assert.equal(schema.properties.weekly_menu.maxItems,3);assert.equal(schema.properties.shopping_list.items.minLength,2);}}
+});
+test('all follow-up fields retain strict content checks rather than accepting empty text or numeric weight targets',()=>{
+ const {record}=setup(),answers=wellnessAnswers('nutrition',nutrition),r=record(),pack=wellnessEvidence('nutrition',r,answers),p=localWellnessProgram('nutrition',r,answers);
+ for(const follow_up of [[],[''],['خوب'],['هفته‌ای ۰٫۵ کیلوگرم وزن کم کنید.'],['هر هفته 0.5 kg وزن کم کنید.'],['روزانه ۵۰۰ میلی‌گرم مکمل بخورید.'],['x'.repeat(1300)]])assert.throws(()=>parseWellnessProgram(complete({...p,follow_up}),'nutrition',pack),/WELLNESS_INVALID_LIST_FOLLOW_UP/);
+ const result=parseWellnessProgram(complete({...p,follow_up:['پس از سه روز، سیری و هزینه و امکان آماده‌سازی وعده‌ها را مرور کنید.']}),'nutrition',pack);assert.equal(result.follow_up.length,1);assert.match(wellnessMessages('nutrition',r,answers,pack)[0].content,/در تمام بخش‌ها حتی follow_up/);
+});
